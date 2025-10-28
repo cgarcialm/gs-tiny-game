@@ -10,7 +10,6 @@ export default class BootScene extends Phaser.Scene {
   }
 
   create() {
-    // When everything’s loaded, go to gameplay
-    this.scene.start("Game");
+    this.scene.start("Title"); // go to the start screen first
   }
 }
