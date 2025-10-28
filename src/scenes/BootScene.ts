@@ -6,8 +6,7 @@ export default class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Load assets here later, e.g.:
-    // this.load.spritesheet("player", "assets/sprites/player.png", { frameWidth: 16, frameHeight: 16 });
+    // Load assets here later (sprites/tiles/audio).
   }
 
   create() {
