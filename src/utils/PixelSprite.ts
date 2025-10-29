@@ -24,6 +24,8 @@ export function createGraysonSprite(
   
   // Create graphics object for drawing pixels
   const graphics = scene.add.graphics();
+  // Ensure graphics render properly without transparency artifacts
+  graphics.setBlendMode(Phaser.BlendModes.NORMAL);
   
   // Offset to center the sprite (18 pixels wide, 24 pixels tall - bigger character)
   const spriteWidth = 18;
@@ -33,16 +35,22 @@ export function createGraysonSprite(
   
   // Helper to draw a pixel block - no outlines
   const drawPixel = (px: number, py: number, color: number) => {
-    const x = offsetX + px * pixelSize;
-    const y = offsetY + py * pixelSize;
+    // Round pixel coordinates to integers to prevent transparency issues
+    const roundedPx = Math.round(px);
+    const roundedPy = Math.round(py);
+    const x = Math.round(offsetX + roundedPx * pixelSize);
+    const y = Math.round(offsetY + roundedPy * pixelSize);
     
-    // Fill with full opacity - no transparency, no outlines
+    // Fill with full opacity - ensure no transparency
     graphics.fillStyle(color, 1.0);
     graphics.fillRect(x, y, pixelSize, pixelSize);
   };
   
   const redrawSprite = (walkFrame: number = 0) => {
+    // Clear graphics completely before redrawing
     graphics.clear();
+    // Reset blend mode and alpha to ensure full opacity
+    graphics.setBlendMode(Phaser.BlendModes.NORMAL);
     
     // Determine leg position for walking animation
     const legFrame = Math.floor(walkFrame) % 2;
@@ -143,7 +151,7 @@ export function createGraysonSprite(
     drawPixel(8, 11, PANTS_BLUE);
     
     // Pants with walking animation (rows 12-15) - shorter but more detailed
-    // Upper legs
+    // Upper legs (use integer offsets directly)
     drawPixel(4 + leftLegOffset, 12, PANTS_BLUE);
     drawPixel(5, 12, PANTS_BLUE);
     drawPixel(6, 12, PANTS_BLUE);
@@ -174,6 +182,9 @@ export function createGraysonSprite(
   // Store animation data
   container.setData("walkFrame", 0);
   container.setData("redraw", redrawSprite);
+  
+  // Mark graphics as dirty to ensure proper rendering
+  graphics.setVisible(true);
   
   return container;
 }

@@ -175,6 +175,10 @@ export default class GameScene extends Phaser.Scene {
     }
     this.player.x += vx * this.speed * dt;
     this.player.y += vy * this.speed * dt;
+    
+    // Round player position to prevent sub-pixel transparency issues
+    this.player.x = Math.round(this.player.x);
+    this.player.y = Math.round(this.player.y);
 
     // Keep inside 320x180 play area (tiny padding)
     this.player.x = Phaser.Math.Clamp(this.player.x, 6, 320 - 6);
