@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { createDrawPixel } from "./spriteUtils";
 
 /**
  * Creates a pixel art sprite for Grayson with walking animation
@@ -33,18 +34,8 @@ export function createGraysonSprite(
   const offsetX = -(spriteWidth * pixelSize) / 2;
   const offsetY = -(spriteHeight * pixelSize) / 2;
   
-  // Helper to draw a pixel block - no outlines
-  const drawPixel = (px: number, py: number, color: number) => {
-    // Round pixel coordinates to integers to prevent transparency issues
-    const roundedPx = Math.round(px);
-    const roundedPy = Math.round(py);
-    const x = Math.round(offsetX + roundedPx * pixelSize);
-    const y = Math.round(offsetY + roundedPy * pixelSize);
-    
-    // Fill with full opacity - ensure no transparency
-    graphics.fillStyle(color, 1.0);
-    graphics.fillRect(x, y, pixelSize, pixelSize);
-  };
+  // Helper function from shared utilities
+  const drawPixel = createDrawPixel(graphics, pixelSize, offsetX, offsetY);
   
   const redrawSprite = (walkFrame: number = 0) => {
     // Clear graphics completely before redrawing

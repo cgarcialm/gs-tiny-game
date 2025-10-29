@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonSprite, updateGraysonWalk, createEboshiSprite } from "../utils/sprites";
+import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite } from "../utils/sprites";
 
 type DialogueState = "idle" | "open";
 
@@ -9,6 +9,7 @@ export default class GameScene extends Phaser.Scene {
 
   private player!: Phaser.GameObjects.Container;
   private npc!: Phaser.GameObjects.Container;
+  private cat!: Phaser.GameObjects.Container;
 
   private speed = 80; // px/s
   private promptText!: Phaser.GameObjects.Text;
@@ -40,6 +41,9 @@ export default class GameScene extends Phaser.Scene {
 
     // NPC - Eboshi (greyhound dog)
     this.npc = createEboshiSprite(this, 220, 95);
+
+    // NPC - Smush (brown cat)
+    this.cat = createSmushSprite(this, 100, 100);
 
     // Input
     this.cursors = this.input.keyboard!.createCursorKeys();

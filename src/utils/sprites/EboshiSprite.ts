@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { createDrawPixel, createDrawSmallDot, createDrawOutlinePixel } from "./spriteUtils";
 
 /**
  * Creates a pixel art sprite for Eboshi (a greyhound dog) in sitting position
@@ -27,37 +28,10 @@ export function createEboshiSprite(
   const offsetX = -(spriteWidth * pixelSize) / 2;
   const offsetY = -(spriteHeight * pixelSize) / 2;
   
-  // Helper to draw a pixel block
-  const drawPixel = (px: number, py: number, color: number) => {
-    const x = offsetX + px * pixelSize;
-    const y = offsetY + py * pixelSize;
-    graphics.fillStyle(color, 1.0);
-    graphics.fillRect(x, y, pixelSize, pixelSize);
-  };
-  
-  // Helper to draw outline pixels around a specific pixel (only where there's empty space)
-  const drawOutlinePixel = (px: number, py: number, direction: 'top' | 'bottom' | 'left' | 'right') => {
-    const x = offsetX + px * pixelSize;
-    const y = offsetY + py * pixelSize;
-    graphics.fillStyle(OUTLINE_BLACK, 1.0);
-    switch (direction) {
-      case 'top': graphics.fillRect(x, y - pixelSize, pixelSize, pixelSize); break;
-      case 'bottom': graphics.fillRect(x, y + pixelSize, pixelSize, pixelSize); break;
-      case 'left': graphics.fillRect(x - pixelSize, y, pixelSize, pixelSize); break;
-      case 'right': graphics.fillRect(x + pixelSize, y, pixelSize, pixelSize); break;
-    }
-  };
-  
-  // Helper to draw a small dot inside a pixel (smaller than the pixel itself)
-  const drawSmallDot = (px: number, py: number, color: number, size: number = 1.2) => {
-    const x = offsetX + px * pixelSize;
-    const y = offsetY + py * pixelSize;
-    // Center the dot within the pixel
-    const dotX = x + (pixelSize - size) / 2 ;
-    const dotY = y + (pixelSize - size) / 2;
-    graphics.fillStyle(color, 1.0);
-    graphics.fillRect(Math.round(dotX), Math.round(dotY), size, size);
-  };
+  // Helper functions from shared utilities
+  const drawPixel = createDrawPixel(graphics, pixelSize, offsetX, offsetY);
+  const drawSmallDot = createDrawSmallDot(graphics, pixelSize, offsetX, offsetY);
+  const drawOutlinePixel = createDrawOutlinePixel(graphics, pixelSize, offsetX, offsetY, OUTLINE_BLACK);
   
   const redrawSprite = () => {
     graphics.clear();
