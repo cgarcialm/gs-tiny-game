@@ -33,9 +33,8 @@ export default class GameScene extends Phaser.Scene {
     this.cameras.main.setRoundPixels(true);
 
     // Pixel grid background (procedural)
-    this.add
-      .grid(160, 90, 320, 180, 16, 16, 0x0e1a24, 1, 0x1a2733, 0.8)
-      .setOrigin(0.5);
+    // More intense blue background with bright green thin grid lines
+    this.createCustomGrid();
 
     // Player (Grayson) - pixel art character
     this.player = createGraysonSprite(this, 160, 90);
@@ -72,6 +71,38 @@ export default class GameScene extends Phaser.Scene {
     // Dialogue UI (hidden)
     this.createDialogUI();
     this.hideDialog();
+  }
+
+  private createCustomGrid() {
+    const gridWidth = 320;
+    const gridHeight = 180;
+    const cellSize = 16;
+    const bgColor = 0x0a1d3d; // Intense blue background
+    const lineColor = 0x00ff88; // Greener teal
+    const lineAlpha = 0.3; // A little more transparent
+    
+    // Background rectangle
+    const bg = this.add.rectangle(160, 90, gridWidth, gridHeight, bgColor, 1);
+    bg.setOrigin(0.5);
+    
+    // Grid lines using Graphics as 1px rectangles for crisp rendering
+    const graphics = this.add.graphics();
+    const startX = Math.round(160 - gridWidth / 2);
+    const startY = Math.round(90 - gridHeight / 2);
+    
+    graphics.fillStyle(lineColor, lineAlpha);
+    
+    // Vertical lines (1px wide)
+    for (let x = 0; x <= gridWidth; x += cellSize) {
+      const vx = Math.round(startX + x);
+      graphics.fillRect(vx, startY, 1, gridHeight);
+    }
+    
+    // Horizontal lines (1px tall)
+    for (let y = 0; y <= gridHeight; y += cellSize) {
+      const hy = Math.round(startY + y);
+      graphics.fillRect(startX, hy, gridWidth, 1);
+    }
   }
 
   private createDialogUI() {
