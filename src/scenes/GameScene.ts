@@ -20,9 +20,9 @@ export default class GameScene extends Phaser.Scene {
   private dialogBox!: Phaser.GameObjects.Rectangle;
   private dialogText!: Phaser.GameObjects.Text;
   private dialogLines: string[] = [
-    "Woof! I'm Eboshi the greyhound.",
-    "Nice to meet you! *suddenly looks worried*",
-    "Oh no... I hear something... MEOW!!"
+    "Hi Grayson! Do you happen to have peanut butter?",
+    "*suddenly looks worried*",
+    "Oh no... I hear something... RUN!!"
   ];
   private dialogIndex = 0;
   
