@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonSprite, updateGraysonWalk } from "../utils/PixelSprite";
+import { createGraysonSprite, updateGraysonWalk, createEboshiSprite } from "../utils/PixelSprite";
 
 type DialogueState = "idle" | "open";
 
@@ -8,7 +8,7 @@ export default class GameScene extends Phaser.Scene {
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
 
   private player!: Phaser.GameObjects.Container;
-  private npc!: Phaser.GameObjects.Rectangle;
+  private npc!: Phaser.GameObjects.Container;
 
   private speed = 80; // px/s
   private promptText!: Phaser.GameObjects.Text;
@@ -18,8 +18,7 @@ export default class GameScene extends Phaser.Scene {
   private dialogBox!: Phaser.GameObjects.Rectangle;
   private dialogText!: Phaser.GameObjects.Text;
   private dialogLines: string[] = [
-    "Hey there! Nice neon grid, huh?",
-    "Use WASD/Arrows to move.",
+    "Hey there! Nice neon grid, huh? You are in the void!",
     "Press Esc to close. Space/Enter to continue."
   ];
   private dialogIndex = 0;
@@ -39,8 +38,8 @@ export default class GameScene extends Phaser.Scene {
     // Player (Grayson) - pixel art character
     this.player = createGraysonSprite(this, 160, 90);
 
-    // NPC (static)
-    this.npc = this.add.rectangle(220, 95, 10, 12, 0x66d9ff).setOrigin(0.5);
+    // NPC - Eboshi (greyhound dog)
+    this.npc = createEboshiSprite(this, 220, 95);
 
     // Input
     this.cursors = this.input.keyboard!.createCursorKeys();
