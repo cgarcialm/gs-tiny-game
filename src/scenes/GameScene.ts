@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonSprite, updateGraysonWalk, createEboshiSprite } from "../utils/PixelSprite";
+import { createGraysonSprite, updateGraysonWalk, createEboshiSprite } from "../utils/sprites";
 
 type DialogueState = "idle" | "open";
 
