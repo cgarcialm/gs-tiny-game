@@ -100,7 +100,7 @@ export function createSmushSprite(
     drawPixel(9, 6, BEIGE_LIGHT);
     drawPixel(10, 6, BROWN_DARK);
     drawPixel(11, 6, BROWN_DARK);
-    drawPixel(12, 6, BROWN_DARK);
+    drawPixel(12, 6, BLACK);
     
     // Pupils (small dark dots in eyes)
     drawSmallDot(6, 4, EYE_PUPIL, 1.2);
@@ -163,6 +163,7 @@ export function createSmushSprite(
     drawPixel(9, 12, BROWN_MED);
     drawPixel(10, 12, BROWN_DARK);
     drawPixel(11, 12, BLACK);        // Black accent
+    drawPixel(12, 12, BLACK);        // Black accent
     
     // FRONT PAWS (small, tucked in)
     drawPixel(5, 13, BEIGE);
@@ -172,14 +173,25 @@ export function createSmushSprite(
     drawPixel(10, 13, BEIGE);
     // drawPixel(11, 13, BEIGE);
     
-    // TAIL (curled to the side)
-    drawPixel(13, 10, BLACK);        // Black accent on tail
-    drawPixel(14, 9, BROWN_DARK);
-    drawPixel(15, 8, BLACK);         // Black accent on tail
-    drawPixel(15, 7, BEIGE);         // Beige spot on tail
-    drawPixel(15, 6, BLACK);         // Black accent on tail
-    drawPixel(14, 5, BROWN_DARK);
-    drawPixel(13, 5, BLACK);         // Black accent on tail
+    // TAIL (curled to the side - darker, thicker, with light tip, away from face)
+    // Tail base (attached to body)
+    drawPixel(13, 11, BLACK);        // Dark tail base
+    drawPixel(13, 10, BLACK);        // Dark tail base
+    drawPixel(14, 10, BLACK);        // Thicker tail base
+    
+    // Mid tail (curving up and to the right)
+    drawPixel(14, 9, BLACK);         // Dark tail
+    drawPixel(15, 9, BROWN_DARK);    // Thicker tail
+    drawPixel(15, 8, BLACK);         // Dark tail
+    drawPixel(16, 8, BROWN_DARK);    // Thicker tail
+    
+    // Upper tail (staying away from face)
+    drawPixel(16, 7, BLACK);         // Dark tail with spots
+    drawPixel(16, 6, BROWN_DARK);    // Dark tail
+    
+    // Tail tip (light beige)
+    drawPixel(15, 6, BEIGE_LIGHT);   // Light beige tip
+    drawPixel(15, 5, BEIGE);         // Light beige tip extension
   };
   
   // Initial draw
