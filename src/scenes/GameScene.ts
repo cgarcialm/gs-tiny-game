@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { createGraysonSprite } from "../utils/PixelSprite";
 
 type DialogueState = "idle" | "open";
 
@@ -6,7 +7,7 @@ export default class GameScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
 
-  private player!: Phaser.GameObjects.Rectangle;
+  private player!: Phaser.GameObjects.Container;
   private npc!: Phaser.GameObjects.Rectangle;
 
   private speed = 80; // px/s
@@ -36,8 +37,8 @@ export default class GameScene extends Phaser.Scene {
       .grid(160, 90, 320, 180, 16, 16, 0x0e1a24, 1, 0x1a2733, 0.8)
       .setOrigin(0.5);
 
-    // Player (keyboard controlled)
-    this.player = this.add.rectangle(160, 90, 10, 12, 0xff66ff).setOrigin(0.5);
+    // Player (Grayson) - pixel art character
+    this.player = createGraysonSprite(this, 160, 90);
 
     // NPC (static)
     this.npc = this.add.rectangle(220, 95, 10, 12, 0x66d9ff).setOrigin(0.5);
