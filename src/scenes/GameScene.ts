@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite } from "../utils/sprites";
 
 type DialogueState = "idle" | "open";
+type ChaseState = "idle" | "chasing";
 
 export default class GameScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -19,10 +20,15 @@ export default class GameScene extends Phaser.Scene {
   private dialogBox!: Phaser.GameObjects.Rectangle;
   private dialogText!: Phaser.GameObjects.Text;
   private dialogLines: string[] = [
-    "Hey there! Nice neon grid, huh? You are in the void!",
-    "Press Esc to close. Space/Enter to continue."
+    "Woof! I'm Eboshi the greyhound.",
+    "Nice to meet you! *suddenly looks worried*",
+    "Oh no... I hear something... MEOW!!"
   ];
   private dialogIndex = 0;
+  
+  // Chase sequence
+  private chaseState: ChaseState = "idle";
+  private catHasAppeared = false;
 
   constructor() {
     super("Game");
@@ -41,9 +47,11 @@ export default class GameScene extends Phaser.Scene {
 
     // NPC - Eboshi (greyhound dog)
     this.npc = createEboshiSprite(this, 220, 95);
+    this.npc.setScale(1, 1); // Face left initially (default orientation)
 
-    // NPC - Smush (brown cat)
-    this.cat = createSmushSprite(this, 100, 100);
+    // NPC - Smush (brown cat) - hidden initially, will appear from left
+    this.cat = createSmushSprite(this, -50, 95);
+    this.cat.setVisible(false);
 
     // Input
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -142,13 +150,38 @@ export default class GameScene extends Phaser.Scene {
     if (this.dialogIndex >= this.dialogLines.length) {
       this.dialogIndex = 0;
       this.hideDialog();
+      
+      // Trigger cat chase after dialogue ends
+      if (!this.catHasAppeared) {
+        this.startCatChase();
+      }
     } else {
       this.showDialog(this.dialogLines[this.dialogIndex]);
     }
   }
+  
+  private startCatChase() {
+    this.catHasAppeared = true;
+    this.chaseState = "chasing";
+    
+    // Show the cat and position it off-screen left
+    this.cat.setVisible(true);
+    this.cat.x = -50;
+    this.cat.y = 95;
+    this.cat.setScale(-1, 1); // Face right (chasing to the right)
+    
+    // Make dog face right (running to the right)
+    this.npc.setScale(-1, 1);
+  }
 
   update() {
     const dt = this.game.loop.delta / 1000;
+
+    // Handle chase sequence
+    if (this.chaseState === "chasing") {
+      this.updateChaseSequence(dt);
+      return;
+    }
 
     // If in dialogue, only allow closing/advancing; no movement
     if (this.dialogState === "open") {
@@ -176,6 +209,13 @@ export default class GameScene extends Phaser.Scene {
       const len = Math.hypot(vx, vy);
       vx /= len;
       vy /= len;
+      
+      // Flip sprite based on horizontal movement direction
+      if (vx < 0) {
+        this.player.setScale(1, 1);  // Face left
+      } else if (vx > 0) {
+        this.player.setScale(-1, 1); // Face right
+      }
     }
     this.player.x += vx * this.speed * dt;
     this.player.y += vy * this.speed * dt;
@@ -191,25 +231,49 @@ export default class GameScene extends Phaser.Scene {
     // Update walking animation
     updateGraysonWalk(this.player, isMoving);
 
-    // Proximity check to NPC
-    const d = Phaser.Math.Distance.Between(
-      this.player.x,
-      this.player.y,
-      this.npc.x,
-      this.npc.y
-    );
+    // Proximity check to NPC (only if dog is still visible)
+    if (this.npc.visible) {
+      const d = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        this.npc.x,
+        this.npc.y
+      );
 
-    const near = d < 18; // distance threshold to show prompt
-    this.promptText.setVisible(near);
-    if (near) {
-      // anchor prompt above NPC
-      this.promptText.setPosition(this.npc.x, this.npc.y - 14);
+      const near = d < 18; // distance threshold to show prompt
+      this.promptText.setVisible(near);
+      if (near) {
+        // anchor prompt above NPC
+        this.promptText.setPosition(this.npc.x, this.npc.y - 14);
 
-      // Press E to talk
-      if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
-        this.dialogIndex = 0;
-        this.showDialog(this.dialogLines[this.dialogIndex]);
+        // Press E to talk
+        if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+          this.dialogIndex = 0;
+          this.showDialog(this.dialogLines[this.dialogIndex]);
+        }
       }
+    } else {
+      this.promptText.setVisible(false);
+    }
+  }
+  
+  private updateChaseSequence(dt: number) {
+    const chaseSpeed = 150; // Faster than normal movement
+    
+    // Move cat from left to right
+    this.cat.x += chaseSpeed * dt;
+    
+    // Dog runs away to the right (faster than cat initially)
+    if (this.npc.x < 400) {
+      this.npc.x += (chaseSpeed + 30) * dt;
+    }
+    
+    // Once both are off-screen, end the chase
+    if (this.cat.x > 400 && this.npc.x > 400) {
+      this.chaseState = "idle";
+      // Hide both sprites
+      this.cat.setVisible(false);
+      this.npc.setVisible(false);
     }
   }
 }
