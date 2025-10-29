@@ -7,93 +7,118 @@ const BOY_ASCII = String.raw`
     / \
 `;
 
+const GIRL_ASCII = String.raw`
+    ___
+   |(o_o)|
+   | /|\ |
+   / \
+`;
+
 export default class TitleScene extends Phaser.Scene {
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private boy!: Phaser.GameObjects.Text;
-  private hint!: Phaser.GameObjects.Text;
-  private speed = 80; // px/s
+  private girl!: Phaser.GameObjects.Text;
+  private promptText!: Phaser.GameObjects.Text;
+  private speed = 100;
 
-  constructor() { super("Title"); }
+  constructor() { 
+    super({ key: "Title" });
+  }
 
   create() {
-    // Plain, non-pixel background
+    // Set camera to respect pixel art settings
+    this.cameras.main.setRoundPixels(true);
     this.cameras.main.setBackgroundColor("#0b0f14");
 
+    // Title
     this.add.text(160, 18, "gs-tiny-game", {
       fontFamily: "monospace",
       fontSize: "16px",
       color: "#cfe8ff",
-    }).setOrigin(0.5, 0.5);
-
-    // ASCII boy as a movable text object
-    this.boy = this.add.text(160, 92, BOY_ASCII, {
-        // fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
-        fontSize: "6px",            // smaller helps a lot at 320×180
-        lineSpacing: 4,
-        color: "#a7c7ff",
-        align: "center",
-        resolution: 2,              // <— sharper
+      resolution: 1,
     }).setOrigin(0.5);
 
-    this.add.text(160, 140, "v0.0 — prototype boots up", {
+    // Girl on the left
+    this.girl = this.add.text(60, 92, GIRL_ASCII, {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      lineSpacing: 1,
+      color: "#ff66ff",
+      align: "center",
+      resolution: 1,
+    }).setOrigin(0.5);
+
+    // Movable boy
+    this.boy = this.add.text(160, 92, BOY_ASCII, {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      lineSpacing: 1,
+      color: "#a7c7ff",
+      align: "center",
+      resolution: 1,
+    }).setOrigin(0.5);
+
+    this.add.text(160, 150, "v0.0 — prototype", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#7aa0ff",
+      resolution: 2,
     }).setOrigin(0.5);
 
-    this.hint = this.add.text(160, 164, "Move with WASD/Arrows • ENTER/SPACE to start", {
+    this.add.text(160, 164, "A/D to move", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#cfe8ff",
+      resolution: 1,
     }).setOrigin(0.5);
-    this.tweens.add({ targets: this.hint, alpha: 0.25, yoyo: true, duration: 800, repeat: -1 });
+
+    // Prompt text (hidden by default)
+    this.promptText = this.add.text(40, 60, "Talk to me!", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#cfe8ff",
+      backgroundColor: "rgba(0,0,0,0.35)",
+      padding: { left: 4, right: 4, top: 2, bottom: 2 },
+      resolution: 2,
+    }).setOrigin(0.5).setVisible(false);
 
     // Input
-    this.cursors = this.input.keyboard!.createCursorKeys();
     this.keys = {
-      W: this.input.keyboard!.addKey("W"),
       A: this.input.keyboard!.addKey("A"),
-      S: this.input.keyboard!.addKey("S"),
       D: this.input.keyboard!.addKey("D"),
-      ENTER: this.input.keyboard!.addKey("ENTER"),
-      SPACE: this.input.keyboard!.addKey("SPACE"),
+      LEFT: this.input.keyboard!.addKey("LEFT"),
+      RIGHT: this.input.keyboard!.addKey("RIGHT"),
     };
-
-    // Start on click or keys
-    this.input.on("pointerdown", () => this.startGame());
-    this.keys.ENTER.on("down", () => this.startGame());
-    this.keys.SPACE.on("down", () => this.startGame());
-
-    this.cameras.main.fadeIn(250, 0, 0, 0);
   }
 
   update() {
     const dt = this.game.loop.delta / 1000;
-    let vx = 0, vy = 0;
+    let vx = 0;
 
-    if (this.cursors.left?.isDown || this.keys.A.isDown) vx -= 1;
-    if (this.cursors.right?.isDown || this.keys.D.isDown) vx += 1;
-    if (this.cursors.up?.isDown || this.keys.W.isDown) vy -= 1;
-    if (this.cursors.down?.isDown || this.keys.S.isDown) vy += 1;
+    // Only left/right movement
+    if (this.keys.LEFT.isDown || this.keys.A.isDown) vx -= 1;
+    if (this.keys.RIGHT.isDown || this.keys.D.isDown) vx += 1;
 
-    if (vx || vy) {
-      const len = Math.hypot(vx, vy);
-      vx /= len; vy /= len;
+    if (vx) {
       this.boy.x += vx * this.speed * dt;
-      this.boy.y += vy * this.speed * dt;
-
-      // keep on screen (320x180 world)
-      const padX = 16, padY = 12;
-      this.boy.x = Phaser.Math.Clamp(this.boy.x, padX, 320 - padX);
-      this.boy.y = Phaser.Math.Clamp(this.boy.y, padY + 16, 180 - padY); // leave space for title/hint
+      // Keep on screen
+      this.boy.x = Phaser.Math.Clamp(this.boy.x, 20, 300);
     }
-  }
 
-  private startGame() {
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+    // Check proximity to girl
+    const distance = Phaser.Math.Distance.Between(
+      this.boy.x,
+      this.boy.y,
+      this.girl.x,
+      this.girl.y
+    );
+
+    const near = distance < 50;
+    this.promptText.setVisible(near);
+    
+    // When close, start the game
+    if (near) {
       this.scene.start("Game");
-    });
-    this.cameras.main.fadeOut(200, 0, 0, 0);
+    }
   }
 }

@@ -28,6 +28,9 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // Set camera to respect pixel art settings
+    this.cameras.main.setRoundPixels(true);
+
     // Pixel grid background (procedural)
     this.add
       .grid(160, 90, 320, 180, 16, 16, 0x0e1a24, 1, 0x1a2733, 0.8)
@@ -52,7 +55,7 @@ export default class GameScene extends Phaser.Scene {
       ESC: this.input.keyboard!.addKey("ESC"),
     };
 
-    // “Press E to talk” prompt (hidden by default)
+    // "Press E to talk" prompt (hidden by default)
     this.promptText = this.add
       .text(0, 0, "E to talk", {
         fontFamily: "monospace",
@@ -60,6 +63,7 @@ export default class GameScene extends Phaser.Scene {
         color: "#cfe8ff",
         backgroundColor: "rgba(0,0,0,0.35)",
         padding: { left: 4, right: 4, top: 2, bottom: 2 },
+        resolution: 2,
       })
       .setOrigin(0.5)
       .setVisible(false);
@@ -81,6 +85,7 @@ export default class GameScene extends Phaser.Scene {
         fontSize: "10px",
         color: "#dff1ff",
         wordWrap: { width: 280 },
+        resolution: 2,
       })
       .setOrigin(0, 0);
   }

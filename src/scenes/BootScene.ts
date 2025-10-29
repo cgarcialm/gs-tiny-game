@@ -10,6 +10,9 @@ export default class BootScene extends Phaser.Scene {
   }
 
   create() {
+    // Set camera to respect pixel art settings
+    this.cameras.main.setRoundPixels(true);
+    
     this.scene.start("Title"); // go to the start screen first
   }
 }
