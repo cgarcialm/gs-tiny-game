@@ -16,7 +16,7 @@ const CECI_ASCII = String.raw`
 
 const SMUSH_ASCII = String.raw`
    /\_/\
-  ( o.o )
+   ( o.o )
    > ^ <
 `;
 
@@ -39,9 +39,9 @@ const PLAYER_START_X = 300;
 const PLAYER_START_Y = 100;
 const CECI_X = 80;
 const CECI_Y = 100;
-const CARD_X = 55;
-const CARD_Y = 100;
-const CARD_HEART_Y = 98;
+const CARD_X = 115;
+const CARD_Y = 105;
+const CARD_HEART_Y = CARD_Y - 2;
 const SMUSH_Y = 60; // Above player
 const EBO_Y = 60;   // Above Ceci
 const HINT_TEXT_Y = 164;
@@ -50,12 +50,15 @@ const HINT_TEXT_Y = 164;
 const CARD_WIDTH = 20;
 const CARD_HEIGHT = 12;
 const PIECE_SIZE = 4;
-const NUM_PIECES = 3;
+const NUM_PIECES = 15;
 const CHAR_FONT_SIZE = 7;
-const TITLE_FONT_SIZE = 16;
+const TITLE_FONT_SIZE = 12;
 const HEART_FONT_SIZE = 8;
 const DIALOG_FONT_SIZE = 10;
 const HINT_FONT_SIZE = 9;
+const LINE_SPACING = 1;
+const CHAR_RESOLUTION = 2;
+const TEXT_RESOLUTION = 1;
 
 // Colors
 const BG_COLOR = "#0b0f14";
@@ -79,7 +82,7 @@ const CECI_SPEED = 110;
 const PIECE_SPEED = 80;
 
 // Distances
-const APPROACH_DISTANCE = 30;
+const APPROACH_DISTANCE = 50;
 
 // Timings
 const CUTSCENE_DURATION = 2000;
@@ -128,26 +131,26 @@ export default class TitleScene extends Phaser.Scene {
       fontFamily: "monospace",
       fontSize: `${TITLE_FONT_SIZE}px`,
       color: TITLE_COLOR,
-      resolution: 1,
+      resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5);
 
     // Characters
     this.grayson = this.add.text(PLAYER_START_X, PLAYER_START_Y, PLAYER_ASCII, {
       fontFamily: "monospace",
       fontSize: `${CHAR_FONT_SIZE}px`,
-      lineSpacing: 1,
+      lineSpacing: LINE_SPACING,
       color: PLAYER_COLOR,
       align: "center",
-      resolution: 2,
+      resolution: CHAR_RESOLUTION,
     }).setOrigin(0.5);
 
     this.ceci = this.add.text(CECI_X, CECI_Y, CECI_ASCII, {
       fontFamily: "monospace",
       fontSize: `${CHAR_FONT_SIZE}px`,
-      lineSpacing: 1,
+      lineSpacing: LINE_SPACING,
       color: CECI_COLOR,
       align: "center",
-      resolution: 2,
+      resolution: CHAR_RESOLUTION,
     }).setOrigin(0.5);
 
     // Card (pixel anniversary card)
@@ -157,34 +160,34 @@ export default class TitleScene extends Phaser.Scene {
       fontFamily: "monospace",
       fontSize: `${HEART_FONT_SIZE}px`,
       color: HEART_COLOR,
-      resolution: 2,
+      resolution: CHAR_RESOLUTION,
     }).setOrigin(0.5);
 
     // Ebo above Ceci
     this.ebo = this.add.text(CECI_X, EBO_Y, EBO_ASCII, {
       fontFamily: "monospace",
       fontSize: `${CHAR_FONT_SIZE}px`,
-      lineSpacing: 1,
+      lineSpacing: LINE_SPACING,
       color: EBO_COLOR,
       align: "center",
-      resolution: 2,
+      resolution: CHAR_RESOLUTION,
     }).setOrigin(0.5);
 
     // Smush above Grayson
     this.smush = this.add.text(PLAYER_START_X, SMUSH_Y, SMUSH_ASCII, {
       fontFamily: "monospace",
       fontSize: `${CHAR_FONT_SIZE - 1}px`,
-      lineSpacing: 1,
+      lineSpacing: LINE_SPACING,
       color: SMUSH_COLOR,
       align: "center",
-      resolution: 2,
+      resolution: CHAR_RESOLUTION,
     }).setOrigin(0.5);
 
-    this.hintText = this.add.text(SCREEN_CENTER_X, HINT_TEXT_Y, "A/D to move • Approaching Ceci...", {
+    this.hintText = this.add.text(SCREEN_CENTER_X, HINT_TEXT_Y, "A/D to move", {
       fontFamily: "monospace",
       fontSize: `${HINT_FONT_SIZE}px`,
       color: TITLE_COLOR,
-      resolution: 1,
+      resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5);
 
     // Dialogue UI
@@ -200,7 +203,7 @@ export default class TitleScene extends Phaser.Scene {
         fontSize: `${DIALOG_FONT_SIZE}px`,
         color: DIALOG_COLOR,
         wordWrap: { width: DIALOG_WORDWRAP },
-        resolution: 2,
+        resolution: CHAR_RESOLUTION,
       })
       .setOrigin(0, 0)
       .setDepth(2);
@@ -290,11 +293,14 @@ export default class TitleScene extends Phaser.Scene {
     this.sceneState = "cutscene";
     
     // Smush and Ebo are already visible, just animate their positions
-    // Create card pieces
+    // Create card pieces scattered around
     for (let i = 0; i < NUM_PIECES; i++) {
+      const angle = (Math.PI * 2 / NUM_PIECES) * i;
+      const spreadX = Math.cos(angle) * 10;
+      const spreadY = Math.sin(angle) * 8;
       const piece = this.add.ellipse(
-        CARD_X + i * 5, 
-        CARD_Y + i * 2, 
+        CARD_X + spreadX, 
+        CARD_Y + spreadY, 
         PIECE_SIZE, 
         PIECE_SIZE, 
         CARD_COLOR
