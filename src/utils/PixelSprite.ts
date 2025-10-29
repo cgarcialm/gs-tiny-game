@@ -212,8 +212,11 @@ export function createEboshiSprite(
   const container = scene.add.container(x, y);
   const pixelSize = 2; // Size of each pixel block
   
-  // Colors - pure black silhouette
-  const BLACK = 0x000000;            // Pure black silhouette
+  // Colors - dark gray silhouette with eyes
+  const DOG_DARK_GRAY = 0x1a1a1a;   // Darker gray for dog body
+  const OUTLINE_BLACK = 0x000000;   // Black outline
+  const EYE_WHITE = 0xcccccc;       // Light gray for eyes
+  const EYE_PUPIL = 0x000000;        // Black pupil
   
   // Create graphics object for drawing pixels
   const graphics = scene.add.graphics();
@@ -232,132 +235,147 @@ export function createEboshiSprite(
     graphics.fillRect(x, y, pixelSize, pixelSize);
   };
   
+  // Helper to draw outline pixels around a specific pixel (only where there's empty space)
+  const drawOutlinePixel = (px: number, py: number, direction: 'top' | 'bottom' | 'left' | 'right') => {
+    const x = offsetX + px * pixelSize;
+    const y = offsetY + py * pixelSize;
+    graphics.fillStyle(OUTLINE_BLACK, 1.0);
+    switch (direction) {
+      case 'top': graphics.fillRect(x, y - pixelSize, pixelSize, pixelSize); break;
+      case 'bottom': graphics.fillRect(x, y + pixelSize, pixelSize, pixelSize); break;
+      case 'left': graphics.fillRect(x - pixelSize, y, pixelSize, pixelSize); break;
+      case 'right': graphics.fillRect(x + pixelSize, y, pixelSize, pixelSize); break;
+    }
+  };
+  
+  // Helper to draw a small dot inside a pixel (smaller than the pixel itself)
+  const drawSmallDot = (px: number, py: number, color: number, size: number = 1.2) => {
+    const x = offsetX + px * pixelSize;
+    const y = offsetY + py * pixelSize;
+    // Center the dot within the pixel
+    const dotX = x + (pixelSize - size) / 2 ;
+    const dotY = y + (pixelSize - size) / 2;
+    graphics.fillStyle(color, 1.0);
+    graphics.fillRect(Math.round(dotX), Math.round(dotY), size, size);
+  };
+  
   const redrawSprite = () => {
     graphics.clear();
     
-    // Simple black silhouette - side view facing right
-    // Pure black, blocky, minimal design
+    // Simple dark gray silhouette - side view facing right
+    // Dark gray, blocky, minimal design
     
+    // Draw all body pixels first (no outlines)
     // Ear (pointed, upright)
-    drawPixel(2, 1, BLACK);
-    drawPixel(3, 1, BLACK);
-    drawPixel(2, 2, BLACK);
+    drawPixel(5, 1, DOG_DARK_GRAY);
+    drawPixel(6, 1, DOG_DARK_GRAY);
+    drawPixel(5, 2, DOG_DARK_GRAY);
     
     // Head (small, rectangular)
-    drawPixel(3, 2, BLACK);
-    drawPixel(4, 2, BLACK);
-    drawPixel(5, 2, BLACK);
-    drawPixel(3, 3, BLACK);
-    drawPixel(4, 3, BLACK);
-    drawPixel(5, 3, BLACK);
+    drawPixel(3, 2, DOG_DARK_GRAY);
+    drawPixel(4, 2, DOG_DARK_GRAY);
+    drawPixel(5, 2, DOG_DARK_GRAY);
+    drawPixel(3, 3, DOG_DARK_GRAY);
+    drawPixel(4, 3, DOG_DARK_GRAY);
+    drawPixel(5, 3, DOG_DARK_GRAY);
     
     // Muzzle (short, blocky)
-    drawPixel(5, 3, BLACK);
-    drawPixel(6, 3, BLACK);
-    drawPixel(6, 4, BLACK);
+    drawPixel(1, 3, DOG_DARK_GRAY);
+    drawPixel(2, 3, DOG_DARK_GRAY);
+    drawPixel(3, 3, DOG_DARK_GRAY);  // Already drawn as head
+    drawPixel(2, 4, DOG_DARK_GRAY);
+    drawPixel(3, 4, DOG_DARK_GRAY);
     
     // Neck
-    drawPixel(4, 4, BLACK);
-    drawPixel(4, 5, BLACK);
+    drawPixel(4, 4, DOG_DARK_GRAY);
+    drawPixel(4, 5, DOG_DARK_GRAY);
     
     // Body (robust, rectangular) - extended horizontally
-    drawPixel(4, 6, BLACK);
-    drawPixel(5, 6, BLACK);
-    drawPixel(6, 6, BLACK);
-    drawPixel(7, 6, BLACK);
-    drawPixel(8, 6, BLACK);
-    drawPixel(9, 6, BLACK);
-    drawPixel(10, 6, BLACK);
-    drawPixel(11, 6, BLACK);
+    drawPixel(4, 6, DOG_DARK_GRAY);
+    drawPixel(5, 6, DOG_DARK_GRAY);
+    drawPixel(6, 6, DOG_DARK_GRAY);
+    drawPixel(7, 6, DOG_DARK_GRAY);
+    drawPixel(8, 6, DOG_DARK_GRAY);
+    drawPixel(9, 6, DOG_DARK_GRAY);
+    drawPixel(10, 6, DOG_DARK_GRAY);
+    drawPixel(11, 6, DOG_DARK_GRAY);
     
-    drawPixel(4, 7, BLACK);
-    drawPixel(5, 7, BLACK);
-    drawPixel(6, 7, BLACK);
-    drawPixel(7, 7, BLACK);
-    drawPixel(8, 7, BLACK);
-    drawPixel(9, 7, BLACK);
-    drawPixel(10, 7, BLACK);
-    drawPixel(11, 7, BLACK);
-    drawPixel(12, 7, BLACK);
+    drawPixel(4, 7, DOG_DARK_GRAY);
+    drawPixel(5, 7, DOG_DARK_GRAY);
+    drawPixel(6, 7, DOG_DARK_GRAY);
+    drawPixel(7, 7, DOG_DARK_GRAY);
+    drawPixel(8, 7, DOG_DARK_GRAY);
+    drawPixel(9, 7, DOG_DARK_GRAY);
+    drawPixel(10, 7, DOG_DARK_GRAY);
+    drawPixel(11, 7, DOG_DARK_GRAY);
+    drawPixel(12, 7, DOG_DARK_GRAY);
     
-    drawPixel(5, 8, BLACK);
-    drawPixel(6, 8, BLACK);
-    drawPixel(7, 8, BLACK);
-    drawPixel(8, 8, BLACK);
-    drawPixel(9, 8, BLACK);
-    drawPixel(10, 8, BLACK);
-    drawPixel(11, 8, BLACK);
-    drawPixel(12, 8, BLACK);
+    drawPixel(5, 8, DOG_DARK_GRAY);
+    drawPixel(6, 8, DOG_DARK_GRAY);
+    drawPixel(7, 8, DOG_DARK_GRAY);
+    drawPixel(8, 8, DOG_DARK_GRAY);
+    drawPixel(9, 8, DOG_DARK_GRAY);
+    drawPixel(10, 8, DOG_DARK_GRAY);
+    drawPixel(11, 8, DOG_DARK_GRAY);
+    drawPixel(12, 8, DOG_DARK_GRAY);
     
-    drawPixel(6, 9, BLACK);
-    drawPixel(7, 9, BLACK);
-    drawPixel(8, 9, BLACK);
-    drawPixel(9, 9, BLACK);
-    drawPixel(10, 9, BLACK);
-    drawPixel(11, 9, BLACK);
-    drawPixel(12, 9, BLACK);
-    
-    // Front legs (thick, blocky columns - uniformly thick)
-    // Left front leg
-    drawPixel(5, 10, BLACK);
-    drawPixel(6, 10, BLACK); // 2 pixels wide
-    
-    drawPixel(5, 11, BLACK);
-    drawPixel(6, 11, BLACK); // Uniform width
-    
-    drawPixel(5, 12, BLACK);
-    drawPixel(6, 12, BLACK); // Uniform width
-    
-    drawPixel(5, 13, BLACK);
-    drawPixel(6, 13, BLACK); // Uniform width throughout
+    drawPixel(5, 9, DOG_DARK_GRAY);
+    drawPixel(6, 9, DOG_DARK_GRAY);
+    drawPixel(7, 9, DOG_DARK_GRAY);
+    drawPixel(8, 9, DOG_DARK_GRAY);
+    drawPixel(11, 9, DOG_DARK_GRAY);
+    drawPixel(12, 9, DOG_DARK_GRAY);
+
+    drawPixel(5, 10, DOG_DARK_GRAY);
     
     // Right front leg
-    drawPixel(6, 10, BLACK);
-    drawPixel(7, 10, BLACK); // 2 pixels wide
-    
-    drawPixel(6, 11, BLACK);
-    drawPixel(7, 11, BLACK); // Uniform width
-    
-    drawPixel(6, 12, BLACK);
-    drawPixel(7, 12, BLACK); // Uniform width
-    
-    drawPixel(6, 13, BLACK);
-    drawPixel(7, 13, BLACK); // Uniform width throughout
+    drawPixel(6, 10, DOG_DARK_GRAY);
+    drawPixel(6, 11, DOG_DARK_GRAY);
+    drawPixel(6, 12, DOG_DARK_GRAY);
+    drawPixel(6, 13, DOG_DARK_GRAY);
+    drawPixel(5, 13, DOG_DARK_GRAY);
     
     // Back legs (thick, blocky columns with slight hock bend)
-    // Left back leg
-    drawPixel(11, 10, BLACK);
-    drawPixel(12, 10, BLACK); // 2 pixels wide
+    drawPixel(11, 10, DOG_DARK_GRAY);
+    drawPixel(12, 10, DOG_DARK_GRAY);
+    drawPixel(12, 11, DOG_DARK_GRAY);
+    drawPixel(12, 12, DOG_DARK_GRAY);
+    drawPixel(12, 13, DOG_DARK_GRAY);
+    drawPixel(11, 13, DOG_DARK_GRAY);
     
-    drawPixel(11, 11, BLACK);
-    drawPixel(12, 11, BLACK); // Uniform width
+    // Tail (curled up and forward over back)
+    drawPixel(13, 6, DOG_DARK_GRAY);
+    drawPixel(14, 5, DOG_DARK_GRAY);
+    drawPixel(14, 4, DOG_DARK_GRAY);
+    drawPixel(15, 3, DOG_DARK_GRAY);
+    drawPixel(15, 2, DOG_DARK_GRAY);
+    drawPixel(14, 1, DOG_DARK_GRAY);
     
-    drawPixel(11, 12, BLACK);
-    drawPixel(12, 12, BLACK); // Uniform width
+    // Minimal outline - only the most essential outer edges
+    // Top silhouette - ear and head
+    drawOutlinePixel(5, 1, 'top');
+    // drawOutlinePixel(3, 2, 'right');
     
-    drawPixel(11, 13, BLACK); // Slight hock bend
-    drawPixel(12, 13, BLACK); // Thick foot
+    // Leftmost point - muzzle tip
+    drawOutlinePixel(1, 3, 'left');
     
-    // Right back leg
-    drawPixel(12, 10, BLACK);
-    drawPixel(13, 10, BLACK); // 2 pixels wide
+    // Rightmost point - tail
+    drawOutlinePixel(15, 2, 'right');
+    drawOutlinePixel(15, 2, 'top');
     
-    drawPixel(12, 11, BLACK);
-    drawPixel(13, 11, BLACK); // Uniform width
+    // Bottom - feet only
+    drawOutlinePixel(5, 13, 'bottom');
+    drawOutlinePixel(12, 13, 'bottom');
     
-    drawPixel(12, 12, BLACK);
-    drawPixel(13, 12, BLACK); // Uniform width
-    
-    drawPixel(13, 13, BLACK); // Hock bend area - thick foot
-    drawPixel(14, 13, BLACK); // Hock bend extends
-    
-    // Tail (curled up and forward over back) - moved further right
-    drawPixel(13, 6, BLACK);
-    drawPixel(14, 5, BLACK);
-    drawPixel(14, 4, BLACK);
-    drawPixel(15, 3, BLACK);
-    drawPixel(15, 2, BLACK);
-    drawPixel(14, 1, BLACK);
+    // Eye (side view - visible eye on the face, drawn last so nothing overwrites it)
+    // Draw a white eye area with dark pupil inside - placed on head area (not muzzle)
+    // Create a 2x2 eye area for better visibility
+    drawPixel(4, 2, EYE_WHITE);  // White eye (top-left)
+    // drawOutlinePixel(4, 2, 'right');
+    // drawPixel(5, 2, EYE_WHITE);  // White eye (top-right)
+    // drawPixel(4, 3, EYE_WHITE);  // White eye (bottom-left)
+    // drawPixel(5, 3, EYE_WHITE);  // White eye (bottom-right)
+    drawSmallDot(4, 2, EYE_PUPIL);  // Small dark pupil inside the white eye (default 1.2 size)
   };
   
   // Initial draw
