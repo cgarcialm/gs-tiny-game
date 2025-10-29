@@ -12,13 +12,13 @@ export function createGraysonSprite(
   const container = scene.add.container(x, y);
   const pixelSize = 2; // Size of each pixel block
   
-  // Colors - brighter and vibrant, no transparency
-  const SKIN_LIGHT = 0xffe5cc;      // Brighter light skin tone
+  // Colors - bright neon 80s aesthetic
+  const SKIN_LIGHT = 0xffe5cc;      // Light skin tone
   const SKIN_DARK = 0xffd4a3;       // Slightly darker for shading
-  const CAP_BLUE = 0x4fc3f7;        // Bright blue baseball cap
-  const CAP_YELLOW = 0xffeb3b;      // Bright yellow L detail
-  const SHIRT_GREEN = 0x81c784;     // Bright green t-shirt
-  const PANTS_BLUE = 0x42a5f5;      // Bright blue pants
+  const CAP_BLUE = 0x00d4ff;        // Bright neon cyan blue cap
+  const CAP_YELLOW = 0xffeb3b;      // Bright neon yellow L detail
+  const SHIRT_GREEN = 0x81c784;     // Original bright green t-shirt
+  const PANTS_BLUE = 0x00bfff;      // Bright neon blue pants
   const EYES_BLACK = 0x212121;      // Dark gray for eyes
   const MOUTH = 0x424242;           // Dark gray for mouth
   

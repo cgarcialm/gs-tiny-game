@@ -76,9 +76,9 @@ export default class GameScene extends Phaser.Scene {
     const gridWidth = 320;
     const gridHeight = 180;
     const cellSize = 16;
-    const bgColor = 0x0a1d3d; // Intense blue background
-    const lineColor = 0x00ff88; // Greener teal
-    const lineAlpha = 0.3; // A little more transparent
+    const bgColor = 0x003d4d; // Dark neon cyan background - classic Tron-like aesthetic
+    const lineColor = 0xff00ff; // Bright neon magenta/pink grid (doesn't overlap with green shirt)
+    const lineAlpha = 0.5; // More visible neon grid lines
     
     // Background rectangle
     const bg = this.add.rectangle(160, 90, gridWidth, gridHeight, bgColor, 1);
