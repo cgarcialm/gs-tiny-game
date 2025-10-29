@@ -42,10 +42,8 @@ const CECI_Y = 100;
 const CARD_X = 55;
 const CARD_Y = 100;
 const CARD_HEART_Y = 98;
-const SMUSH_START_X = 120;
-const SMUSH_START_Y = 80;
-const EBO_START_X = 140;
-const EBO_START_Y = 90;
+const SMUSH_Y = 60; // Above player
+const EBO_Y = 60;   // Above Ceci
 const HINT_TEXT_Y = 164;
 
 // Sizes
@@ -105,7 +103,7 @@ type SceneState =
 
 export default class TitleScene extends Phaser.Scene {
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
-  private player!: Phaser.GameObjects.Text;
+  private grayson!: Phaser.GameObjects.Text;
   private ceci!: Phaser.GameObjects.Text;
   private smush!: Phaser.GameObjects.Text;
   private ebo!: Phaser.GameObjects.Text;
@@ -134,7 +132,7 @@ export default class TitleScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Characters
-    this.player = this.add.text(PLAYER_START_X, PLAYER_START_Y, PLAYER_ASCII, {
+    this.grayson = this.add.text(PLAYER_START_X, PLAYER_START_Y, PLAYER_ASCII, {
       fontFamily: "monospace",
       fontSize: `${CHAR_FONT_SIZE}px`,
       lineSpacing: 1,
@@ -162,23 +160,25 @@ export default class TitleScene extends Phaser.Scene {
       resolution: 2,
     }).setOrigin(0.5);
 
-    this.smush = this.add.text(SMUSH_START_X, SMUSH_START_Y, SMUSH_ASCII, {
-      fontFamily: "monospace",
-      fontSize: `${CHAR_FONT_SIZE - 1}px`,
-      lineSpacing: 1,
-      color: SMUSH_COLOR,
-      align: "center",
-      resolution: 2,
-    }).setOrigin(0.5).setVisible(false);
-
-    this.ebo = this.add.text(EBO_START_X, EBO_START_Y, EBO_ASCII, {
+    // Ebo above Ceci
+    this.ebo = this.add.text(CECI_X, EBO_Y, EBO_ASCII, {
       fontFamily: "monospace",
       fontSize: `${CHAR_FONT_SIZE}px`,
       lineSpacing: 1,
       color: EBO_COLOR,
       align: "center",
       resolution: 2,
-    }).setOrigin(0.5).setVisible(false);
+    }).setOrigin(0.5);
+
+    // Smush above Grayson
+    this.smush = this.add.text(PLAYER_START_X, SMUSH_Y, SMUSH_ASCII, {
+      fontFamily: "monospace",
+      fontSize: `${CHAR_FONT_SIZE - 1}px`,
+      lineSpacing: 1,
+      color: SMUSH_COLOR,
+      align: "center",
+      resolution: 2,
+    }).setOrigin(0.5);
 
     this.hintText = this.add.text(SCREEN_CENTER_X, HINT_TEXT_Y, "A/D to move • Approaching Ceci...", {
       fontFamily: "monospace",
@@ -264,15 +264,17 @@ export default class TitleScene extends Phaser.Scene {
     if (this.keys.D.isDown) vx += 1;
 
     if (vx) {
-      this.player.x += vx * PLAYER_SPEED * dt;
-      this.player.x = Phaser.Math.Clamp(this.player.x, 30, SCREEN_WIDTH - 10);
+      this.grayson.x += vx * PLAYER_SPEED * dt;
+      this.grayson.x = Phaser.Math.Clamp(this.grayson.x, 30, SCREEN_WIDTH - 10);
+      // Smush follows Grayson horizontally
+      this.smush.x = this.grayson.x;
     }
   }
 
   private checkApproachCeci() {
     const distance = Phaser.Math.Distance.Between(
-      this.player.x,
-      this.player.y,
+      this.grayson.x,
+      this.grayson.y,
       this.ceci.x,
       this.ceci.y
     );
@@ -287,10 +289,7 @@ export default class TitleScene extends Phaser.Scene {
     this.hideDialog();
     this.sceneState = "cutscene";
     
-    // Show Smush and Ebo
-    this.smush.setVisible(true).setPosition(SMUSH_START_X, SMUSH_START_Y);
-    this.ebo.setVisible(true).setPosition(EBO_START_X, EBO_START_Y);
-    
+    // Smush and Ebo are already visible, just animate their positions
     // Create card pieces
     for (let i = 0; i < NUM_PIECES; i++) {
       const piece = this.add.ellipse(
@@ -310,8 +309,9 @@ export default class TitleScene extends Phaser.Scene {
     const progress = this.time.now / CUTSCENE_DURATION;
     
     if (progress < 1) {
-      this.smush.x = SMUSH_START_X + progress * 20;
-      this.smush.y = SMUSH_START_Y - progress * 5;
+      // Smush moves from player position to Ceci position
+      this.smush.x = PLAYER_START_X + progress * (CECI_X - PLAYER_START_X);
+      this.smush.y = SMUSH_Y - progress * 5;
       this.card.setAlpha(1 - progress);
     } else {
       // Card breaks
