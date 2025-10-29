@@ -273,7 +273,7 @@ export default class GameScene extends Phaser.Scene {
         this.npc.y
       );
 
-      const near = d < 18; // distance threshold to show prompt
+      const near = d < 50; // distance threshold to show prompt
       this.promptText.setVisible(near);
       if (near) {
         // anchor prompt above NPC
