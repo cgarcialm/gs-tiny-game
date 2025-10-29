@@ -42,32 +42,32 @@ export function createSmushSprite(
     
     // EARS (pointy triangular ears)
     // Left ear
-    drawPixel(4, 1, BROWN_DARK);
+    drawPixel(4, 1, BLACK);          // Black tip of ear
     drawPixel(5, 1, BROWN_DARK);
     drawPixel(4, 2, BROWN_DARK);
     drawPixel(5, 2, BROWN_MED);
     
     // Right ear
     drawPixel(12, 1, BROWN_DARK);
-    drawPixel(13, 1, BROWN_DARK);
+    drawPixel(13, 1, BLACK);         // Black tip of ear
     drawPixel(12, 2, BROWN_MED);
     drawPixel(13, 2, BROWN_DARK);
     
     // HEAD (round, chubby)
     // Top of head
-    drawPixel(6, 2, BROWN_DARK);
+    drawPixel(6, 2, BLACK);          // Black accent on head
     drawPixel(7, 2, BROWN_DARK);
-    drawPixel(8, 2, BROWN_MED);        // Beige spot on forehead
-    drawPixel(9, 2, BROWN_MED);
+    drawPixel(8, 2, BLACK);
+    drawPixel(9, 2, BROWN_DARK);
     drawPixel(10, 2, BROWN_DARK);
-    drawPixel(11, 2, BROWN_DARK);
+    drawPixel(11, 2, BLACK);         // Black accent on head
     
     // Upper face
     drawPixel(5, 3, BROWN_DARK);
     drawPixel(6, 3, BROWN_MED);
-    drawPixel(7, 3, BROWN_MED);
-    drawPixel(8, 3, BROWN_MED);    // Small beige spot
-    drawPixel(9, 3, BROWN_MED);
+    drawPixel(7, 3, BROWN_DARK);
+    drawPixel(8, 3, BLACK);    // Small beige spot
+    drawPixel(9, 3, BROWN_DARK);
     drawPixel(10, 3, BROWN_MED);
     drawPixel(11, 3, BROWN_DARK);
     drawPixel(12, 3, BROWN_DARK);
@@ -85,9 +85,9 @@ export function createSmushSprite(
     // Face lower (with nose)
     drawPixel(5, 5, BROWN_DARK);
     drawPixel(6, 5, BROWN_MED);
-    drawPixel(7, 5, BEIGE_LIGHT);    // Beige around nose
+    drawPixel(7, 5, BROWN_MED);    // Beige around nose
     drawPixel(8, 5, NOSE_BLACK);     // Nose
-    drawPixel(9, 5, BEIGE_LIGHT);    // Beige around nose
+    drawPixel(9, 5, BROWN_MED);    // Beige around nose
     drawPixel(10, 5, BROWN_MED);
     drawPixel(11, 5, BROWN_DARK);
     
@@ -96,8 +96,8 @@ export function createSmushSprite(
     drawPixel(5, 6, BROWN_DARK);
     drawPixel(6, 6, BROWN_MED);
     drawPixel(7, 6, BEIGE_LIGHT);    // Small beige spot on chin
-    drawPixel(8, 6, BEIGE_LIGHT);
-    drawPixel(9, 6, BROWN_MED);
+    drawPixel(8, 6, BROWN_MED);
+    drawPixel(9, 6, BEIGE_LIGHT);
     drawPixel(10, 6, BROWN_DARK);
     drawPixel(11, 6, BROWN_DARK);
     drawPixel(12, 6, BROWN_DARK);
@@ -116,8 +116,8 @@ export function createSmushSprite(
     
     // Wide body with beige spot
     drawPixel(5, 8, BLACK);          // Black accent on shoulder
-    drawPixel(6, 8, BROWN_MED);
-    drawPixel(7, 8, BEIGE);          // Beige spot on chest
+    drawPixel(6, 8, BROWN_DARK);
+    drawPixel(7, 8, BROWN_MED);          // Beige spot on chest
     drawPixel(8, 8, BEIGE);
     drawPixel(9, 8, BROWN_MED);
     drawPixel(10, 8, BROWN_DARK);
@@ -125,20 +125,20 @@ export function createSmushSprite(
     
     // Mid body (widest part - chubby!)
     drawPixel(4, 9, BROWN_DARK);
-    drawPixel(5, 9, BROWN_MED);
+    drawPixel(5, 9, BROWN_DARK);
     drawPixel(6, 9, BROWN_MED);
     drawPixel(7, 9, BLACK);          // Black accent on body
-    drawPixel(8, 9, BROWN_MED);
+    drawPixel(8, 9, BEIGE);
     drawPixel(9, 9, BLACK);          // Black accent on body
     drawPixel(10, 9, BROWN_MED);
     drawPixel(11, 9, BROWN_DARK);
     drawPixel(12, 9, BROWN_DARK);
     
     drawPixel(4, 10, BROWN_DARK);
-    drawPixel(5, 10, BROWN_MED);
+    drawPixel(5, 10, BROWN_DARK);
     drawPixel(6, 10, BROWN_MED);         // Beige spot on side
     drawPixel(7, 10, BLACK);         // Black accent on body
-    drawPixel(8, 10, BROWN_MED);
+    drawPixel(8, 10, BEIGE);
     drawPixel(9, 10, BLACK);         // Black accent on body
     drawPixel(10, 10, BROWN_MED);
     drawPixel(11, 10, BROWN_DARK);
@@ -165,21 +165,21 @@ export function createSmushSprite(
     drawPixel(11, 12, BLACK);        // Black accent
     
     // FRONT PAWS (small, tucked in)
-    // drawPixel(5, 13, BEIGE);
-    drawPixel(6, 13, BEIGE);
+    drawPixel(5, 13, BEIGE);
+    drawPixel(6, 13, BROWN_DARK);
     drawPixel(7, 13, BROWN_DARK);
     drawPixel(9, 13, BROWN_DARK);
     drawPixel(10, 13, BEIGE);
     // drawPixel(11, 13, BEIGE);
     
     // TAIL (curled to the side)
-    drawPixel(13, 10, BROWN_DARK);
+    drawPixel(13, 10, BLACK);        // Black accent on tail
     drawPixel(14, 9, BROWN_DARK);
-    drawPixel(15, 8, BROWN_MED);
+    drawPixel(15, 8, BLACK);         // Black accent on tail
     drawPixel(15, 7, BEIGE);         // Beige spot on tail
-    drawPixel(15, 6, BROWN_MED);
+    drawPixel(15, 6, BLACK);         // Black accent on tail
     drawPixel(14, 5, BROWN_DARK);
-    drawPixel(13, 5, BROWN_DARK);
+    drawPixel(13, 5, BLACK);         // Black accent on tail
   };
   
   // Initial draw
