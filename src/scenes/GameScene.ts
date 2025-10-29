@@ -16,6 +16,7 @@ export default class GameScene extends Phaser.Scene {
 
   private speed = 80; // px/s
   private promptText!: Phaser.GameObjects.Text;
+  private cardCounterText!: Phaser.GameObjects.Text;
 
   // dialogue UI
   private dialogState: DialogueState = "idle";
@@ -38,6 +39,8 @@ export default class GameScene extends Phaser.Scene {
   private cardPieceCollected = false;
   private cardPieceX = 120;
   private cardPieceY = 130;
+  private cardPiecesCollected = 0;
+  private totalCardPieces = 3;
   
   // Interaction tracking
   private hasInteractedWithEboshi = false;
@@ -94,6 +97,19 @@ export default class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setVisible(false);
+
+    // Card piece counter at top right of screen
+    this.cardCounterText = this.add
+      .text(310, 8, `Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`, {
+        fontFamily: "monospace",
+        fontSize: "9px",
+        color: "#ffeb3b",
+        backgroundColor: "rgba(0,0,0,0.5)",
+        padding: { left: 4, right: 4, top: 2, bottom: 2 },
+        resolution: 1,
+      })
+      .setOrigin(1, 0)
+      .setDepth(10);
 
     // Dialogue UI (hidden)
     this.createDialogUI();
@@ -347,6 +363,10 @@ export default class GameScene extends Phaser.Scene {
     this.cardPieceCollected = true;
     this.cardPiece.setVisible(false);
     this.promptText.setVisible(false);
+    
+    // Update counter
+    this.cardPiecesCollected++;
+    this.cardCounterText.setText(`Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`);
     
     // Spawn celebration sparkles
     const sparkles = spawnCardPieceSparkles(this, this.cardPieceX, this.cardPieceY);
