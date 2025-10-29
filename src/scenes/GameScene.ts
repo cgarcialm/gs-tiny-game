@@ -29,6 +29,8 @@ export default class GameScene extends Phaser.Scene {
   // Chase sequence
   private chaseState: ChaseState = "idle";
   private catHasAppeared = false;
+  private chaseTime = 0;
+  private meowTexts: Phaser.GameObjects.Text[] = [];
 
   constructor() {
     super("Game");
@@ -163,6 +165,7 @@ export default class GameScene extends Phaser.Scene {
   private startCatChase() {
     this.catHasAppeared = true;
     this.chaseState = "chasing";
+    this.chaseTime = 0;
     
     // Show the cat and position it off-screen left
     this.cat.setVisible(true);
@@ -172,6 +175,36 @@ export default class GameScene extends Phaser.Scene {
     
     // Make dog face right (running to the right)
     this.npc.setScale(-1, 1);
+  }
+  
+  private spawnMeowText(x: number, y: number) {
+    const meowText = this.add
+      .text(x, y, "MEOW!", {
+        fontFamily: "monospace",
+        fontSize: "12px",
+        color: "#ffeb3b",
+        fontStyle: "bold",
+        resolution: 2,
+      })
+      .setOrigin(0.5);
+    
+    this.meowTexts.push(meowText);
+    
+    // Animate text floating up and fading out
+    this.tweens.add({
+      targets: meowText,
+      y: y - 30,
+      alpha: 0,
+      duration: 1000,
+      ease: "Power2",
+      onComplete: () => {
+        meowText.destroy();
+        const index = this.meowTexts.indexOf(meowText);
+        if (index > -1) {
+          this.meowTexts.splice(index, 1);
+        }
+      }
+    });
   }
 
   update() {
@@ -258,14 +291,28 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private updateChaseSequence(dt: number) {
+    this.chaseTime += dt;
+    
     const chaseSpeed = 150; // Faster than normal movement
+    const baseY = 95; // Base Y position
     
-    // Move cat from left to right
+    // Move cat from left to right with bobbing motion
     this.cat.x += chaseSpeed * dt;
+    // Add vertical bobbing motion (sine wave)
+    const catBob = Math.sin(this.chaseTime * 8) * 6; // Fast bouncing
+    this.cat.y = baseY + catBob;
     
-    // Dog runs away to the right (faster than cat initially)
+    // Dog runs away to the right (faster than cat initially) with different bobbing
     if (this.npc.x < 400) {
       this.npc.x += (chaseSpeed + 30) * dt;
+      // Dog has slightly different bobbing motion
+      const dogBob = Math.sin(this.chaseTime * 10) * 4; // Faster, smaller bouncing (scared!)
+      this.npc.y = baseY + dogBob;
+    }
+    
+    // Spawn "MEOW!" text randomly during chase
+    if (Math.random() < 0.03 && this.cat.x > 0 && this.cat.x < 320) { // 3% chance per frame
+      this.spawnMeowText(this.cat.x + 10, this.cat.y - 15);
     }
     
     // Once both are off-screen, end the chase
@@ -274,6 +321,10 @@ export default class GameScene extends Phaser.Scene {
       // Hide both sprites
       this.cat.setVisible(false);
       this.npc.setVisible(false);
+      
+      // Clean up any remaining meow texts
+      this.meowTexts.forEach(text => text.destroy());
+      this.meowTexts = [];
     }
   }
 }
