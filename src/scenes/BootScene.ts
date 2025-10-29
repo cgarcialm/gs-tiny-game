@@ -13,6 +13,10 @@ export default class BootScene extends Phaser.Scene {
     // Set camera to respect pixel art settings
     this.cameras.main.setRoundPixels(true);
     
-    this.scene.start("Title"); // go to the start screen first
+    // Quick test: uncomment the line below to skip title and go straight to GameScene
+    this.scene.start("Game");
+    
+    // Normal flow: go to title screen
+    // this.scene.start("Title");
   }
 }

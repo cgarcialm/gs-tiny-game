@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonSprite } from "../utils/PixelSprite";
+import { createGraysonSprite, updateGraysonWalk } from "../utils/PixelSprite";
 
 type DialogueState = "idle" | "open";
 
@@ -136,7 +136,9 @@ export default class GameScene extends Phaser.Scene {
     if (this.cursors.up?.isDown || this.keys.W.isDown) vy -= 1;
     if (this.cursors.down?.isDown || this.keys.S.isDown) vy += 1;
 
-    if (vx || vy) {
+    const isMoving = vx !== 0 || vy !== 0;
+    
+    if (isMoving) {
       const len = Math.hypot(vx, vy);
       vx /= len;
       vy /= len;
@@ -147,6 +149,9 @@ export default class GameScene extends Phaser.Scene {
     // Keep inside 320x180 play area (tiny padding)
     this.player.x = Phaser.Math.Clamp(this.player.x, 6, 320 - 6);
     this.player.y = Phaser.Math.Clamp(this.player.y, 6, 180 - 6);
+    
+    // Update walking animation
+    updateGraysonWalk(this.player, isMoving);
 
     // Proximity check to NPC
     const d = Phaser.Math.Distance.Between(
