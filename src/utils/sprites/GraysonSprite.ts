@@ -22,15 +22,17 @@ export function createGraysonSprite(
   const PANTS_BLUE = 0x00bfff;      // Bright neon blue pants
   const EYES_BLACK = 0x212121;      // Dark gray for eyes
   const MOUTH = 0x424242;           // Dark gray for mouth
+  const SHOE_BROWN = 0x3e2723;      // Dark brown shoes
+  const HAND_SKIN = 0xffe5cc;       // Skin tone for hands
   
   // Create graphics object for drawing pixels
   const graphics = scene.add.graphics();
   // Ensure graphics render properly without transparency artifacts
   graphics.setBlendMode(Phaser.BlendModes.NORMAL);
   
-  // Offset to center the sprite (18 pixels wide, 24 pixels tall - bigger character)
+  // Offset to center the sprite (18 pixels wide, 26 pixels tall - bigger character with shoes)
   const spriteWidth = 18;
-  const spriteHeight = 24;
+  const spriteHeight = 26;
   const offsetX = -(spriteWidth * pixelSize) / 2;
   const offsetY = -(spriteHeight * pixelSize) / 2;
   
@@ -128,6 +130,10 @@ export function createGraysonSprite(
     drawPixel(8, 9, SHIRT_GREEN);
     drawPixel(9, 9, SHIRT_GREEN);
     
+    // Hands at end of arms
+    drawPixel(2, 9, HAND_SKIN);      // Left hand
+    drawPixel(10, 9, HAND_SKIN);     // Right hand
+    
     drawPixel(4, 10, SHIRT_GREEN);
     drawPixel(5, 10, SHIRT_GREEN);
     drawPixel(6, 10, SHIRT_GREEN);
@@ -161,7 +167,12 @@ export function createGraysonSprite(
     drawPixel(7 + rightLegOffset, 14, PANTS_BLUE);
     drawPixel(8 + rightLegOffset, 14, PANTS_BLUE);
     
-    // Feet bottom
+    // Brown shoes at bottom
+    drawPixel(3 + leftLegOffset, 15, SHOE_BROWN);  // Left shoe
+    drawPixel(4 + leftLegOffset, 15, SHOE_BROWN);  // Left shoe
+    drawPixel(5, 15, SHOE_BROWN);                  // Left shoe
+    drawPixel(7 + rightLegOffset, 15, SHOE_BROWN); // Right shoe
+    drawPixel(8 + rightLegOffset, 15, SHOE_BROWN); // Right shoe
   };
   
   // Initial draw (idle position)
