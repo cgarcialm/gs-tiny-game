@@ -14,11 +14,15 @@ const GIRL_ASCII = String.raw`
    / \
 `;
 
+type DialogueState = "idle" | "open";
+
 export default class TitleScene extends Phaser.Scene {
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private boy!: Phaser.GameObjects.Text;
   private girl!: Phaser.GameObjects.Text;
-  private promptText!: Phaser.GameObjects.Text;
+  private dialogState: DialogueState = "idle";
+  private dialogBox!: Phaser.GameObjects.Rectangle;
+  private dialogText!: Phaser.GameObjects.Text;
   private speed = 100;
 
   constructor() { 
@@ -72,32 +76,67 @@ export default class TitleScene extends Phaser.Scene {
       resolution: 1,
     }).setOrigin(0.5);
 
-    // Prompt text (hidden by default)
-    this.promptText = this.add.text(40, 60, "Talk to me!", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#cfe8ff",
-      backgroundColor: "rgba(0,0,0,0.35)",
-      padding: { left: 4, right: 4, top: 2, bottom: 2 },
-      resolution: 2,
-    }).setOrigin(0.5).setVisible(false);
+    // Dialogue UI (hidden)
+    this.createDialogUI();
+    this.hideDialog();
 
     // Input
     this.keys = {
       A: this.input.keyboard!.addKey("A"),
       D: this.input.keyboard!.addKey("D"),
-      LEFT: this.input.keyboard!.addKey("LEFT"),
-      RIGHT: this.input.keyboard!.addKey("RIGHT"),
+      SPACE: this.input.keyboard!.addKey("SPACE"),
+      ENTER: this.input.keyboard!.addKey("ENTER"),
     };
   }
 
+  private createDialogUI() {
+    this.dialogBox = this.add
+      .rectangle(160, 160, 300, 40, 0x000000, 0.8)
+      .setStrokeStyle(1, 0x99bbff, 0.9)
+      .setOrigin(0.5);
+
+    this.dialogText = this.add
+      .text(20, 146, "Hey! Welcome to the game!", {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#dff1ff",
+        wordWrap: { width: 280 },
+        resolution: 2,
+      })
+      .setOrigin(0, 0);
+  }
+
+  private showDialog(message: string) {
+    this.dialogState = "open";
+    this.dialogBox.setVisible(true);
+    this.dialogText.setText(message).setVisible(true);
+  }
+
+  private hideDialog() {
+    this.dialogState = "idle";
+    this.dialogBox.setVisible(false);
+    this.dialogText.setVisible(false);
+  }
+
   update() {
+    // If dialogue is open, only handle dialog controls
+    if (this.dialogState === "open") {
+      if (
+        Phaser.Input.Keyboard.JustDown(this.keys.SPACE) ||
+        Phaser.Input.Keyboard.JustDown(this.keys.ENTER)
+      ) {
+        this.hideDialog();
+        this.scene.start("Game");
+      }
+      return;
+    }
+
     const dt = this.game.loop.delta / 1000;
     let vx = 0;
 
-    // Only left/right movement
-    if (this.keys.LEFT.isDown || this.keys.A.isDown) vx -= 1;
-    if (this.keys.RIGHT.isDown || this.keys.D.isDown) vx += 1;
+    // Only A/D movement (no arrows)
+    if (this.keys.A.isDown) vx -= 1;
+    if (this.keys.D.isDown) vx += 1;
 
     if (vx) {
       this.boy.x += vx * this.speed * dt;
@@ -113,12 +152,11 @@ export default class TitleScene extends Phaser.Scene {
       this.girl.y
     );
 
-    const near = distance < 50;
-    this.promptText.setVisible(near);
+    const near = distance < 30;
     
-    // When close, start the game
-    if (near) {
-      this.scene.start("Game");
+    // When close to girl, show dialogue
+    if (near && this.dialogState === "idle") {
+      this.showDialog("Hey! Press SPACE to start the game!");
     }
   }
 }
