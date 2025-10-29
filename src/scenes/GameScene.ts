@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite } from "../utils/sprites";
+import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite, createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 
 type DialogueState = "idle" | "open";
 type ChaseState = "idle" | "chasing";
@@ -11,6 +11,8 @@ export default class GameScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Container;
   private npc!: Phaser.GameObjects.Container;
   private cat!: Phaser.GameObjects.Container;
+  private cardPiece!: Phaser.GameObjects.Graphics;
+  private cardSparkles: Phaser.GameObjects.Text[] = [];
 
   private speed = 80; // px/s
   private promptText!: Phaser.GameObjects.Text;
@@ -21,7 +23,7 @@ export default class GameScene extends Phaser.Scene {
   private dialogText!: Phaser.GameObjects.Text;
   private dialogLines: string[] = [
     "Hi Grayson! Do you happen to have peanut butter?",
-    "*suddenly looks worried*",
+    "Also, I think there's a card piece over there... *suddenly looks worried*",
     "Oh no... I hear something... RUN!!"
   ];
   private dialogIndex = 0;
@@ -55,6 +57,10 @@ export default class GameScene extends Phaser.Scene {
     this.cat = createSmushSprite(this, -50, 95);
     this.cat.setVisible(false);
 
+    // Card piece on the floor - hidden initially
+    this.cardPiece = createCardPieceSprite(this, 120, 130);
+    this.cardPiece.setVisible(false);
+
     // Input
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.keys = {
@@ -68,9 +74,9 @@ export default class GameScene extends Phaser.Scene {
       ESC: this.input.keyboard!.addKey("ESC"),
     };
 
-    // "Press E to talk" prompt (hidden by default)
+    // "Press E to interact" prompt (hidden by default)
     this.promptText = this.add
-      .text(0, 0, "E to talk", {
+      .text(0, 0, "E to interact", {
         fontFamily: "monospace",
         fontSize: "10px",
         color: "#cfe8ff",
@@ -149,6 +155,14 @@ export default class GameScene extends Phaser.Scene {
 
   private advanceDialog() {
     this.dialogIndex++;
+    
+    // Show card piece when Eboshi mentions it (dialogue line 1)
+    if (this.dialogIndex === 1) {
+      this.cardPiece.setVisible(true);
+      const sparkles = spawnCardPieceSparkles(this, 120, 130);
+      this.cardSparkles.push(...sparkles);
+    }
+    
     if (this.dialogIndex >= this.dialogLines.length) {
       this.dialogIndex = 0;
       this.hideDialog();
@@ -279,10 +293,11 @@ export default class GameScene extends Phaser.Scene {
         // anchor prompt above NPC
         this.promptText.setPosition(this.npc.x, this.npc.y - 14);
 
-        // Press E to talk
+        // Press E to interact
         if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
           this.dialogIndex = 0;
           this.showDialog(this.dialogLines[this.dialogIndex]);
+          this.promptText.setVisible(false); // Hide prompt once player interacts
         }
       }
     } else {
