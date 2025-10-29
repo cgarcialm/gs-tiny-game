@@ -33,6 +33,14 @@ export default class GameScene extends Phaser.Scene {
   private catHasAppeared = false;
   private chaseTime = 0;
   private meowTexts: Phaser.GameObjects.Text[] = [];
+  
+  // Card piece tracking
+  private cardPieceCollected = false;
+  private cardPieceX = 120;
+  private cardPieceY = 130;
+  
+  // Interaction tracking
+  private hasInteractedWithEboshi = false;
 
   constructor() {
     super("Game");
@@ -288,21 +296,86 @@ export default class GameScene extends Phaser.Scene {
       );
 
       const near = d < 50; // distance threshold to show prompt
-      this.promptText.setVisible(near);
-      if (near) {
+      
+      // Only show prompt if haven't interacted yet
+      if (near && !this.hasInteractedWithEboshi) {
+        this.promptText.setVisible(true);
         // anchor prompt above NPC
         this.promptText.setPosition(this.npc.x, this.npc.y - 14);
 
         // Press E to interact
         if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+          this.hasInteractedWithEboshi = true;
           this.dialogIndex = 0;
           this.showDialog(this.dialogLines[this.dialogIndex]);
           this.promptText.setVisible(false); // Hide prompt once player interacts
+        }
+      } else if (!near || this.hasInteractedWithEboshi) {
+        this.promptText.setVisible(false);
+      }
+      
+      // Still allow interaction even if prompt is hidden
+      if (near && this.hasInteractedWithEboshi) {
+        if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+          this.dialogIndex = 0;
+          this.showDialog(this.dialogLines[this.dialogIndex]);
         }
       }
     } else {
       this.promptText.setVisible(false);
     }
+    
+    // Proximity check to card piece (if visible and not collected)
+    if (this.cardPiece.visible && !this.cardPieceCollected) {
+      const cardDistance = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        this.cardPieceX,
+        this.cardPieceY
+      );
+      
+      const nearCard = cardDistance < 30; // distance threshold for card
+      
+      // Allow picking up card when near (no prompt - player already knows to press E)
+      if (nearCard && Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+        this.pickUpCardPiece();
+      }
+    }
+  }
+  
+  private pickUpCardPiece() {
+    this.cardPieceCollected = true;
+    this.cardPiece.setVisible(false);
+    this.promptText.setVisible(false);
+    
+    // Spawn celebration sparkles
+    const sparkles = spawnCardPieceSparkles(this, this.cardPieceX, this.cardPieceY);
+    
+    // Show pickup message
+    const pickupText = this.add.text(this.cardPieceX, this.cardPieceY - 20, "Memory collected!", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffeb3b",
+      fontStyle: "bold",
+      resolution: 2,
+    }).setOrigin(0.5);
+    
+    // Animate message floating up and fading
+    this.tweens.add({
+      targets: pickupText,
+      y: this.cardPieceY - 40,
+      alpha: 0,
+      duration: 1500,
+      ease: "Power2",
+      onComplete: () => {
+        pickupText.destroy();
+      }
+    });
+    
+    // Clean up sparkles
+    sparkles.forEach(sparkle => {
+      this.cardSparkles.push(sparkle);
+    });
   }
   
   private updateChaseSequence(dt: number) {
