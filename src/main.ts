@@ -10,6 +10,7 @@ const config: Phaser.Types.Core.GameConfig = {
   backgroundColor: "#0a0f14",
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   render: { pixelArt: true, antialias: false, roundPixels: true },
+  dom: { createContainer: true }, // Enable DOM elements
   scene: [BootScene, TitleScene, GameScene], // Title in the chain
 };
 

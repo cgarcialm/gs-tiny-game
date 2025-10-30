@@ -44,6 +44,11 @@ export default class GameScene extends Phaser.Scene {
   
   // Interaction tracking
   private hasInteractedWithEboshi = false;
+  
+  // Image popup
+  private imagePopup!: Phaser.GameObjects.Container;
+  private photoOverlay?: HTMLDivElement;
+  private popupVisible = false;
 
   constructor() {
     super("Game");
@@ -114,6 +119,9 @@ export default class GameScene extends Phaser.Scene {
     // Dialogue UI (hidden)
     this.createDialogUI();
     this.hideDialog();
+    
+    // Create image popup (hidden initially)
+    this.createImagePopup();
   }
 
   private createCustomGrid() {
@@ -247,6 +255,14 @@ export default class GameScene extends Phaser.Scene {
 
   update() {
     const dt = this.game.loop.delta / 1000;
+
+    // Handle image popup
+    if (this.popupVisible) {
+      if (Phaser.Input.Keyboard.JustDown(this.keys.ESC)) {
+        this.hideImagePopup();
+      }
+      return;
+    }
 
     // Handle chase sequence
     if (this.chaseState === "chasing") {
@@ -389,6 +405,8 @@ export default class GameScene extends Phaser.Scene {
       ease: "Power2",
       onComplete: () => {
         pickupText.destroy();
+        // Show image popup after pickup animation
+        this.showImagePopup();
       }
     });
     
@@ -396,6 +414,83 @@ export default class GameScene extends Phaser.Scene {
     sparkles.forEach(sparkle => {
       this.cardSparkles.push(sparkle);
     });
+  }
+  
+  private createImagePopup() {
+    this.imagePopup = this.add.container(0, 0);
+    this.imagePopup.setDepth(100);
+    
+    // Semi-transparent background overlay
+    const overlay = this.add.rectangle(160, 90, 320, 180, 0x000000, 0.8);
+    overlay.setOrigin(0.5);
+    
+    // Message text (on the left side)
+    const messageText = this.add.text(80, 90, "look at you all flirty", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#ff66ff",
+      fontStyle: "bold italic",
+      align: "center",
+      resolution: 1,
+    }).setOrigin(0.5);
+    
+    // Close instruction (centered at bottom)
+    const closeText = this.add.text(160, 165, "Press ESC to close", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#cfe8ff",
+      align: "center",
+      resolution: 1,
+    }).setOrigin(0.5);
+    
+    this.imagePopup.add([overlay, messageText, closeText]);
+    this.imagePopup.setVisible(false);
+    
+    // Create HTML overlay for photo (completely outside Phaser)
+    this.createPhotoOverlay();
+  }
+  
+  private createPhotoOverlay() {
+    // Create a div overlay with the photo
+    this.photoOverlay = document.createElement('div');
+    this.photoOverlay.style.position = 'absolute';
+    this.photoOverlay.style.top = '50%';
+    this.photoOverlay.style.left = '50%';
+    this.photoOverlay.style.transform = 'translate(-50%, -50%)';
+    this.photoOverlay.style.zIndex = '1000';
+    this.photoOverlay.style.display = 'none';
+    this.photoOverlay.style.pointerEvents = 'none';
+    
+    // Create image element
+    const img = document.createElement('img');
+    img.src = 'hinge-screenshot.png';
+    img.style.maxWidth = '350px';
+    img.style.maxHeight = '350px';
+    img.style.border = '3px solid #ff66ff';
+    img.style.borderRadius = '8px';
+    img.style.boxShadow = '0 0 20px rgba(255, 102, 255, 0.5)';
+    img.style.imageRendering = 'auto';
+    img.style.display = 'block';
+    img.style.marginLeft = '280px'; // Much more offset to the right
+    
+    this.photoOverlay.appendChild(img);
+    document.body.appendChild(this.photoOverlay);
+  }
+  
+  private showImagePopup() {
+    this.popupVisible = true;
+    this.imagePopup.setVisible(true);
+    if (this.photoOverlay) {
+      this.photoOverlay.style.display = 'block';
+    }
+  }
+  
+  private hideImagePopup() {
+    this.popupVisible = false;
+    this.imagePopup.setVisible(false);
+    if (this.photoOverlay) {
+      this.photoOverlay.style.display = 'none';
+    }
   }
   
   private updateChaseSequence(dt: number) {
