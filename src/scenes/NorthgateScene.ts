@@ -16,6 +16,8 @@ export default class NorthgateScene extends Phaser.Scene {
   private jumpVelocity = -200;
   
   private cardFragmentCollected = false;
+  private ceciHasArrived = false;
+  private firstTrainPassed = false;
   
   // Dialogue
   private dialogBox!: Phaser.GameObjects.Rectangle;
@@ -228,8 +230,9 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private createCeci() {
-    // Ceci on top platform (Platform 2 at y: 45) - away from train path
-    this.ceci = createCeciSprite(this, 200, 35);
+    // Ceci starts hidden - will arrive on first train
+    this.ceci = createCeciSprite(this, -100, -100);
+    this.ceci.setVisible(false);
   }
   
   private createUI() {
@@ -301,8 +304,15 @@ export default class NorthgateScene extends Phaser.Scene {
     this.playerSprite.x = Math.round(this.player.x);
     this.playerSprite.y = Math.round(this.player.y + 4);
     
-    // Check proximity to Ceci
-    this.checkCeciProximity();
+    // Check for Ceci arrival on first train
+    if (!this.ceciHasArrived && !this.firstTrainPassed) {
+      this.checkCeciArrival();
+    }
+    
+    // Check proximity to Ceci (only after she's arrived)
+    if (this.ceciHasArrived) {
+      this.checkCeciProximity();
+    }
   }
   
   private checkEscalator() {
@@ -317,6 +327,45 @@ export default class NorthgateScene extends Phaser.Scene {
         this.player.setVelocityY(-150);
         break;
       }
+    }
+  }
+  
+  private checkCeciArrival() {
+    // When train reaches middle of screen, Ceci gets off
+    if (this.train.x < 200 && this.train.x > 100) {
+      this.ceciHasArrived = true;
+      this.firstTrainPassed = true;
+      
+      // Make Ceci visible on the train
+      this.ceci.setVisible(true);
+      this.ceci.x = this.train.x + 20; // On the train
+      this.ceci.y = this.train.y;
+      
+      // Ceci gets off the train - moves to platform
+      this.tweens.add({
+        targets: this.ceci,
+        x: 200,
+        y: 75, // Train platform level
+        duration: 1000,
+        ease: "Power2",
+        onComplete: () => {
+          // After getting off, show a little message
+          const arrivalText = this.add.text(this.ceci.x, this.ceci.y - 20, "*steps off train*", {
+            fontFamily: "monospace",
+            fontSize: "8px",
+            color: "#cfe8ff",
+            resolution: 1,
+          }).setOrigin(0.5);
+          
+          this.tweens.add({
+            targets: arrivalText,
+            alpha: 0,
+            y: this.ceci.y - 35,
+            duration: 2000,
+            onComplete: () => arrivalText.destroy()
+          });
+        }
+      });
     }
   }
   
