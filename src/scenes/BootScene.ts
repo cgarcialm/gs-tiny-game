@@ -8,7 +8,7 @@ export default class BootScene extends Phaser.Scene {
   preload() {
     // Load assets here later (sprites/tiles/audio).
     
-    // Load photo with smooth filtering (not pixel art)
+    // Load photos with smooth filtering (not pixel art)
     this.load.on('filecomplete-image-grayson-photo', () => {
       const texture = this.textures.get('grayson-photo');
       if (texture) {
@@ -16,7 +16,15 @@ export default class BootScene extends Phaser.Scene {
       }
     });
     
+    this.load.on('filecomplete-image-hockey-chat', () => {
+      const texture = this.textures.get('hockey-chat');
+      if (texture) {
+        texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      }
+    });
+    
     this.load.image('grayson-photo', 'hinge-screenshot.png');
+    this.load.image('hockey-chat', 'ice-hockey-chat.png');
   }
 
   create() {

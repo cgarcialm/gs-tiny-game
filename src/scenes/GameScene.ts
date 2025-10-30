@@ -48,7 +48,10 @@ export default class GameScene extends Phaser.Scene {
   // Image popup
   private imagePopup!: Phaser.GameObjects.Container;
   private photoOverlay?: HTMLDivElement;
+  private hockeyOverlay?: HTMLDivElement;
+  private popupMessageText!: Phaser.GameObjects.Text;
   private popupVisible = false;
+  private currentPopupImage = 1; // 1 = hinge screenshot, 2 = hockey chat
 
   constructor() {
     super("Game");
@@ -258,6 +261,13 @@ export default class GameScene extends Phaser.Scene {
 
     // Handle image popup
     if (this.popupVisible) {
+      if (Phaser.Input.Keyboard.JustDown(this.keys.ENTER)) {
+        if (this.currentPopupImage === 1) {
+          this.showNextImage();
+        } else {
+          this.hideImagePopup();
+        }
+      }
       if (Phaser.Input.Keyboard.JustDown(this.keys.ESC)) {
         this.hideImagePopup();
       }
@@ -425,7 +435,7 @@ export default class GameScene extends Phaser.Scene {
     overlay.setOrigin(0.5);
     
     // Message text (on the left side)
-    const messageText = this.add.text(90, 90, "look at you all flirty", {
+    this.popupMessageText = this.add.text(90, 90, "look at you all flirty", {
       fontFamily: "monospace",
       fontSize: "12px",
       color: "#ff66ff",
@@ -434,20 +444,12 @@ export default class GameScene extends Phaser.Scene {
       resolution: 1,
     }).setOrigin(0.5);
     
-    // Close instruction (centered at bottom)
-    const closeText = this.add.text(160, 165, "Press ESC to close", {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#cfe8ff",
-      align: "center",
-      resolution: 1,
-    }).setOrigin(0.5);
-    
-    this.imagePopup.add([overlay, messageText, closeText]);
+    this.imagePopup.add([overlay, this.popupMessageText]);
     this.imagePopup.setVisible(false);
     
-    // Create HTML overlay for photo (completely outside Phaser)
+    // Create HTML overlays for photos (completely outside Phaser)
     this.createPhotoOverlay();
+    this.createHockeyOverlay();
   }
   
   private createPhotoOverlay() {
@@ -477,11 +479,42 @@ export default class GameScene extends Phaser.Scene {
     document.body.appendChild(this.photoOverlay);
   }
   
+  private createHockeyOverlay() {
+    // Create a div overlay for ice hockey chat
+    this.hockeyOverlay = document.createElement('div');
+    this.hockeyOverlay.style.position = 'absolute';
+    this.hockeyOverlay.style.top = '50%';
+    this.hockeyOverlay.style.left = '50%';
+    this.hockeyOverlay.style.transform = 'translate(-50%, -50%)';
+    this.hockeyOverlay.style.zIndex = '1000';
+    this.hockeyOverlay.style.display = 'none';
+    this.hockeyOverlay.style.pointerEvents = 'none';
+    
+    // Create image element
+    const img = document.createElement('img');
+    img.src = 'ice-hockey-chat.png';
+    img.style.maxWidth = '550px';
+    img.style.maxHeight = '550px';
+    img.style.border = '3px solid #ff66ff';
+    img.style.borderRadius = '8px';
+    img.style.boxShadow = '0 0 20px rgba(255, 102, 255, 0.5)';
+    img.style.imageRendering = 'auto';
+    img.style.display = 'block';
+    img.style.marginLeft = '650px'; // Same offset as first image
+    
+    this.hockeyOverlay.appendChild(img);
+    document.body.appendChild(this.hockeyOverlay);
+  }
+  
   private showImagePopup() {
     this.popupVisible = true;
+    this.currentPopupImage = 1;
     this.imagePopup.setVisible(true);
     if (this.photoOverlay) {
       this.photoOverlay.style.display = 'block';
+    }
+    if (this.hockeyOverlay) {
+      this.hockeyOverlay.style.display = 'none';
     }
   }
   
@@ -490,6 +523,32 @@ export default class GameScene extends Phaser.Scene {
     this.imagePopup.setVisible(false);
     if (this.photoOverlay) {
       this.photoOverlay.style.display = 'none';
+    }
+    if (this.hockeyOverlay) {
+      this.hockeyOverlay.style.display = 'none';
+    }
+  }
+  
+  private showNextImage() {
+    if (this.currentPopupImage === 1) {
+      // Switch from hinge screenshot to hockey chat
+      this.currentPopupImage = 2;
+      if (this.photoOverlay) {
+        this.photoOverlay.style.display = 'none';
+      }
+      if (this.hockeyOverlay) {
+        this.hockeyOverlay.style.display = 'block';
+      }
+      
+      // Change message to simple style (two lines)
+      this.popupMessageText.setText("ENTER to go meet \nat Northgate Station!");
+      this.popupMessageText.setStyle({
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#cfe8ff",
+        fontStyle: "normal",
+        align: "center",
+      });
     }
   }
   
