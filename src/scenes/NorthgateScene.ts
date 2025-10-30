@@ -99,19 +99,22 @@ export default class NorthgateScene extends Phaser.Scene {
     this.platforms.add(ground);
     
     // Platform 1 (mid-low)
-    const platform1 = this.add.rectangle(100, 125, 120, 8, 0x666666);
+    const platform1 = this.add.rectangle(120, 125, 110, 8, 0x666666);
     this.platforms.add(platform1);
     
     // Platform 2 (mid-high)
-    const platform2 = this.add.rectangle(220, 45, 120, 8, 0x666666);
+    const platform2 = this.add.rectangle(200, 45, 80, 8, 0x666666);
     this.platforms.add(platform2);
     
-    // Platform 3 (top)
-    const platform3 = this.add.rectangle(160, 85, 320, 8, 0x777777);
-    this.platforms.add(platform3);
+    // Platform 3 (train level) - split with gap for escalator
+    const platform3Left = this.add.rectangle(70, 85, 140, 8, 0x777777);
+    this.platforms.add(platform3Left);
+    const platform3Right = this.add.rectangle(250, 85, 160, 8, 0x777777);
+    this.platforms.add(platform3Right);
     
-    // Visual rails for top platform
-    this.add.rectangle(160, 85, 320, 2, 0xffeb3b, 0.8);
+    // Visual rails for train platform (with gap)
+    this.add.rectangle(120, 87, 240, 2, 0xffeb3b, 0.8);
+    this.add.rectangle(290, 87, 60, 2, 0xffeb3b, 0.8);
     
     // Create all escalators
     this.createEscalators();
@@ -119,13 +122,13 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private createEscalators() {
     // Escalator 1: Ground (170) to Platform 1 (125)
-    this.createEscalatorVisual(50, 170, 125);
+    this.createEscalatorVisual(50, 170, 115);
     
-    // Escalator 2: Platform 1 (125) to Platform 2 (85)
-    this.createEscalatorVisual(155, 125, 85);
+    // Escalator 2: Platform 1 (125) to Platform 3/Train (85)
+    this.createEscalatorVisual(155, 125, 75);
     
-    // Escalator 3: Platform 2 (85) to Top Platform (45)
-    this.createEscalatorVisual(255, 85, 45);
+    // Escalator 3: Platform 3/Train (85) to Platform 2/Top (45)
+    this.createEscalatorVisual(255, 85, 35);
   }
   
   private createEscalatorVisual(x: number, bottomY: number, topY: number) {
@@ -225,7 +228,7 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private createCeci() {
-    // Ceci on top platform (away from train path)
+    // Ceci on top platform (Platform 2 at y: 45) - away from train path
     this.ceci = createCeciSprite(this, 200, 35);
   }
   
@@ -304,15 +307,13 @@ export default class NorthgateScene extends Phaser.Scene {
   private checkEscalator() {
     // Check if player overlaps with any escalator
     const playerBounds = this.player.getBounds();
-    let onAnyEscalator = false;
     
     for (const escalator of this.escalators) {
       const bounds = escalator.getBounds();
       
       if (Phaser.Geom.Intersects.RectangleToRectangle(bounds, playerBounds)) {
-        onAnyEscalator = true;
-        // Auto-move player up on escalator
-        this.player.setVelocityY(-100);
+        // Auto-move player up on escalator - stronger upward force
+        this.player.setVelocityY(-150);
         break;
       }
     }
