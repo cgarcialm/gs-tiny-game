@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { createGraysonSprite, updateGraysonWalk, createCeciSprite, createRandomGuySprite, createSecurityGuardSprite, createFurrySprite } from "../utils/sprites";
-import { setupControls, getHorizontalAxis, shouldCloseDialogue } from "../utils/controls";
+import { setupControls, getHorizontalAxis, shouldCloseDialogue, HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
 import { PauseMenu } from "../utils/pauseMenu";
@@ -440,9 +440,9 @@ export default class NorthgateScene extends Phaser.Scene {
       resolution: 2,
     }).setOrigin(0, 0).setVisible(false);
     
-    // Help hint (bottom-right corner, lower to avoid overlaps) - shown after first Eboshi interaction in GameScene
+    // Help hint (bottom-right corner) - always visible in later levels
     this.helpHintText = this.add
-      .text(312, 176, "H for Help", {
+      .text(HELP_HINT_X, HELP_HINT_Y, "H for Help", {
         fontFamily: "monospace",
         fontSize: "8px",
         color: "#cfe8ff",
@@ -453,9 +453,8 @@ export default class NorthgateScene extends Phaser.Scene {
       .setOrigin(1, 1)
       .setDepth(10);
     
-    // Check if player has seen help hint
-    const showHelpHint = this.registry.get('showHelpHint') || false;
-    this.helpHintText.setVisible(showHelpHint);
+    // Always visible in Northgate - player should know about help by now
+    // (No need to check showHelpHint flag)
   }
 
   update() {

@@ -1,5 +1,11 @@
 import Phaser from "phaser";
 
+/**
+ * Global UI positions for consistency across scenes
+ */
+export const HELP_HINT_X = 318;
+export const HELP_HINT_Y = 180;
+
 export interface GameControls {
   left: Phaser.Input.Keyboard.Key;
   right: Phaser.Input.Keyboard.Key;

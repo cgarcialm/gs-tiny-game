@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite, createCeciSprite, createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
-import { setupControls, getHorizontalAxis, getVerticalAxis, shouldCloseDialogue } from "../utils/controls";
+import { setupControls, getHorizontalAxis, getVerticalAxis, shouldCloseDialogue, HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
 import { PauseMenu } from "../utils/pauseMenu";
@@ -134,9 +134,9 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(1, 0)
       .setDepth(10);
     
-    // Help hint (bottom-right corner, lower to avoid overlaps) - shown after first Eboshi interaction
+    // Help hint (bottom-right corner) - shown after first Eboshi interaction in level 0
     this.helpHintText = this.add
-      .text(312, 176, "H for Help", {
+      .text(HELP_HINT_X, HELP_HINT_Y, "H for Help", {
         fontFamily: "monospace",
         fontSize: "8px",
         color: "#cfe8ff",
@@ -147,7 +147,7 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(1, 1)
       .setDepth(10);
     
-    // Check if player has seen help hint (show after first Eboshi interaction)
+    // Only show after Eboshi interaction (level 0), or if already unlocked
     const showHelpHint = this.registry.get('showHelpHint') || false;
     this.helpHintText.setVisible(showHelpHint);
 

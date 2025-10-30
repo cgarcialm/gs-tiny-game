@@ -126,7 +126,6 @@ export default class TitleScene extends Phaser.Scene {
   private dialogBox!: Phaser.GameObjects.Rectangle;
   private dialogText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
-  private helpHintText?: Phaser.GameObjects.Text;
   private cardPieces: Phaser.GameObjects.Ellipse[] = [];
   
   // Transformation effects
@@ -236,21 +235,8 @@ export default class TitleScene extends Phaser.Scene {
     // Create pause menu
     this.pauseMenu = new PauseMenu(this);
     
-    // Help hint (bottom-right corner, lower to avoid overlaps) - shown after first Eboshi interaction in GameScene
-    const showHelpHint = this.registry.get('showHelpHint') || false;
-    if (showHelpHint) {
-      this.helpHintText = this.add
-        .text(312, 176, "H for Help", {
-          fontFamily: "monospace",
-          fontSize: "8px",
-          color: "#cfe8ff",
-          backgroundColor: "rgba(0,0,0,0.4)",
-          padding: { left: 3, right: 3, top: 2, bottom: 2 },
-          resolution: 1,
-        })
-        .setOrigin(1, 1)
-        .setDepth(10);
-    }
+    // Note: No help hint in TitleScene - this is before the game starts
+    // Help hint will appear after Eboshi interaction in GameScene
   }
 
   update() {
