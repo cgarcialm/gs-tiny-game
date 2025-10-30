@@ -20,3 +20,8 @@ Open `http://localhost:5173` in your browser.
 - `npm run dev` - Dev server
 - `npm run build` - Production build
 - `npm run preview` - Preview build
+- `npm run deploy` - Deploy to GitHub Pages
+
+## Deployment
+
+The game will be built and deployed to `https://cgarcialm.github.io/gs-tiny-game/`
