@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonSprite, updateGraysonWalk, createCeciSprite, createSecurityGuardSprite, createFurrySprite } from "../utils/sprites";
+import { createGraysonSprite, updateGraysonWalk, createCeciSprite, createRandomGuySprite, createSecurityGuardSprite, createFurrySprite } from "../utils/sprites";
 
 export default class NorthgateScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -11,6 +11,7 @@ export default class NorthgateScene extends Phaser.Scene {
   private escalators: Phaser.GameObjects.Rectangle[] = [];
   private train!: Phaser.Physics.Arcade.Sprite;
   private ceci!: Phaser.GameObjects.Container;
+  private randomGuy!: Phaser.GameObjects.Container;
   
   private speed = 100;
   
@@ -55,8 +56,9 @@ export default class NorthgateScene extends Phaser.Scene {
     // Create player with physics
     this.createPlayer();
     
-    // Create Ceci (on top platform)
+    // Create Ceci and RandomGuy (will arrive on train)
     this.createCeci();
+    this.createRandomGuy();
     
     // Create security guard
     this.createSecurityGuard();
@@ -114,6 +116,16 @@ export default class NorthgateScene extends Phaser.Scene {
       fontStyle: "bold",
       resolution: 1,
     }).setOrigin(0.5);
+    
+    // Exit sign on top left
+    this.add.text(15, 10, "← EXIT", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#00ff00",
+      backgroundColor: "rgba(0,0,0,0.6)",
+      padding: { left: 3, right: 3, top: 2, bottom: 2 },
+      resolution: 1,
+    }).setOrigin(0, 0.5);
   }
   
   private createPlatforms() {
@@ -258,6 +270,12 @@ export default class NorthgateScene extends Phaser.Scene {
     // Final position will be on left side of top platform
     this.ceci = createCeciSprite(this, -100, -100);
     this.ceci.setVisible(false);
+  }
+  
+  private createRandomGuy() {
+    // RandomGuy also arrives on train, then leaves
+    this.randomGuy = createRandomGuySprite(this, -100, -100);
+    this.randomGuy.setVisible(false);
   }
   
   private createSecurityGuard() {
@@ -584,31 +602,35 @@ export default class NorthgateScene extends Phaser.Scene {
     if (this.train.x < 200 && this.train.x > 100) {
       this.firstTrainPassed = true;
       
-      // Make Ceci visible on the train
+      // Make Ceci and RandomGuy visible on the train
       this.ceci.setVisible(true);
       this.ceci.x = this.train.x + 20; // On the train
       this.ceci.y = this.train.y;
       
-      // Step 1: Ceci gets off the train - moves to train platform
+      this.randomGuy.setVisible(true);
+      this.randomGuy.x = this.train.x + 40; // Behind Ceci on train
+      this.randomGuy.y = this.train.y;
+      
+      // Step 1: Both get off the train - move to train platform
       this.tweens.add({
         targets: this.ceci,
         x: 255, // Move to escalator
         y: 75, // Train platform level
-        duration: 1000,
+        duration: 1500,
         ease: "Power2",
         onComplete: () => {
           // Step 2: Ceci takes escalator to top platform
           this.tweens.add({
             targets: this.ceci,
             y: 35, // Top platform
-            duration: 1500,
+            duration: 2000,
             ease: "Linear",
             onComplete: () => {
               // Step 3: Ceci walks to final position on top platform (left side)
               this.tweens.add({
                 targets: this.ceci,
                 x: 80,
-                duration: 1800,
+                duration: 2500,
                 ease: "Linear",
                 onComplete: () => {
                   this.ceciHasArrived = true;
@@ -633,6 +655,46 @@ export default class NorthgateScene extends Phaser.Scene {
                       thoughtText.destroy();
                       // Now Grayson enters from the right!
                       this.graysonEnters();
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+      
+      // RandomGuy also gets off and leaves quickly
+      this.tweens.add({
+        targets: this.randomGuy,
+        x: 200, // Get off train
+        y: 75,
+        duration: 800,
+        ease: "Power2",
+        onComplete: () => {
+          // Quickly moves to escalator 3
+          this.tweens.add({
+            targets: this.randomGuy,
+            x: 255,
+            y: 75,
+            duration: 300,
+            ease: "Linear",
+            onComplete: () => {
+              // Goes up escalator faster
+              this.tweens.add({
+                targets: this.randomGuy,
+                y: 35,
+                duration: 1000,
+                ease: "Linear",
+                onComplete: () => {
+                  // Quickly walks left and exits (shows the exit clearly)
+                  this.tweens.add({
+                    targets: this.randomGuy,
+                    x: -50,
+                    duration: 1500,
+                    ease: "Linear",
+                    onComplete: () => {
+                      this.randomGuy.setVisible(false);
                     }
                   });
                 }
