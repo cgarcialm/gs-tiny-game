@@ -417,7 +417,7 @@ export default class TitleScene extends Phaser.Scene {
     
     if (this.ceci.x > SCREEN_WIDTH) {
       this.sceneState = "fragments_scattered";
-      this.showDialog("The fragments scattered into the void...");
+      this.showDialog("The card held memories... without them... nothingness!");
       
       // After a delay, Grayson realizes something
       this.time.delayedCall(3000, () => {

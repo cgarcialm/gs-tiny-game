@@ -45,8 +45,8 @@ export default class GameScene extends Phaser.Scene {
   
   // Level 0 dialogues - Eboshi
   private eboshiDialogLines: string[] = [
-    "Grayson! You look... different. More defined!",
-    "Oh right, peanut butter? No? Well, there's a card piece over there...",
+    "Grayson! You look... different. More defined! Have you been working out?",
+    "Alright, any peanut butter? No? Well, there's a card piece over there...",
     "*suddenly looks worried* Oh no... I hear something... RUN!!"
   ];
   

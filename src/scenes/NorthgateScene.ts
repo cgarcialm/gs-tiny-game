@@ -24,10 +24,10 @@ export default class NorthgateScene extends Phaser.Scene {
   private ceciHasArrived = false;
   private firstTrainPassed = false;
   private hasTicket = false;
-  private hasMetGuard = false;
   private isDrugged = false;
   private graysonHasEntered = false;
   private ceciFollowing = false;
+  private guardDialogueCooldown = 0;
   
   // NPCs
   private securityGuard!: Phaser.GameObjects.Container;
@@ -490,8 +490,16 @@ export default class NorthgateScene extends Phaser.Scene {
     if (this.dialogVisible) {
       if (shouldCloseDialogue(this.controls)) {
         this.hideDialog();
+        // Set cooldown when dialogue is closed to prevent instant re-trigger
+        this.guardDialogueCooldown = 1.5; // 1.5 second cooldown
       }
       return;
+    }
+    
+    // Decrease guard dialogue cooldown
+    if (this.guardDialogueCooldown > 0) {
+      this.guardDialogueCooldown -= dt;
+      if (this.guardDialogueCooldown < 0) this.guardDialogueCooldown = 0;
     }
     
     // Check for Ceci arrival on first train (must happen even before Grayson enters)
@@ -822,10 +830,8 @@ export default class NorthgateScene extends Phaser.Scene {
       this.securityGuard.y
     );
     
-    // If player tries to pass without ticket (smaller proximity - must be on same level)
-    if (distance < 20 && !this.hasTicket && !this.hasMetGuard) {
-      this.hasMetGuard = true;
-      
+    // If player tries to pass without ticket - show message (with cooldown to prevent spam)
+    if (distance < 20 && !this.hasTicket && !this.dialogVisible && this.guardDialogueCooldown === 0) {
       // Stop player movement when guard speaks
       this.player.setVelocity(0, 0);
       
@@ -1007,10 +1013,10 @@ export default class NorthgateScene extends Phaser.Scene {
     // Stop any existing movement
     this.player.setVelocity(0, 0);
     
-    this.showDialog("Ceci: This is my first time at this station!\nSo glad we found each other!\nLet's head to the exit together!");
+    this.showDialog("Ceci: This is my first time at this station!\nHappy I found you, let's get out of here...");
     
-    // Hide dialogue after a moment
-    this.time.delayedCall(3000, () => {
+    // Hide dialogue after a moment - longer so player can read
+    this.time.delayedCall(4500, () => {
       this.hideDialog();
     });
   }
