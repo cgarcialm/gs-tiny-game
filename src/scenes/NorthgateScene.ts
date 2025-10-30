@@ -13,7 +13,6 @@ export default class NorthgateScene extends Phaser.Scene {
   private ceci!: Phaser.GameObjects.Container;
   
   private speed = 100;
-  private jumpVelocity = -200;
   
   private cardFragmentCollected = false;
   private ceciHasArrived = false;
@@ -24,6 +23,7 @@ export default class NorthgateScene extends Phaser.Scene {
   // NPCs
   private securityGuard!: Phaser.GameObjects.Container;
   private ticketMachine!: Phaser.GameObjects.Graphics;
+  private ticketGate!: Phaser.GameObjects.Rectangle;
   
   // Dialogue
   private dialogBox!: Phaser.GameObjects.Rectangle;
@@ -128,8 +128,8 @@ export default class NorthgateScene extends Phaser.Scene {
     this.platforms.add(platform2);
 
     // Visual rails for train platform (with gap)
-    this.add.rectangle(120, 87, 240, 2, 0xffeb3b, 0.8);
-    this.add.rectangle(290, 87, 60, 2, 0xffeb3b, 0.8);
+    this.add.rectangle(120, 85, 240, 2, 0xffeb3b, 0.8);
+    this.add.rectangle(300, 85, 60, 2, 0xffeb3b, 0.8);
     
     // Create all escalators
     this.createEscalators();
@@ -206,7 +206,7 @@ export default class NorthgateScene extends Phaser.Scene {
     trainGraphics.fillRect(60, 10, 15, 15);
     trainGraphics.fillRect(85, 10, 10, 15);
     
-    const trainTexture = trainGraphics.generateTexture('soundtransit-train', trainWidth, trainHeight);
+    trainGraphics.generateTexture('soundtransit-train', trainWidth, trainHeight);
     trainGraphics.destroy();
     
     this.train.setTexture('soundtransit-train');
@@ -225,8 +225,8 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private createPlayer() {
-    // Create physics sprite for player (invisible) - start at bottom right
-    this.player = this.physics.add.sprite(280, 155, '');
+    // Create physics sprite for player (invisible) - start at bottom, slightly left of center
+    this.player = this.physics.add.sprite(200, 155, '');
     this.player.setSize(14, 4); // Very small hitbox just at feet level
     this.player.setOffset(2, 22); // Large offset to move collision to bottom
     this.player.setCollideWorldBounds(true);
@@ -250,7 +250,17 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private createSecurityGuard() {
     // Security guard on platform 1, blocking access to escalator 2
-    this.securityGuard = createSecurityGuardSprite(this, 155, 115);
+    this.securityGuard = createSecurityGuardSprite(this, 135, 115);
+    
+    // Invisible physical barrier that blocks escalator 2 access until ticket obtained
+    // Position it directly in front of escalator 2 (at x: 155)
+    this.ticketGate = this.add.rectangle(155, 115, 20, 25, 0x000000, 0);
+    
+    // Add to physics as static body
+    this.physics.add.existing(this.ticketGate, true);
+    
+    // Collision with gate
+    this.physics.add.collider(this.player, this.ticketGate);
   }
   
   private createTicketMachine() {
@@ -324,10 +334,7 @@ export default class NorthgateScene extends Phaser.Scene {
       return;
     }
     
-    // Player movement
-    const onGround = this.player.body!.touching.down;
-    
-    // Horizontal movement
+    // Player movement - Horizontal movement
     if (this.cursors.left?.isDown || this.keys.A.isDown) {
       this.player.setVelocityX(-this.speed);
       this.playerSprite.setScale(1, 1); // Face left
@@ -336,11 +343,6 @@ export default class NorthgateScene extends Phaser.Scene {
       this.playerSprite.setScale(-1, 1); // Face right
     } else {
       this.player.setVelocityX(0);
-    }
-    
-    // Jumping
-    if ((this.cursors.up?.isDown || this.keys.W.isDown || this.keys.SPACE.isDown) && onGround) {
-      this.player.setVelocityY(this.jumpVelocity);
     }
     
     // Escalator logic
@@ -376,12 +378,29 @@ export default class NorthgateScene extends Phaser.Scene {
     // Check if player overlaps with any escalator
     const playerBounds = this.player.getBounds();
     
-    for (const escalator of this.escalators) {
+    for (let i = 0; i < this.escalators.length; i++) {
+      const escalator = this.escalators[i];
       const bounds = escalator.getBounds();
       
       if (Phaser.Geom.Intersects.RectangleToRectangle(bounds, playerBounds)) {
-        // Auto-move player up on escalator - stronger upward force
-        this.player.setVelocityY(-150);
+        // Escalator 2 (index 1) requires ticket
+        if (i === 1 && !this.hasTicket) {
+          return; // Can't use this escalator without ticket
+        }
+        
+        // Escalators work when pressing UP arrow (going up)
+        if (this.cursors.up?.isDown || this.keys.W.isDown) {
+          // Only apply upward force if not already on a platform above the escalator
+          if (this.player.y > bounds.top + 5) {
+            this.player.setVelocityY(-150);
+          }
+        }
+        
+        // Go down with DOWN arrow (faster descent)
+        if (this.cursors.down?.isDown || this.keys.S.isDown) {
+          this.player.setVelocityY(150);
+        }
+        
         break;
       }
     }
@@ -449,6 +468,9 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private checkSecurityGuard() {
+    // Ticket gate blocks passage until ticket obtained
+    // The invisible barrier physically prevents passage
+    
     // Check if player is near security guard on platform 1
     const distance = Phaser.Math.Distance.Between(
       this.player.x,
@@ -457,10 +479,10 @@ export default class NorthgateScene extends Phaser.Scene {
       this.securityGuard.y
     );
     
-    // If player tries to pass without ticket (no prompt, just dialogue)
-    if (distance < 30 && !this.hasTicket && !this.hasMetGuard) {
+    // If player tries to pass without ticket (smaller proximity - must be on same level)
+    if (distance < 20 && !this.hasTicket && !this.hasMetGuard) {
       this.hasMetGuard = true;
-      this.showDialog("Security: Do you have your ticket?\nPlease tap your ORCA card at the reader.");
+      this.showDialog("Security: Do you have your ticket?\nPlease tap your ORCA card at the reader.\nHead back down!");
     }
   }
   
@@ -472,7 +494,7 @@ export default class NorthgateScene extends Phaser.Scene {
       298, 147
     );
     
-    if (distance < 30 && !this.hasTicket) {
+    if (distance < 20 && !this.hasTicket) {
       // Only show prompt if player has already been asked for ticket
       if (this.hasMetGuard) {
         this.promptText.setVisible(true);
@@ -483,6 +505,10 @@ export default class NorthgateScene extends Phaser.Scene {
         this.hasTicket = true;
         this.promptText.setVisible(false);
         this.showDialog("*taps ORCA card*\nTicket validated! You can now proceed.");
+        
+        // Remove the ticket gate barrier
+        this.ticketGate.setVisible(false);
+        this.ticketGate.destroy();
         
         // Visual feedback - indicator turns green
         const flashGraphics = this.add.graphics();
@@ -497,11 +523,11 @@ export default class NorthgateScene extends Phaser.Scene {
           onComplete: () => flashGraphics.destroy()
         });
       }
-    } else if (distance >= 25 && !this.hasTicket) {
+    } else if (distance >= 20 && !this.hasTicket) {
       // Don't show prompt when not near machine (unless near Ceci)
       const nearCeci = this.ceciHasArrived && Phaser.Math.Distance.Between(
         this.player.x, this.player.y, this.ceci.x, this.ceci.y
-      ) < 35;
+      ) < 25;
       
       if (!nearCeci) {
         this.promptText.setVisible(false);
@@ -517,7 +543,7 @@ export default class NorthgateScene extends Phaser.Scene {
       this.ceci.y
     );
     
-    const near = distance < 35;
+    const near = distance < 25;
     this.promptText.setVisible(near && !this.cardFragmentCollected && this.hasTicket);
     
     if (near) {
@@ -530,8 +556,8 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private hitByTrain() {
-    // Player death - respawn at start (bottom right)
-    this.player.x = 280;
+    // Player death - respawn at start
+    this.player.x = 200;
     this.player.y = 155;
     this.player.setVelocity(0, 0);
     
