@@ -8,14 +8,13 @@ export default class NorthgateScene extends Phaser.Scene {
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
-  private escalator!: Phaser.GameObjects.Rectangle;
+  private escalators: Phaser.GameObjects.Rectangle[] = [];
   private train!: Phaser.Physics.Arcade.Sprite;
   private ceci!: Phaser.GameObjects.Container;
   
   private speed = 100;
   private jumpVelocity = -200;
   
-  private onEscalator = false;
   private cardFragmentCollected = false;
   
   // Dialogue
@@ -36,9 +35,6 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Create platforms
     this.createPlatforms();
-    
-    // Create escalator
-    this.createEscalator();
     
     // Create train
     this.createTrain();
@@ -99,73 +95,109 @@ export default class NorthgateScene extends Phaser.Scene {
     this.platforms = this.physics.add.staticGroup();
     
     // Bottom platform (ground)
-    const ground = this.add.rectangle(160, 165, 320, 10, 0x555555);
+    const ground = this.add.rectangle(160, 170, 320, 10, 0x555555);
     this.platforms.add(ground);
     
     // Platform 1 (mid-low)
-    const platform1 = this.add.rectangle(100, 130, 120, 8, 0x666666);
+    const platform1 = this.add.rectangle(100, 125, 120, 8, 0x666666);
     this.platforms.add(platform1);
     
-    // Platform 2 (mid-high) - has ladder access
-    const platform2 = this.add.rectangle(220, 90, 120, 8, 0x666666);
+    // Platform 2 (mid-high)
+    const platform2 = this.add.rectangle(220, 45, 120, 8, 0x666666);
     this.platforms.add(platform2);
     
-    // Platform 3 (top) - train platform
-    const platform3 = this.add.rectangle(160, 40, 320, 8, 0x777777);
+    // Platform 3 (top)
+    const platform3 = this.add.rectangle(160, 85, 320, 8, 0x777777);
     this.platforms.add(platform3);
     
-    // Visual rails for platforms
-    this.add.rectangle(160, 42, 320, 2, 0xffeb3b, 0.8);
+    // Visual rails for top platform
+    this.add.rectangle(160, 85, 320, 2, 0xffeb3b, 0.8);
+    
+    // Create all escalators
+    this.createEscalators();
   }
   
-  private createEscalator() {
-    // Escalator connecting bottom to mid platform
-    this.escalator = this.add.rectangle(200, 147, 30, 35, 0x888888, 0.6);
+  private createEscalators() {
+    // Escalator 1: Ground (170) to Platform 1 (125)
+    this.createEscalatorVisual(50, 170, 125);
     
-    // Escalator steps visual
+    // Escalator 2: Platform 1 (125) to Platform 2 (85)
+    this.createEscalatorVisual(155, 125, 85);
+    
+    // Escalator 3: Platform 2 (85) to Top Platform (45)
+    this.createEscalatorVisual(255, 85, 45);
+  }
+  
+  private createEscalatorVisual(x: number, bottomY: number, topY: number) {
+    const width = 30;
+    const height = bottomY - topY; // Distance from bottom to top
+    const centerY = (bottomY + topY) / 2;
+    
+    // Escalator zone (collision area)
+    const escalatorZone = this.add.rectangle(x, centerY, width, height, 0x888888, 0.6);
+    this.escalators.push(escalatorZone);
+    
+    // Visual steps
     const steps = this.add.graphics();
     steps.lineStyle(1, 0xaaaaaa, 0.8);
-    for (let i = 0; i < 5; i++) {
-      const y = 147 - 15 + i * 7;
-      steps.lineBetween(185, y, 215, y);
+    const numSteps = Math.floor(height / 7);
+    for (let i = 0; i < numSteps; i++) {
+      const stepY = topY + i * 7;
+      steps.lineBetween(x - width/2, stepY, x + width/2, stepY);
     }
     
     // Arrow indicating up
-    this.add.text(200, 147, "↑", {
+    this.add.text(x, centerY, "↑", {
       fontSize: "16px",
       color: "#00ff00",
     }).setOrigin(0.5);
   }
   
   private createTrain() {
-    // Train on middle level (platform 2)
-    this.train = this.physics.add.sprite(400, 80, '');
-    this.train.setSize(80, 20);
-    this.train.setDisplaySize(80, 20);
+    // Train on level 3 (platform 2) - Seattle Light Rail colors
+    // Ceci is on level 4 (top platform) because she already got off
+    this.train = this.physics.add.sprite(400, 65, '');
+    const trainWidth = 100;
+    const trainHeight = 35;
+    this.train.setSize(trainWidth, trainHeight);
+    this.train.setDisplaySize(trainWidth, trainHeight);
     
-    // Visual representation
+    // Visual representation - Seattle Light Rail style (blue/white/green)
     const trainGraphics = this.add.graphics();
-    trainGraphics.fillStyle(0xff0000, 1);
-    trainGraphics.fillRect(0, 0, 80, 20);
-    trainGraphics.lineStyle(2, 0xaa0000);
-    trainGraphics.strokeRect(0, 0, 80, 20);
     
-    // Add windows
-    trainGraphics.fillStyle(0xffff00, 0.8);
-    trainGraphics.fillRect(10, 5, 15, 10);
-    trainGraphics.fillRect(35, 5, 15, 10);
-    trainGraphics.fillRect(55, 5, 15, 10);
+    // Main body - light blue/teal
+    trainGraphics.fillStyle(0x0077be, 1);
+    trainGraphics.fillRect(0, 0, trainWidth, trainHeight);
     
-    const trainTexture = trainGraphics.generateTexture('train', 80, 20);
+    // Top stripe - white
+    trainGraphics.fillStyle(0xffffff, 1);
+    trainGraphics.fillRect(0, 0, trainWidth, 8);
+    
+    // Bottom stripe - green (Sound Transit green)
+    trainGraphics.fillStyle(0x00843d, 1);
+    trainGraphics.fillRect(0, trainHeight - 6, trainWidth, 6);
+    
+    // Dark outline
+    trainGraphics.lineStyle(2, 0x003d5c);
+    trainGraphics.strokeRect(0, 0, trainWidth, trainHeight);
+    
+    // Windows (dark blue tint)
+    trainGraphics.fillStyle(0x1a1a2e, 0.7);
+    trainGraphics.fillRect(10, 10, 15, 15);
+    trainGraphics.fillRect(35, 10, 15, 15);
+    trainGraphics.fillRect(60, 10, 15, 15);
+    trainGraphics.fillRect(85, 10, 10, 15);
+    
+    const trainTexture = trainGraphics.generateTexture('soundtransit-train', trainWidth, trainHeight);
     trainGraphics.destroy();
     
-    this.train.setTexture('train');
+    this.train.setTexture('soundtransit-train');
     this.train.setVelocityX(-150); // Move left
-    this.train.body!.setAllowGravity(false); // Train doesn't fall
+    (this.train.body as Phaser.Physics.Arcade.Body).setAllowGravity(false); // Train doesn't fall
     
     // Respawn train every 5 seconds
     this.time.addEvent({
-      delay: 5000,
+      delay: 8000,
       callback: () => {
         this.train.x = 400;
         this.train.setVelocityX(-150);
@@ -176,8 +208,9 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private createPlayer() {
     // Create physics sprite for player (invisible)
-    this.player = this.physics.add.sprite(50, 150, '');
-    this.player.setSize(18, 26);
+    this.player = this.physics.add.sprite(50, 155, '');
+    this.player.setSize(16, 20); // Tighter hitbox for better feet alignment
+    this.player.setOffset(1, 6); // More offset to align feet with platforms
     this.player.setCollideWorldBounds(true);
     
     // Make physics body invisible
@@ -192,8 +225,8 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private createCeci() {
-    // Ceci on top platform
-    this.ceci = createCeciSprite(this, 280, 30);
+    // Ceci on top platform (away from train path)
+    this.ceci = createCeciSprite(this, 200, 35);
   }
   
   private createUI() {
@@ -269,18 +302,19 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private checkEscalator() {
-    // Check if player overlaps with escalator
-    const bounds = this.escalator.getBounds();
+    // Check if player overlaps with any escalator
     const playerBounds = this.player.getBounds();
+    let onAnyEscalator = false;
     
-    if (Phaser.Geom.Intersects.RectangleToRectangle(bounds, playerBounds)) {
-      if (!this.onEscalator) {
-        this.onEscalator = true;
+    for (const escalator of this.escalators) {
+      const bounds = escalator.getBounds();
+      
+      if (Phaser.Geom.Intersects.RectangleToRectangle(bounds, playerBounds)) {
+        onAnyEscalator = true;
+        // Auto-move player up on escalator
+        this.player.setVelocityY(-100);
+        break;
       }
-      // Auto-move player up on escalator
-      this.player.setVelocityY(-80);
-    } else {
-      this.onEscalator = false;
     }
   }
   
@@ -307,7 +341,7 @@ export default class NorthgateScene extends Phaser.Scene {
   private hitByTrain() {
     // Player death - respawn at start
     this.player.x = 50;
-    this.player.y = 150;
+    this.player.y = 155;
     this.player.setVelocity(0, 0);
     
     // Flash effect
