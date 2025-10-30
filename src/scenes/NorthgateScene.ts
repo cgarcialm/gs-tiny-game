@@ -549,16 +549,18 @@ export default class NorthgateScene extends Phaser.Scene {
       const ceciNearExit = this.ceci.x < 50 && this.ceci.y < 60;
       
       if (ceciNearExit && !this.isDrugged) {
-        // Level complete!
+        // Level complete! Transition back to void
         this.isDrugged = true; // Freeze player
         this.player.setVelocity(0, 0); // Stop movement
         
-        this.showDialog("You found Ceci and collected a memory!\nLevel Complete!");
+        // Fade out and go back to GameScene
+        this.cameras.main.fadeOut(1000, 0, 0, 0);
         
-        // TODO: Transition to next level or back to void
-        this.time.delayedCall(3000, () => {
-          // For now, just show completion
-          console.log("Northgate level complete!");
+        this.time.delayedCall(1000, () => {
+          // Increment completed levels
+          const currentLevels = this.registry.get('completedLevels') || 0;
+          this.registry.set('completedLevels', Math.max(currentLevels, 1));
+          this.scene.start("Game");
         });
       }
     }
@@ -914,8 +916,12 @@ export default class NorthgateScene extends Phaser.Scene {
     this.cameras.main.shake(5000, 0.003);
     
     // Screen fade/blur effect
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.cameras.main.fadeIn(500, 0, 0, 0, false, undefined, 500);
+    this.time.delayedCall(500, () => {
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+      this.time.delayedCall(500, () => {
+        this.cameras.main.fadeIn(500, 0, 0, 0);
+      });
+    });
     
     // Dizzy stars above Grayson's head
     const stars = ["✦", "✧", "★"];

@@ -1,8 +1,11 @@
 import Phaser from "phaser";
-import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite, createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
+import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite, createCeciSprite, createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 
 type DialogueState = "idle" | "open";
 type ChaseState = "idle" | "chasing";
+
+// FOR TESTING: Set to desired level number to skip ahead
+const DEBUG_LEVEL = 1; // 0 = start, 1 = after Northgate, 2 = after level 2, etc.
 
 export default class GameScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -11,8 +14,11 @@ export default class GameScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Container;
   private npc!: Phaser.GameObjects.Container;
   private cat!: Phaser.GameObjects.Container;
+  private ceci!: Phaser.GameObjects.Container;
   private cardPiece!: Phaser.GameObjects.Graphics;
   private cardSparkles: Phaser.GameObjects.Text[] = [];
+  
+  private completedLevels = 0; // 0 = none, 1 = Northgate, 2 = Level2, etc.
 
   private speed = 80; // px/s
   private promptText!: Phaser.GameObjects.Text;
@@ -64,17 +70,12 @@ export default class GameScene extends Phaser.Scene {
     // Pixel grid background (procedural)
     // More intense blue background with bright green thin grid lines
     this.createCustomGrid();
+    
+    // Get completed levels (use DEBUG_LEVEL for testing)
+    this.completedLevels = DEBUG_LEVEL || this.registry.get('completedLevels') || 0;
 
-    // Player (Grayson) - pixel art character
-    this.player = createGraysonSprite(this, 160, 90);
-
-    // NPC - Eboshi (greyhound dog)
-    this.npc = createEboshiSprite(this, 220, 95);
-    this.npc.setScale(1, 1); // Face left initially (default orientation)
-
-    // NPC - Smush (brown cat) - hidden initially, will appear from left
-    this.cat = createSmushSprite(this, -50, 95);
-    this.cat.setVisible(false);
+    // Setup scene based on completed levels
+    this.setupSceneForLevel(this.completedLevels);
 
     // Card piece on the floor - hidden initially
     this.cardPiece = createCardPieceSprite(this, 120, 130);
@@ -107,6 +108,9 @@ export default class GameScene extends Phaser.Scene {
       .setVisible(false);
 
     // Card piece counter at top right of screen
+    // Set initial count based on completed levels
+    this.cardPiecesCollected = this.completedLevels;
+    
     this.cardCounterText = this.add
       .text(310, 8, `Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`, {
         fontFamily: "monospace",
@@ -127,6 +131,47 @@ export default class GameScene extends Phaser.Scene {
     this.createImagePopup();
   }
 
+  private setupSceneForLevel(level: number) {
+    switch (level) {
+      case 0:
+        // Level 0: First time in the void - Eboshi encounter
+        this.player = createGraysonSprite(this, 160, 90);
+        
+        this.npc = createEboshiSprite(this, 220, 95);
+        this.npc.setScale(1, 1);
+        
+        this.cat = createSmushSprite(this, -50, 95);
+        this.cat.setVisible(false);
+        break;
+        
+      case 1:
+        // Level 1: After Northgate - Return with Ceci
+        this.player = createGraysonSprite(this, 350, 90);
+        this.ceci = createCeciSprite(this, 380, 90);
+        
+        // Walk in together
+        this.tweens.add({
+          targets: this.player,
+          x: 160,
+          duration: 2000,
+          ease: "Linear"
+        });
+        
+        this.tweens.add({
+          targets: this.ceci,
+          x: 190,
+          duration: 2000,
+          ease: "Linear"
+        });
+        break;
+        
+      // Add more cases for future levels
+      default:
+        this.player = createGraysonSprite(this, 160, 90);
+        break;
+    }
+  }
+  
   private createCustomGrid() {
     const gridWidth = 320;
     const gridHeight = 180;
@@ -212,6 +257,8 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private startCatChase() {
+    if (!this.cat || !this.npc) return; // Only on first visit
+    
     this.catHasAppeared = true;
     this.chaseState = "chasing";
     this.chaseTime = 0;
@@ -330,8 +377,8 @@ export default class GameScene extends Phaser.Scene {
     // Update walking animation
     updateGraysonWalk(this.player, isMoving);
 
-    // Proximity check to NPC (only if dog is still visible)
-    if (this.npc.visible) {
+    // Proximity check to NPC (only if dog exists and is visible)
+    if (this.npc && this.npc.visible) {
       const d = Phaser.Math.Distance.Between(
         this.player.x,
         this.player.y,
@@ -555,6 +602,8 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private updateChaseSequence(dt: number) {
+    if (!this.cat || !this.npc) return; // Only if they exist
+    
     this.chaseTime += dt;
     
     const chaseSpeed = 150; // Faster than normal movement
