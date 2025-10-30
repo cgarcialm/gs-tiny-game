@@ -121,29 +121,35 @@ export function createFurrySprite(
     drawPixel(7, 13, HAIR_BROWN);
     
     // FOX TAIL - fluffy, curved, wavy shape
-    // Base of tail (attached to body)
+    // Base of tail (attached to body) - thicker/fuller
+    drawPixel(8, 8, TAIL_COLOR);
     drawPixel(8, 9, TAIL_COLOR);
+    drawPixel(8, 10, TAIL_COLOR);
     drawPixel(9, 9, TAIL_COLOR);
+    drawPixel(9, 10, TAIL_COLOR);
+    drawPixel(9, 11, TAIL_COLOR);
     
     // Middle section - curves outward
-    drawPixel(9, 10, TAIL_COLOR);
     drawPixel(10, 10, TAIL_COLOR);
+    drawPixel(10, 11, TAIL_COLOR);
     drawPixel(11, 10, TAIL_COLOR);
-    
-    // Curve continues
     drawPixel(11, 11, TAIL_COLOR);
+    drawPixel(12, 10, TAIL_COLOR);
+    
+    // Curve continues - fuller middle section
     drawPixel(12, 11, TAIL_COLOR);
     drawPixel(13, 11, TAIL_COLOR);
-    
-    // Tail tip - curves back slightly and gets fluffy
     drawPixel(13, 10, TAIL_COLOR);
+    
+    // Tail tip - curves back up and gets fluffy
     drawPixel(14, 10, TAIL_COLOR);
     drawPixel(14, 9, TAIL_COLOR);
     drawPixel(15, 9, TAIL_COLOR);
+    drawPixel(15, 8, TAIL_COLOR);
     
     // Add white/light tip for fox tail effect
     const TIP_COLOR = tailColor === 0x8b4513 ? 0xffffff : 0xeeeeee;
-    drawPixel(15, 10, TIP_COLOR);
+    drawPixel(16, 8, TIP_COLOR);
     drawPixel(16, 9, TIP_COLOR);
   };
   

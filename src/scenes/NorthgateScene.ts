@@ -27,6 +27,7 @@ export default class NorthgateScene extends Phaser.Scene {
   private ticketGate!: Phaser.GameObjects.Rectangle;
   private syringes: Phaser.Physics.Arcade.Sprite[] = [];
   private furries: Phaser.GameObjects.Container[] = [];
+  private furryDialogueShown: boolean[] = [false, false];
   
   // Dialogue
   private dialogBox!: Phaser.GameObjects.Rectangle;
@@ -323,7 +324,7 @@ export default class NorthgateScene extends Phaser.Scene {
     this.physics.add.collider(
       this.player, 
       this.syringes, 
-      (player, syringe) => {
+      (_player, syringe) => {
         this.hitHazard();
         (syringe as Phaser.Physics.Arcade.Sprite).destroy(); // Remove syringe after hit
       }, 
@@ -333,14 +334,24 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private createFurries() {
-    // Create 2 convention-goers with furry tails
+    // Create 2 convention-goers with furry tails that walk back and forth
     
-    // Furry 1 - Bright pink shirt with brown tail (on platform 1)
+    // Furry 1 - Bright pink shirt with brown tail (walks on platform 1)
     const furry1 = createFurrySprite(this, 100, 115, 0xff69b4, 0x8b4513);
+    furry1.setData('walkMin', 70);
+    furry1.setData('walkMax', 130);
+    furry1.setData('walkDirection', 1);
+    furry1.setData('walkSpeed', 20);
+    furry1.setData('dialogue', "Don't worry, we're friendly!");
     this.furries.push(furry1);
     
-    // Furry 2 - Bright cyan shirt with white tail (on ground level)
-    const furry2 = createFurrySprite(this, 150, 160, 0x00ffff, 0xffffff);
+    // Furry 2 - Bright cyan shirt with gray tail (walks on ground level)
+    const furry2 = createFurrySprite(this, 150, 160, 0x00ffff, 0x999999);
+    furry2.setData('walkMin', 100);
+    furry2.setData('walkMax', 180);
+    furry2.setData('walkDirection', -1);
+    furry2.setData('walkSpeed', 25);
+    furry2.setData('dialogue', "Heading downtown for the con!");
     this.furries.push(furry2);
   }
   
@@ -406,6 +417,8 @@ export default class NorthgateScene extends Phaser.Scene {
   update() {
     if (!this.player || !this.playerSprite) return;
     
+    const dt = this.game.loop.delta / 1000;
+    
     // Handle dialogue
     if (this.dialogVisible) {
       if (Phaser.Input.Keyboard.JustDown(this.keys.ENTER) || 
@@ -462,10 +475,55 @@ export default class NorthgateScene extends Phaser.Scene {
     // Check ticket machine
     this.checkTicketMachine();
     
+    // Update furries walking
+    this.updateFurries(dt);
+    
+    // Check proximity to furries
+    this.checkFurryProximity();
+    
     // Check proximity to Ceci (only after she's arrived)
     if (this.ceciHasArrived) {
       this.checkCeciProximity();
     }
+  }
+  
+  private updateFurries(dt: number) {
+    this.furries.forEach(furry => {
+      const walkMin = furry.getData('walkMin');
+      const walkMax = furry.getData('walkMax');
+      const walkSpeed = furry.getData('walkSpeed');
+      let walkDirection = furry.getData('walkDirection');
+      
+      // Move furry
+      furry.x += walkDirection * walkSpeed * dt;
+      
+      // Flip sprite based on direction
+      furry.setScale(walkDirection > 0 ? -1 : 1, 1);
+      
+      // Reverse direction at boundaries
+      if (furry.x <= walkMin || furry.x >= walkMax) {
+        walkDirection *= -1;
+        furry.setData('walkDirection', walkDirection);
+      }
+    });
+  }
+  
+  private checkFurryProximity() {
+    this.furries.forEach((furry, index) => {
+      const distance = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        furry.x,
+        furry.y
+      );
+      
+      // Show dialogue when player passes nearby (only once per furry)
+      if (distance < 30 && !this.furryDialogueShown[index] && !this.dialogVisible) {
+        this.furryDialogueShown[index] = true;
+        const dialogue = furry.getData('dialogue');
+        this.showDialog(dialogue);
+      }
+    });
   }
   
   private checkEscalator() {
