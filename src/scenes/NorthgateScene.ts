@@ -333,7 +333,6 @@ export default class NorthgateScene extends Phaser.Scene {
   private checkCeciArrival() {
     // When train reaches middle of screen, Ceci gets off
     if (this.train.x < 200 && this.train.x > 100) {
-      this.ceciHasArrived = true;
       this.firstTrainPassed = true;
       
       // Make Ceci visible on the train
@@ -341,28 +340,51 @@ export default class NorthgateScene extends Phaser.Scene {
       this.ceci.x = this.train.x + 20; // On the train
       this.ceci.y = this.train.y;
       
-      // Ceci gets off the train - moves to platform
+      // Step 1: Ceci gets off the train - moves to train platform
       this.tweens.add({
         targets: this.ceci,
-        x: 200,
+        x: 255, // Move to escalator
         y: 75, // Train platform level
         duration: 1000,
         ease: "Power2",
         onComplete: () => {
-          // After getting off, show a little message
-          const arrivalText = this.add.text(this.ceci.x, this.ceci.y - 20, "*steps off train*", {
-            fontFamily: "monospace",
-            fontSize: "8px",
-            color: "#cfe8ff",
-            resolution: 1,
-          }).setOrigin(0.5);
-          
+          // Step 2: Ceci takes escalator to top platform
           this.tweens.add({
-            targets: arrivalText,
-            alpha: 0,
-            y: this.ceci.y - 35,
-            duration: 2000,
-            onComplete: () => arrivalText.destroy()
+            targets: this.ceci,
+            y: 35, // Top platform
+            duration: 1500,
+            ease: "Linear",
+            onComplete: () => {
+              // Step 3: Ceci walks to final position on top platform
+              this.tweens.add({
+                targets: this.ceci,
+                x: 200,
+                duration: 800,
+                ease: "Power2",
+                onComplete: () => {
+                  this.ceciHasArrived = true;
+                  // Show thought bubble (positioned to the left to avoid station sign)
+                  const thoughtText = this.add.text(80, 30, "Meeting internet strangers\nat unknown train stations...\nPeak dating.", {
+                    fontFamily: "monospace",
+                    fontSize: "9px",
+                    color: "#cfe8ff",
+                    align: "center",
+                    backgroundColor: "rgba(0,0,0,0.7)",
+                    padding: { left: 4, right: 4, top: 3, bottom: 3 },
+                    resolution: 1,
+                  }).setOrigin(0.5);
+                  
+                  // Fade out after a while
+                  this.tweens.add({
+                    targets: thoughtText,
+                    alpha: 0,
+                    delay: 3000,
+                    duration: 2000,
+                    onComplete: () => thoughtText.destroy()
+                  });
+                }
+              });
+            }
           });
         }
       });
