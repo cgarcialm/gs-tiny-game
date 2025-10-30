@@ -1,4 +1,8 @@
 import Phaser from "phaser";
+import { setupControls, getHorizontalAxis } from "../utils/controls";
+import type { GameControls } from "../utils/controls";
+import { HelpMenu } from "../utils/helpMenu";
+import { PauseMenu } from "../utils/pauseMenu";
 
 const PLAYER_ASCII = String.raw`
    _---
@@ -109,7 +113,9 @@ type SceneState =
   | "intro_complete"; // Ready to start game
 
 export default class TitleScene extends Phaser.Scene {
-  private keys!: Record<string, Phaser.Input.Keyboard.Key>;
+  private controls!: GameControls;
+  private helpMenu!: HelpMenu;
+  private pauseMenu!: PauseMenu;
   private grayson!: Phaser.GameObjects.Text;
   private ceci!: Phaser.GameObjects.Text;
   private smush!: Phaser.GameObjects.Text;
@@ -120,6 +126,7 @@ export default class TitleScene extends Phaser.Scene {
   private dialogBox!: Phaser.GameObjects.Rectangle;
   private dialogText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
+  private helpHintText?: Phaser.GameObjects.Text;
   private cardPieces: Phaser.GameObjects.Ellipse[] = [];
   
   // Transformation effects
@@ -193,7 +200,7 @@ export default class TitleScene extends Phaser.Scene {
       resolution: CHAR_RESOLUTION,
     }).setOrigin(0.5);
 
-    this.hintText = this.add.text(SCREEN_CENTER_X, HINT_TEXT_Y, "A/D to move", {
+    this.hintText = this.add.text(SCREEN_CENTER_X, HINT_TEXT_Y, "← → or A/D to move", {
       fontFamily: "monospace",
       fontSize: `${HINT_FONT_SIZE}px`,
       color: TITLE_COLOR,
@@ -220,16 +227,59 @@ export default class TitleScene extends Phaser.Scene {
 
     this.hideDialog();
 
-    // Input
-    this.keys = {
-      A: this.input.keyboard!.addKey("A"),
-      D: this.input.keyboard!.addKey("D"),
-      ENTER: this.input.keyboard!.addKey("ENTER"),
-    };
+    // Setup standard controls (WASD + arrows, space, E, Enter, ESC, H)
+    this.controls = setupControls(this);
+    
+    // Create help menu
+    this.helpMenu = new HelpMenu(this);
+    
+    // Create pause menu
+    this.pauseMenu = new PauseMenu(this);
+    
+    // Help hint (bottom-right corner, lower to avoid overlaps) - shown after first Eboshi interaction in GameScene
+    const showHelpHint = this.registry.get('showHelpHint') || false;
+    if (showHelpHint) {
+      this.helpHintText = this.add
+        .text(312, 176, "H for Help", {
+          fontFamily: "monospace",
+          fontSize: "8px",
+          color: "#cfe8ff",
+          backgroundColor: "rgba(0,0,0,0.4)",
+          padding: { left: 3, right: 3, top: 2, bottom: 2 },
+          resolution: 1,
+        })
+        .setOrigin(1, 1)
+        .setDepth(10);
+    }
   }
 
   update() {
     const dt = this.game.loop.delta / 1000;
+
+    // Handle pause menu toggle (ESC key)
+    if (Phaser.Input.Keyboard.JustDown(this.controls.escape)) {
+      this.pauseMenu.toggle();
+    }
+    
+    // If pause menu is open, handle exit to title (which is same scene, just restart)
+    if (this.pauseMenu.isVisible()) {
+      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+        // Restart title scene
+        this.pauseMenu.hide();
+        this.scene.restart();
+      }
+      return;
+    }
+
+    // Handle help menu toggle (H key)
+    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
+      this.helpMenu.toggle();
+    }
+    
+    // If help menu is open, don't process other input
+    if (this.helpMenu.isVisible()) {
+      return;
+    }
 
     switch (this.sceneState) {
       case "approaching":
@@ -239,7 +289,7 @@ export default class TitleScene extends Phaser.Scene {
       
       case "card_ready":
         // Waiting for ENTER to look at card
-        if (Phaser.Input.Keyboard.JustDown(this.keys.ENTER)) {
+        if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
           this.startCutscene();
         }
         break;
@@ -253,7 +303,7 @@ export default class TitleScene extends Phaser.Scene {
         break;
       
       case "sad_dialogue":
-        if (Phaser.Input.Keyboard.JustDown(this.keys.ENTER)) {
+        if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
           this.ceciRuns();
         }
         break;
@@ -285,9 +335,7 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   private handleMovement(dt: number) {
-    let vx = 0;
-    if (this.keys.A.isDown) vx -= 1;
-    if (this.keys.D.isDown) vx += 1;
+    const vx = getHorizontalAxis(this, this.controls);
 
     if (vx) {
       this.grayson.x += vx * PLAYER_SPEED * dt;

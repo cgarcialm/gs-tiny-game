@@ -1,15 +1,20 @@
 import Phaser from "phaser";
 import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite, createCeciSprite, createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
+import { setupControls, getHorizontalAxis, getVerticalAxis, shouldCloseDialogue } from "../utils/controls";
+import type { GameControls } from "../utils/controls";
+import { HelpMenu } from "../utils/helpMenu";
+import { PauseMenu } from "../utils/pauseMenu";
 
 type DialogueState = "idle" | "open";
 type ChaseState = "idle" | "chasing";
 
 // FOR TESTING: Set to desired level number to skip ahead
-const DEBUG_LEVEL = 1; // 0 = start, 1 = after Northgate, 2 = after level 2, etc.
+const DEBUG_LEVEL = 0; // 0 = start, 1 = after Northgate, 2 = after level 2, etc.
 
 export default class GameScene extends Phaser.Scene {
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private keys!: Record<string, Phaser.Input.Keyboard.Key>;
+  private controls!: GameControls;
+  private helpMenu!: HelpMenu;
+  private pauseMenu!: PauseMenu;
 
   private player!: Phaser.GameObjects.Container;
   private npc!: Phaser.GameObjects.Container;
@@ -18,11 +23,15 @@ export default class GameScene extends Phaser.Scene {
   private cardPiece!: Phaser.GameObjects.Graphics;
   private cardSparkles: Phaser.GameObjects.Text[] = [];
   
+  private isJumping = false;
+  private playerBaseY = 0;
+  
   private completedLevels = 0; // 0 = none, 1 = Northgate, 2 = Level2, etc.
 
   private speed = 80; // px/s
   private promptText!: Phaser.GameObjects.Text;
   private cardCounterText!: Phaser.GameObjects.Text;
+  private helpHintText!: Phaser.GameObjects.Text;
 
   // dialogue UI
   private dialogState: DialogueState = "idle";
@@ -87,18 +96,14 @@ export default class GameScene extends Phaser.Scene {
     // Setup scene based on completed levels
     this.setupSceneForLevel(this.completedLevels);
 
-    // Input
-    this.cursors = this.input.keyboard!.createCursorKeys();
-    this.keys = {
-      W: this.input.keyboard!.addKey("W"),
-      A: this.input.keyboard!.addKey("A"),
-      S: this.input.keyboard!.addKey("S"),
-      D: this.input.keyboard!.addKey("D"),
-      E: this.input.keyboard!.addKey("E"),
-      SPACE: this.input.keyboard!.addKey("SPACE"),
-      ENTER: this.input.keyboard!.addKey("ENTER"),
-      ESC: this.input.keyboard!.addKey("ESC"),
-    };
+    // Setup standard controls (WASD + arrows, space, E, Enter, ESC, H)
+    this.controls = setupControls(this);
+    
+    // Create help menu
+    this.helpMenu = new HelpMenu(this);
+    
+    // Create pause menu
+    this.pauseMenu = new PauseMenu(this);
 
     // "Press E to interact" prompt (hidden by default)
     this.promptText = this.add
@@ -128,6 +133,23 @@ export default class GameScene extends Phaser.Scene {
       })
       .setOrigin(1, 0)
       .setDepth(10);
+    
+    // Help hint (bottom-right corner, lower to avoid overlaps) - shown after first Eboshi interaction
+    this.helpHintText = this.add
+      .text(312, 176, "H for Help", {
+        fontFamily: "monospace",
+        fontSize: "8px",
+        color: "#cfe8ff",
+        backgroundColor: "rgba(0,0,0,0.4)",
+        padding: { left: 3, right: 3, top: 2, bottom: 2 },
+        resolution: 1,
+      })
+      .setOrigin(1, 1)
+      .setDepth(10);
+    
+    // Check if player has seen help hint (show after first Eboshi interaction)
+    const showHelpHint = this.registry.get('showHelpHint') || false;
+    this.helpHintText.setVisible(showHelpHint);
 
     // Dialogue UI (hidden)
     this.createDialogUI();
@@ -261,6 +283,12 @@ export default class GameScene extends Phaser.Scene {
     this.dialogState = "idle";
     this.dialogBox.setVisible(false);
     this.dialogText.setVisible(false);
+    
+    // Show help hint after first dialogue with Eboshi (level 0)
+    if (this.completedLevels === 0 && this.hasInteractedWithEboshi) {
+      this.registry.set('showHelpHint', true);
+      this.helpHintText.setVisible(true);
+    }
   }
 
   private advanceDialog() {
@@ -341,9 +369,34 @@ export default class GameScene extends Phaser.Scene {
   update() {
     const dt = this.game.loop.delta / 1000;
 
+    // Handle pause menu toggle (ESC key)
+    if (Phaser.Input.Keyboard.JustDown(this.controls.escape)) {
+      this.pauseMenu.toggle();
+    }
+    
+    // If pause menu is open, handle exit to title
+    if (this.pauseMenu.isVisible()) {
+      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+        // Exit to title screen
+        this.pauseMenu.hide();
+        this.scene.start("Title");
+      }
+      return;
+    }
+
+    // Handle help menu toggle (H key)
+    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
+      this.helpMenu.toggle();
+    }
+    
+    // If help menu is open, don't process other input
+    if (this.helpMenu.isVisible()) {
+      return;
+    }
+
     // Handle image popup
     if (this.popupVisible) {
-      if (Phaser.Input.Keyboard.JustDown(this.keys.ENTER)) {
+      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
         if (this.currentPopupImage === 1) {
           this.showNextImage();
         } else {
@@ -352,7 +405,7 @@ export default class GameScene extends Phaser.Scene {
           this.scene.start("Northgate");
         }
       }
-      if (Phaser.Input.Keyboard.JustDown(this.keys.ESC)) {
+      if (Phaser.Input.Keyboard.JustDown(this.controls.escape)) {
         this.hideImagePopup();
       }
       return;
@@ -366,23 +419,15 @@ export default class GameScene extends Phaser.Scene {
 
     // If in dialogue, only allow closing/advancing; no movement
     if (this.dialogState === "open") {
-      if (Phaser.Input.Keyboard.JustDown(this.keys.ESC)) this.hideDialog();
-      if (
-        Phaser.Input.Keyboard.JustDown(this.keys.SPACE) ||
-        Phaser.Input.Keyboard.JustDown(this.keys.ENTER)
-      ) {
+      if (shouldCloseDialogue(this.controls)) {
         this.advanceDialog();
       }
       return;
     }
 
-    // Movement (keyboard only)
-    let vx = 0,
-      vy = 0;
-    if (this.cursors.left?.isDown || this.keys.A.isDown) vx -= 1;
-    if (this.cursors.right?.isDown || this.keys.D.isDown) vx += 1;
-    if (this.cursors.up?.isDown || this.keys.W.isDown) vy -= 1;
-    if (this.cursors.down?.isDown || this.keys.S.isDown) vy += 1;
+    // Movement (WASD + arrow keys)
+    let vx = getHorizontalAxis(this, this.controls);
+    let vy = getVerticalAxis(this, this.controls);
 
     const isMoving = vx !== 0 || vy !== 0;
     
@@ -400,6 +445,25 @@ export default class GameScene extends Phaser.Scene {
     }
     this.player.x += vx * this.speed * dt;
     this.player.y += vy * this.speed * dt;
+    
+    // Jump/hop when space is pressed
+    if (Phaser.Input.Keyboard.JustDown(this.controls.jump) && !this.isJumping) {
+      this.isJumping = true;
+      this.playerBaseY = this.player.y;
+      
+      // Small hop animation
+      this.tweens.add({
+        targets: this.player,
+        y: this.player.y - 15, // Hop up 15 pixels
+        duration: 200,
+        ease: "Quad.easeOut",
+        yoyo: true,
+        onComplete: () => {
+          this.isJumping = false;
+          this.player.y = this.playerBaseY;
+        }
+      });
+    }
     
     // Round player position to prevent sub-pixel transparency issues
     this.player.x = Math.round(this.player.x);
@@ -430,7 +494,7 @@ export default class GameScene extends Phaser.Scene {
         this.promptText.setPosition(this.npc.x, this.npc.y - 14);
 
         // Press E to interact
-        if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+        if (Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
           this.hasInteractedWithEboshi = true;
           this.dialogIndex = 0;
           this.showDialog(this.currentDialogLines[this.dialogIndex]);
@@ -442,7 +506,7 @@ export default class GameScene extends Phaser.Scene {
       
       // Still allow interaction even if prompt is hidden
       if (near && this.hasInteractedWithEboshi) {
-        if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+        if (Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
           this.dialogIndex = 0;
           this.showDialog(this.currentDialogLines[this.dialogIndex]);
         }
@@ -461,7 +525,7 @@ export default class GameScene extends Phaser.Scene {
       const nearCard = cardDistance < 30; // distance threshold for card
       
       // Allow picking up card when near (no prompt - player already knows to press E)
-      if (nearCard && Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+      if (nearCard && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
         this.pickUpCardPiece();
       }
     }
@@ -637,7 +701,7 @@ export default class GameScene extends Phaser.Scene {
         cardY
       );
       
-      if (distance < 30 && Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+      if (distance < 30 && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
         // Picked up!
         cardPiece.destroy();
         

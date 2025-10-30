@@ -1,11 +1,16 @@
 import Phaser from "phaser";
 import { createGraysonSprite, updateGraysonWalk, createCeciSprite, createRandomGuySprite, createSecurityGuardSprite, createFurrySprite } from "../utils/sprites";
+import { setupControls, getHorizontalAxis, shouldCloseDialogue } from "../utils/controls";
+import type { GameControls } from "../utils/controls";
+import { HelpMenu } from "../utils/helpMenu";
+import { PauseMenu } from "../utils/pauseMenu";
 
 export default class NorthgateScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private playerSprite!: Phaser.GameObjects.Container;
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private keys!: Record<string, Phaser.Input.Keyboard.Key>;
+  private controls!: GameControls;
+  private helpMenu!: HelpMenu;
+  private pauseMenu!: PauseMenu;
   
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
   private escalators: Phaser.GameObjects.Rectangle[] = [];
@@ -37,6 +42,7 @@ export default class NorthgateScene extends Phaser.Scene {
   private dialogText!: Phaser.GameObjects.Text;
   private dialogVisible = false;
   private promptText!: Phaser.GameObjects.Text;
+  private helpHintText!: Phaser.GameObjects.Text;
 
   constructor() {
     super("Northgate");
@@ -73,18 +79,14 @@ export default class NorthgateScene extends Phaser.Scene {
     // Create furries (NPCs)
     this.createFurries();
     
-    // Input
-    this.cursors = this.input.keyboard!.createCursorKeys();
-    this.keys = {
-      W: this.input.keyboard!.addKey("W"),
-      A: this.input.keyboard!.addKey("A"),
-      S: this.input.keyboard!.addKey("S"),
-      D: this.input.keyboard!.addKey("D"),
-      SPACE: this.input.keyboard!.addKey("SPACE"),
-      E: this.input.keyboard!.addKey("E"),
-      ENTER: this.input.keyboard!.addKey("ENTER"),
-      ESC: this.input.keyboard!.addKey("ESC"),
-    };
+    // Setup standard controls (WASD + arrows, space, E, Enter, ESC, H)
+    this.controls = setupControls(this);
+    
+    // Create help menu
+    this.helpMenu = new HelpMenu(this);
+    
+    // Create pause menu
+    this.pauseMenu = new PauseMenu(this);
     
     // UI
     this.createUI();
@@ -437,6 +439,23 @@ export default class NorthgateScene extends Phaser.Scene {
       wordWrap: { width: 280 },
       resolution: 2,
     }).setOrigin(0, 0).setVisible(false);
+    
+    // Help hint (bottom-right corner, lower to avoid overlaps) - shown after first Eboshi interaction in GameScene
+    this.helpHintText = this.add
+      .text(312, 176, "H for Help", {
+        fontFamily: "monospace",
+        fontSize: "8px",
+        color: "#cfe8ff",
+        backgroundColor: "rgba(0,0,0,0.4)",
+        padding: { left: 3, right: 3, top: 2, bottom: 2 },
+        resolution: 1,
+      })
+      .setOrigin(1, 1)
+      .setDepth(10);
+    
+    // Check if player has seen help hint
+    const showHelpHint = this.registry.get('showHelpHint') || false;
+    this.helpHintText.setVisible(showHelpHint);
   }
 
   update() {
@@ -444,10 +463,34 @@ export default class NorthgateScene extends Phaser.Scene {
     
     const dt = this.game.loop.delta / 1000;
     
+    // Handle pause menu toggle (ESC key)
+    if (Phaser.Input.Keyboard.JustDown(this.controls.escape)) {
+      this.pauseMenu.toggle();
+    }
+    
+    // If pause menu is open, handle exit to title
+    if (this.pauseMenu.isVisible()) {
+      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+        // Exit to title screen
+        this.pauseMenu.hide();
+        this.scene.start("Title");
+      }
+      return;
+    }
+    
+    // Handle help menu toggle (H key)
+    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
+      this.helpMenu.toggle();
+    }
+    
+    // If help menu is open, don't process other input
+    if (this.helpMenu.isVisible()) {
+      return;
+    }
+    
     // Handle dialogue
     if (this.dialogVisible) {
-      if (Phaser.Input.Keyboard.JustDown(this.keys.ENTER) || 
-          Phaser.Input.Keyboard.JustDown(this.keys.SPACE)) {
+      if (shouldCloseDialogue(this.controls)) {
         this.hideDialog();
       }
       return;
@@ -467,11 +510,12 @@ export default class NorthgateScene extends Phaser.Scene {
       return;
     }
     
-    // Player movement - Horizontal movement
-    if (this.cursors.left?.isDown || this.keys.A.isDown) {
+    // Player movement - Horizontal movement (WASD + arrows)
+    const hAxis = getHorizontalAxis(this, this.controls);
+    if (hAxis < 0) {
       this.player.setVelocityX(-this.speed);
       this.playerSprite.setScale(1, 1); // Face left
-    } else if (this.cursors.right?.isDown || this.keys.D.isDown) {
+    } else if (hAxis > 0) {
       this.player.setVelocityX(this.speed);
       this.playerSprite.setScale(-1, 1); // Face right
     } else {
@@ -481,7 +525,7 @@ export default class NorthgateScene extends Phaser.Scene {
     // Small jump (always available)
     const onGround = this.player.body!.touching.down;
     
-    if (onGround && this.keys.SPACE.isDown) {
+    if (onGround && this.controls.jump.isDown) {
       // Small hop - enough to clear syringes but not reach platforms
       this.player.setVelocityY(-120);
     }
@@ -641,16 +685,16 @@ export default class NorthgateScene extends Phaser.Scene {
           return; // Can't use this escalator without ticket
         }
         
-        // Escalators work when pressing UP arrow (going up)
-        if (this.cursors.up?.isDown || this.keys.W.isDown) {
+        // Escalators work when pressing UP arrow/W (going up)
+        if (this.controls.up.isDown || this.input.keyboard!.addKey('W').isDown) {
           // Only apply upward force if not already on a platform above the escalator
           if (this.player.y > bounds.top + 5) {
             this.player.setVelocityY(-150);
           }
         }
         
-        // Go down with DOWN arrow (faster descent)
-        if (this.cursors.down?.isDown || this.keys.S.isDown) {
+        // Go down with DOWN arrow/S (faster descent)
+        if (this.controls.down.isDown || this.input.keyboard!.addKey('S').isDown) {
           this.player.setVelocityY(150);
         }
         
@@ -800,13 +844,10 @@ export default class NorthgateScene extends Phaser.Scene {
     );
     
     if (distance < 20 && !this.hasTicket) {
-      // Only show prompt if player has already been asked for ticket
-      if (this.hasMetGuard) {
-        this.promptText.setVisible(true);
-        this.promptText.setPosition(298, 132);
-      }
+      // Player can interact with machine after being asked for ticket
+      // No prompt shown - player should know to press E from previous interactions
       
-      if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+      if (Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
         this.hasTicket = true;
         this.promptText.setVisible(false);
         this.showDialog("*taps ORCA card*\nTicket validated! You can now proceed.");
