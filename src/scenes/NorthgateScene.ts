@@ -812,15 +812,45 @@ export default class NorthgateScene extends Phaser.Scene {
     // Rotate sprite to laying down
     this.playerSprite.setAngle(90);
     
-    // Yellow flash effect + screen wobble
+    // Yellow flash effect + screen wobble (longer)
     this.cameras.main.flash(200, 255, 255, 0);
-    this.cameras.main.shake(3000, 0.003);
+    this.cameras.main.shake(5000, 0.003);
+    
+    // Screen fade/blur effect
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.cameras.main.fadeIn(500, 0, 0, 0, false, undefined, 500);
+    
+    // Dizzy stars above Grayson's head
+    const stars = ["✦", "✧", "★"];
+    for (let i = 0; i < 3; i++) {
+      const star = this.add.text(
+        this.player.x + (i - 1) * 12,
+        this.player.y - 20,
+        stars[i],
+        {
+          fontSize: "16px",
+          color: "#ffeb3b",
+          resolution: 1,
+        }
+      ).setOrigin(0.5);
+      
+      // Animate stars spinning and fading (longer duration)
+      this.tweens.add({
+        targets: star,
+        angle: 360,
+        y: this.player.y - 35,
+        alpha: 0,
+        duration: 4000,
+        ease: "Power2",
+        onComplete: () => star.destroy()
+      });
+    }
     
     // Warning message
-    this.showDialog("Ouch! That wasn't candy...");
+    this.showDialog("Ouch! That wasn't candy!\nI just stepped on a needle...");
     
     // After 5 seconds, get back up (stay in same position)
-    this.time.delayedCall(3000, () => {
+    this.time.delayedCall(5000, () => {
       this.isDrugged = false;
       this.playerSprite.setAngle(0);
       this.hideDialog();
