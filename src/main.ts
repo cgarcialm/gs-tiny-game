@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import BootScene from "./scenes/BootScene";
 import GameScene from "./scenes/GameScene";
 import TitleScene from "./scenes/TitleScene";
+import NorthgateScene from "./scenes/NorthgateScene";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -10,8 +11,14 @@ const config: Phaser.Types.Core.GameConfig = {
   backgroundColor: "#0a0f14",
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   render: { pixelArt: true, antialias: false, roundPixels: true },
-  dom: { createContainer: true }, // Enable DOM elements
-  scene: [BootScene, TitleScene, GameScene], // Title in the chain
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { y: 500, x: 0 },
+      debug: false
+    }
+  },
+  scene: [BootScene, TitleScene, GameScene, NorthgateScene],
 };
 
 new Phaser.Game(config);

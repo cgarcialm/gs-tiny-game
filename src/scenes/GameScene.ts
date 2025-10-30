@@ -265,7 +265,9 @@ export default class GameScene extends Phaser.Scene {
         if (this.currentPopupImage === 1) {
           this.showNextImage();
         } else {
+          // After second image, go to Northgate Station
           this.hideImagePopup();
+          this.scene.start("Northgate");
         }
       }
       if (Phaser.Input.Keyboard.JustDown(this.keys.ESC)) {

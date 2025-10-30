@@ -2,5 +2,6 @@
 export { createGraysonSprite, updateGraysonWalk } from "./GraysonSprite";
 export { createEboshiSprite } from "./EboshiSprite";
 export { createSmushSprite } from "./SmushSprite";
+export { createCeciSprite } from "./CeciSprite";
 export { createCardPieceSprite, spawnCardPieceSparkles } from "./CardPieceSprite";
 
