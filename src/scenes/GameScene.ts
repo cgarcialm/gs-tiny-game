@@ -23,9 +23,9 @@ export default class GameScene extends Phaser.Scene {
   private dialogBox!: Phaser.GameObjects.Rectangle;
   private dialogText!: Phaser.GameObjects.Text;
   private dialogLines: string[] = [
-    "Hi Grayson! Do you happen to have peanut butter?",
-    "Also, I think there's a card piece over there... *suddenly looks worried*",
-    "Oh no... I hear something... RUN!!"
+    "Grayson! You look... different. More defined!",
+    "Oh right, peanut butter? No? Well, there's a card piece over there...",
+    "*suddenly looks worried* Oh no... I hear something... RUN!!"
   ];
   private dialogIndex = 0;
   

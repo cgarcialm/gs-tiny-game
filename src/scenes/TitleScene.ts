@@ -102,6 +102,10 @@ type SceneState =
   | "chase"        // Ebo/Smush/pieces flying around
   | "sad_dialogue" // Ceci is sad
   | "ceci_runs"    // Ceci runs after fragments
+  | "fragments_scattered" // Fragments went to void
+  | "transformation_start" // Grayson realizes something's wrong
+  | "transforming" // Grayson transforming to pixels
+  | "void_entry"   // Entering the void text
   | "intro_complete"; // Ready to start game
 
 export default class TitleScene extends Phaser.Scene {
@@ -117,6 +121,12 @@ export default class TitleScene extends Phaser.Scene {
   private dialogText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
   private cardPieces: Phaser.GameObjects.Ellipse[] = [];
+  
+  // Transformation effects
+  private pixelGrayson?: Phaser.GameObjects.Container;
+  private transformationTime = 0;
+  private glitchGraphics?: Phaser.GameObjects.Graphics;
+  private voidText?: Phaser.GameObjects.Text;
 
   constructor() { 
     super({ key: "Title" });
@@ -252,11 +262,24 @@ export default class TitleScene extends Phaser.Scene {
         this.animateCeciRuns(dt);
         break;
       
+      case "fragments_scattered":
+        // Waiting for continuation
+        break;
+      
+      case "transformation_start":
+        // Waiting for transformation to begin
+        break;
+      
+      case "transforming":
+        this.animateTransformation(dt);
+        break;
+      
+      case "void_entry":
+        // Waiting before scene transition
+        break;
+      
       case "intro_complete":
-        // Ready to start the actual game
-        if (Phaser.Input.Keyboard.JustDown(this.keys.ENTER)) {
-          this.scene.start("Game");
-        }
+        // Auto-transition to game
         break;
     }
   }
@@ -359,8 +382,33 @@ export default class TitleScene extends Phaser.Scene {
     this.ceci.x += CECI_SPEED * dt;
     
     if (this.ceci.x > SCREEN_WIDTH) {
-      this.showDialog("Your goal: Collect all card fragments!");
-      this.sceneState = "intro_complete";
+      this.sceneState = "fragments_scattered";
+      this.showDialog("The fragments scattered into the void...");
+      
+      // After a delay, Grayson realizes something
+      this.time.delayedCall(2000, () => {
+        this.sceneState = "transformation_start";
+        this.showDialog("Grayson: Wait... what's happening to me?");
+        
+        // Start glowing effect
+        this.tweens.add({
+          targets: this.grayson,
+          alpha: { from: 1, to: 0.5 },
+          yoyo: true,
+          repeat: 3,
+          duration: 300,
+        });
+        
+        // The big realization
+        this.time.delayedCall(2000, () => {
+          this.showDialog("Grayson: Am I getting... PIXELS?!");
+          
+          // Start transformation
+          this.time.delayedCall(1500, () => {
+            this.startTransformation();
+          });
+        });
+      });
     }
   }
 
@@ -384,5 +432,118 @@ export default class TitleScene extends Phaser.Scene {
     this.dialogBox.setVisible(false);
     this.dialogText.setVisible(false);
     this.hintText.setVisible(true);
+  }
+  
+  private startTransformation() {
+    this.hideDialog();
+    this.sceneState = "transforming";
+    this.transformationTime = 0;
+    
+    // Import pixel sprite function dynamically
+    import("../utils/sprites").then(({ createGraysonSprite }) => {
+      // Create pixel version at Grayson's position
+      this.pixelGrayson = createGraysonSprite(this, this.grayson.x, this.grayson.y);
+      this.pixelGrayson.setAlpha(0);
+      this.pixelGrayson.setScale(0.5);
+      
+      // Create glitch effect graphics
+      this.glitchGraphics = this.add.graphics();
+      this.glitchGraphics.setDepth(10);
+    });
+  }
+  
+  private animateTransformation(dt: number) {
+    this.transformationTime += dt;
+    
+    if (!this.pixelGrayson) return;
+    
+    const duration = 2.5; // Total transformation time
+    const progress = Math.min(this.transformationTime / duration, 1);
+    
+    if (progress < 0.8) {
+      // Glitch between ASCII and pixel
+      const flickerSpeed = 10 + progress * 20; // Speed up over time
+      const showPixel = Math.floor(this.transformationTime * flickerSpeed) % 2 === 0;
+      
+      this.grayson.setAlpha(showPixel ? 0 : 1);
+      this.pixelGrayson.setAlpha(showPixel ? 1 : 0);
+      this.pixelGrayson.setScale(0.5 + progress * 0.5);
+      
+      // Random glitch rectangles
+      if (this.glitchGraphics && Math.random() < 0.3) {
+        this.glitchGraphics.clear();
+        this.glitchGraphics.fillStyle(Math.random() > 0.5 ? 0x00d4ff : 0xff00ff, 0.3);
+        this.glitchGraphics.fillRect(
+          Math.random() * SCREEN_WIDTH,
+          Math.random() * SCREEN_HEIGHT,
+          Math.random() * 50,
+          Math.random() * 50
+        );
+      }
+    } else if (progress < 1) {
+      // Finalize transformation
+      this.grayson.setAlpha(0);
+      this.pixelGrayson.setAlpha(1);
+      this.pixelGrayson.setScale(1);
+      
+      if (this.glitchGraphics) {
+        this.glitchGraphics.clear();
+      }
+    } else {
+      // Transformation complete
+      this.enterVoid();
+    }
+  }
+  
+  private enterVoid() {
+    this.sceneState = "void_entry";
+    
+    // Big dramatic text
+    this.voidText = this.add.text(SCREEN_CENTER_X, SCREEN_CENTER_Y, "ENTERING THE VOID...", {
+      fontFamily: "monospace",
+      fontSize: "16px",
+      color: "#00d4ff",
+      fontStyle: "bold",
+      align: "center",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5).setAlpha(0);
+    
+    // Text appear
+    this.tweens.add({
+      targets: this.voidText,
+      alpha: 1,
+      duration: 500,
+      ease: "Power2",
+    });
+    
+    // Neon grid effect
+    const gridGraphics = this.add.graphics();
+    gridGraphics.lineStyle(1, 0xff00ff, 0.5);
+    gridGraphics.setAlpha(0);
+    
+    // Draw the grid
+    const gridSize = 16;
+    for (let x = 0; x <= SCREEN_WIDTH; x += gridSize) {
+      gridGraphics.lineBetween(x, 0, x, SCREEN_HEIGHT);
+    }
+    for (let y = 0; y <= SCREEN_HEIGHT; y += gridSize) {
+      gridGraphics.lineBetween(0, y, SCREEN_WIDTH, y);
+    }
+    
+    // Fade in the grid
+    this.tweens.add({
+      targets: gridGraphics,
+      alpha: 1,
+      duration: 1500,
+      ease: "Power2"
+    });
+    
+    // Fade out and transition to game
+    this.time.delayedCall(2000, () => {
+      this.cameras.main.fadeOut(1000, 0, 0, 0);
+      this.time.delayedCall(1000, () => {
+        this.scene.start("Game");
+      });
+    });
   }
 }
