@@ -4,12 +4,10 @@ import { setupControls, getHorizontalAxis, getVerticalAxis, shouldCloseDialogue,
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
 import { PauseMenu } from "../utils/pauseMenu";
+import { DEBUG_START_LEVEL } from "../config/debug";
 
 type DialogueState = "idle" | "open";
 type ChaseState = "idle" | "chasing";
-
-// FOR TESTING: Set to desired level number to skip ahead
-const DEBUG_LEVEL = 0; // 0 = start, 1 = after Northgate, 2 = after level 2, etc.
 
 export default class GameScene extends Phaser.Scene {
   private controls!: GameControls;
@@ -90,8 +88,8 @@ export default class GameScene extends Phaser.Scene {
     // More intense blue background with bright green thin grid lines
     this.createCustomGrid();
     
-    // Get completed levels (use DEBUG_LEVEL for testing)
-    this.completedLevels = DEBUG_LEVEL || this.registry.get('completedLevels') || 0;
+    // Get completed levels (use DEBUG_START_LEVEL for testing)
+    this.completedLevels = DEBUG_START_LEVEL || this.registry.get('completedLevels') || 0;
 
     // Setup scene based on completed levels
     this.setupSceneForLevel(this.completedLevels);

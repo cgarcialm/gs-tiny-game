@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { DEBUG_START_SCENE } from "../config/debug";
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -31,10 +32,19 @@ export default class BootScene extends Phaser.Scene {
     // Set camera to respect pixel art settings
     this.cameras.main.setRoundPixels(true);
     
-    // Quick test: uncomment the line below to skip title and go straight to GameScene
-    this.scene.start("Game");
+    // Initialize registry for game progress
+    if (!this.registry.has('completedLevels')) {
+      this.registry.set('completedLevels', 0);
+    }
     
-    // Normal flow: go to title screen
-    // this.scene.start("Title");
+    // Debug: Override start scene if configured (see src/config/debug.ts)
+    if (DEBUG_START_SCENE !== "Title") {
+      console.log(`[DEBUG] Starting from scene: ${DEBUG_START_SCENE}`);
+      this.scene.start(DEBUG_START_SCENE);
+      return;
+    }
+    
+    // Normal flow: start with title screen
+    this.scene.start("Title");
   }
 }
