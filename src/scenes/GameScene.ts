@@ -6,6 +6,7 @@ import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
 import { PauseMenu } from "../utils/pauseMenu";
 import { DialogueManager } from "../utils/dialogueManager";
+import { handleMenuInput } from "../utils/menuHandler";
 import { DEBUG_START_LEVEL } from "../config/debug";
 
 type DialogueState = "idle" | "open";
@@ -355,29 +356,9 @@ export default class GameScene extends Phaser.Scene {
   update() {
     const dt = this.game.loop.delta / 1000;
 
-    // Handle pause menu toggle (ESC key)
-    if (Phaser.Input.Keyboard.JustDown(this.controls.escape)) {
-      this.pauseMenu.toggle();
-    }
-    
-    // If pause menu is open, handle exit to title
-    if (this.pauseMenu.isVisible()) {
-      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
-        // Exit to title screen
-        this.pauseMenu.hide();
-        this.scene.start("Title");
-      }
-      return;
-    }
-
-    // Handle help menu toggle (H key)
-    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
-      this.helpMenu.toggle();
-    }
-    
-    // If help menu is open, don't process other input
-    if (this.helpMenu.isVisible()) {
-      return;
+    // Handle menu input (ESC for pause, H for help)
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu)) {
+      return; // Menus are active, don't process game input
     }
 
     // Handle image popup
