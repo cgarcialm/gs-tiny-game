@@ -122,13 +122,13 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private createEscalators() {
     // Escalator 1: Ground (170) to Platform 1 (125)
-    this.createEscalatorVisual(50, 170, 115);
+    this.createEscalatorVisual(50, 170, 120);
     
     // Escalator 2: Platform 1 (125) to Platform 3/Train (85)
-    this.createEscalatorVisual(155, 125, 75);
+    this.createEscalatorVisual(155, 125, 80);
     
     // Escalator 3: Platform 3/Train (85) to Platform 2/Top (45)
-    this.createEscalatorVisual(255, 85, 35);
+    this.createEscalatorVisual(255, 85, 40);
   }
   
   private createEscalatorVisual(x: number, bottomY: number, topY: number) {
