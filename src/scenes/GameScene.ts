@@ -425,7 +425,7 @@ export default class GameScene extends Phaser.Scene {
     overlay.setOrigin(0.5);
     
     // Message text (on the left side)
-    const messageText = this.add.text(80, 90, "look at you all flirty", {
+    const messageText = this.add.text(90, 90, "look at you all flirty", {
       fontFamily: "monospace",
       fontSize: "12px",
       color: "#ff66ff",
@@ -464,14 +464,14 @@ export default class GameScene extends Phaser.Scene {
     // Create image element
     const img = document.createElement('img');
     img.src = 'hinge-screenshot.png';
-    img.style.maxWidth = '350px';
-    img.style.maxHeight = '350px';
+    img.style.maxWidth = '550px';
+    img.style.maxHeight = '550px';
     img.style.border = '3px solid #ff66ff';
     img.style.borderRadius = '8px';
     img.style.boxShadow = '0 0 20px rgba(255, 102, 255, 0.5)';
     img.style.imageRendering = 'auto';
     img.style.display = 'block';
-    img.style.marginLeft = '280px'; // Much more offset to the right
+    img.style.marginLeft = '500px'; // Even more offset to the right
     
     this.photoOverlay.appendChild(img);
     document.body.appendChild(this.photoOverlay);

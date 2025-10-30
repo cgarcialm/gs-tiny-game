@@ -24,9 +24,9 @@ export default class BootScene extends Phaser.Scene {
     this.cameras.main.setRoundPixels(true);
     
     // Quick test: uncomment the line below to skip title and go straight to GameScene
-    // this.scene.start("Game");
+    this.scene.start("Game");
     
     // Normal flow: go to title screen
-    this.scene.start("Title");
+    // this.scene.start("Title");
   }
 }
