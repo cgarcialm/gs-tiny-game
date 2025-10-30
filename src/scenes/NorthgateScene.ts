@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonSprite, updateGraysonWalk, createCeciSprite, createSecurityGuardSprite } from "../utils/sprites";
+import { createGraysonSprite, updateGraysonWalk, createCeciSprite, createSecurityGuardSprite, createFurrySprite } from "../utils/sprites";
 
 export default class NorthgateScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -26,6 +26,7 @@ export default class NorthgateScene extends Phaser.Scene {
   private ticketMachine!: Phaser.GameObjects.Graphics;
   private ticketGate!: Phaser.GameObjects.Rectangle;
   private syringes: Phaser.Physics.Arcade.Sprite[] = [];
+  private furries: Phaser.GameObjects.Container[] = [];
   
   // Dialogue
   private dialogBox!: Phaser.GameObjects.Rectangle;
@@ -63,6 +64,9 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Create syringes (hazards)
     this.createSyringes();
+    
+    // Create furries (NPCs)
+    this.createFurries();
     
     // Input
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -307,7 +311,7 @@ export default class NorthgateScene extends Phaser.Scene {
       
       syringe.setTexture('syringe-' + pos.x);
       syringe.setDisplaySize(15, 5);
-      (syringe.body as Phaser.Physics.Arcade.Body).setSize(10, 3); // Smaller hitbox
+      (syringe.body as Phaser.Physics.Arcade.Body).setSize(8, 3); // Smaller hitbox, easier to avoid
       const body = syringe.body as Phaser.Physics.Arcade.Body;
       body.setAllowGravity(false);
       body.setImmovable(true);
@@ -326,6 +330,18 @@ export default class NorthgateScene extends Phaser.Scene {
       undefined, 
       this
     );
+  }
+  
+  private createFurries() {
+    // Create 2 convention-goers with furry tails
+    
+    // Furry 1 - Bright pink shirt with brown tail (on platform 1)
+    const furry1 = createFurrySprite(this, 100, 115, 0xff69b4, 0x8b4513);
+    this.furries.push(furry1);
+    
+    // Furry 2 - Bright cyan shirt with white tail (on ground level)
+    const furry2 = createFurrySprite(this, 150, 160, 0x00ffff, 0xffffff);
+    this.furries.push(furry2);
   }
   
   private createTicketMachine() {
