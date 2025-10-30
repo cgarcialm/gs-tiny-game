@@ -22,6 +22,7 @@ export default class NorthgateScene extends Phaser.Scene {
   private hasMetGuard = false;
   private isDrugged = false;
   private graysonHasEntered = false;
+  private ceciFollowing = false;
   
   // NPCs
   private securityGuard!: Phaser.GameObjects.Container;
@@ -505,8 +506,61 @@ export default class NorthgateScene extends Phaser.Scene {
     this.checkFurryProximity();
     
     // Check proximity to Ceci (only after she's arrived)
-    if (this.ceciHasArrived) {
+    if (this.ceciHasArrived && !this.cardFragmentCollected) {
       this.checkCeciProximity();
+    }
+    
+    // Ceci follows Grayson after meeting
+    if (this.ceciFollowing) {
+      this.updateCeciFollowing(dt);
+    }
+    
+    // Check if reached exit
+    if (this.cardFragmentCollected) {
+      this.checkReachedExit();
+    }
+  }
+  
+  private updateCeciFollowing(dt: number) {
+    // Ceci follows Grayson at a slight distance
+    const followDistance = 25;
+    const followSpeed = 60;
+    
+    const dx = this.player.x - this.ceci.x;
+    const dy = this.player.y - this.ceci.y;
+    const distance = Math.hypot(dx, dy);
+    
+    if (distance > followDistance) {
+      const vx = (dx / distance) * followSpeed * dt;
+      const vy = (dy / distance) * followSpeed * dt;
+      
+      this.ceci.x += vx;
+      this.ceci.y += vy;
+      
+      // Face direction of movement
+      this.ceci.setScale(dx > 0 ? -1 : 1, 1);
+    }
+  }
+  
+  private checkReachedExit() {
+    // Check if Grayson reached the exit (top left)
+    if (this.player.x < 20 && this.player.y < 50) {
+      // Check if Ceci is also near the exit
+      const ceciNearExit = this.ceci.x < 50 && this.ceci.y < 60;
+      
+      if (ceciNearExit && !this.isDrugged) {
+        // Level complete!
+        this.isDrugged = true; // Freeze player
+        this.player.setVelocity(0, 0); // Stop movement
+        
+        this.showDialog("You found Ceci and collected a memory!\nLevel Complete!");
+        
+        // TODO: Transition to next level or back to void
+        this.time.delayedCall(3000, () => {
+          // For now, just show completion
+          console.log("Northgate level complete!");
+        });
+      }
     }
   }
   
@@ -784,15 +838,12 @@ export default class NorthgateScene extends Phaser.Scene {
       this.ceci.y
     );
     
-    const near = distance < 25;
-    this.promptText.setVisible(near && !this.cardFragmentCollected && this.hasTicket);
+    const near = distance < 20;
     
-    if (near) {
-      this.promptText.setPosition(this.ceci.x, this.ceci.y - 20);
-      
-      if (Phaser.Input.Keyboard.JustDown(this.keys.E) && !this.cardFragmentCollected) {
-        this.collectCardFragment();
-      }
+    // Auto-collect when reaching Ceci (no E prompt needed)
+    if (near && !this.cardFragmentCollected && this.hasTicket) {
+      console.log('Meeting Ceci! Distance:', distance); // Debug
+      this.collectCardFragment();
     }
   }
   
@@ -897,10 +948,18 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private collectCardFragment() {
     this.cardFragmentCollected = true;
+    this.ceciFollowing = true;
     this.promptText.setVisible(false);
-    this.showDialog("Ceci: This is my first time at this station!\nSo glad we found each other!");
     
-    // TODO: Add card fragment visual and transition to next level
+    // Stop any existing movement
+    this.player.setVelocity(0, 0);
+    
+    this.showDialog("Ceci: This is my first time at this station!\nSo glad we found each other!\nLet's head to the exit together!");
+    
+    // Hide dialogue after a moment
+    this.time.delayedCall(3000, () => {
+      this.hideDialog();
+    });
   }
   
   private showDialog(message: string) {
