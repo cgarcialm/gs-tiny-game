@@ -615,6 +615,10 @@ export default class NorthgateScene extends Phaser.Scene {
       // Show dialogue when player passes nearby (smaller range - must be close)
       if (distance < 18 && !this.furryDialogueShown[index] && !this.dialogVisible) {
         this.furryDialogueShown[index] = true;
+        
+        // Stop player movement when dialogue appears
+        this.player.setVelocity(0, 0);
+        
         const dialogue = furry.getData('dialogue');
         this.showDialog(dialogue);
       }
@@ -777,6 +781,10 @@ export default class NorthgateScene extends Phaser.Scene {
     // If player tries to pass without ticket (smaller proximity - must be on same level)
     if (distance < 20 && !this.hasTicket && !this.hasMetGuard) {
       this.hasMetGuard = true;
+      
+      // Stop player movement when guard speaks
+      this.player.setVelocity(0, 0);
+      
       this.showDialog("Security: Do you have your ticket?\nPlease tap your ORCA card at the reader.\nHead back down!");
     }
   }
