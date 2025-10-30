@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonSprite, updateGraysonWalk, createCeciSprite } from "../utils/sprites";
+import { createGraysonSprite, updateGraysonWalk, createCeciSprite, createSecurityGuardSprite } from "../utils/sprites";
 
 export default class NorthgateScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -18,6 +18,12 @@ export default class NorthgateScene extends Phaser.Scene {
   private cardFragmentCollected = false;
   private ceciHasArrived = false;
   private firstTrainPassed = false;
+  private hasTicket = false;
+  private hasMetGuard = false;
+  
+  // NPCs
+  private securityGuard!: Phaser.GameObjects.Container;
+  private ticketMachine!: Phaser.GameObjects.Graphics;
   
   // Dialogue
   private dialogBox!: Phaser.GameObjects.Rectangle;
@@ -46,6 +52,12 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Create Ceci (on top platform)
     this.createCeci();
+    
+    // Create security guard
+    this.createSecurityGuard();
+    
+    // Create ticket machine
+    this.createTicketMachine();
     
     // Input
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -236,6 +248,44 @@ export default class NorthgateScene extends Phaser.Scene {
     this.ceci.setVisible(false);
   }
   
+  private createSecurityGuard() {
+    // Security guard on platform 1, blocking access to escalator 2
+    this.securityGuard = createSecurityGuardSprite(this, 155, 115);
+  }
+  
+  private createTicketMachine() {
+    // ORCA card reader on ground level, bottom right - like real Sound Transit reader
+    const machineX = 292;
+    const machineY = 140; // Higher up
+    const floorY = 170; // Ground level
+    
+    this.ticketMachine = this.add.graphics();
+    
+    // Thin yellow support pole/stem from floor
+    this.ticketMachine.fillStyle(0xffc107, 1);
+    this.ticketMachine.fillRect(machineX + 5, machineY + 14, 2, floorY - (machineY + 14));
+    
+    // Yellow housing/body (reader head) - smaller
+    this.ticketMachine.fillStyle(0xffc107, 1);
+    this.ticketMachine.fillRoundedRect(machineX, machineY, 12, 14, 2);
+    
+    // Screen area - gray/dark
+    this.ticketMachine.fillStyle(0x666666, 1);
+    this.ticketMachine.fillRect(machineX + 2, machineY + 1, 8, 5);
+    
+    // Tap pad circle area - darker
+    this.ticketMachine.fillStyle(0x444444, 1);
+    this.ticketMachine.fillCircle(machineX + 6, machineY + 10, 3);
+    
+    // Small indicator light - red when not tapped
+    this.ticketMachine.fillStyle(0xff0000, 1);
+    this.ticketMachine.fillCircle(machineX + 6, machineY + 2, 1);
+    
+    // Orange border accent
+    this.ticketMachine.lineStyle(1, 0xff9800, 1);
+    this.ticketMachine.strokeRoundedRect(machineX, machineY, 12, 14, 2);
+  }
+  
   private createUI() {
     // Prompt text
     this.promptText = this.add.text(0, 0, "E to interact", {
@@ -309,6 +359,12 @@ export default class NorthgateScene extends Phaser.Scene {
     if (!this.ceciHasArrived && !this.firstTrainPassed) {
       this.checkCeciArrival();
     }
+    
+    // Check security guard interaction
+    this.checkSecurityGuard();
+    
+    // Check ticket machine
+    this.checkTicketMachine();
     
     // Check proximity to Ceci (only after she's arrived)
     if (this.ceciHasArrived) {
@@ -392,6 +448,67 @@ export default class NorthgateScene extends Phaser.Scene {
     }
   }
   
+  private checkSecurityGuard() {
+    // Check if player is near security guard on platform 1
+    const distance = Phaser.Math.Distance.Between(
+      this.player.x,
+      this.player.y,
+      this.securityGuard.x,
+      this.securityGuard.y
+    );
+    
+    // If player tries to pass without ticket (no prompt, just dialogue)
+    if (distance < 30 && !this.hasTicket && !this.hasMetGuard) {
+      this.hasMetGuard = true;
+      this.showDialog("Security: Do you have your ticket?\nPlease tap your ORCA card at the reader.");
+    }
+  }
+  
+  private checkTicketMachine() {
+    // Check if player is near ticket machine (bottom right)
+    const distance = Phaser.Math.Distance.Between(
+      this.player.x,
+      this.player.y,
+      298, 147
+    );
+    
+    if (distance < 30 && !this.hasTicket) {
+      // Only show prompt if player has already been asked for ticket
+      if (this.hasMetGuard) {
+        this.promptText.setVisible(true);
+        this.promptText.setPosition(298, 132);
+      }
+      
+      if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+        this.hasTicket = true;
+        this.promptText.setVisible(false);
+        this.showDialog("*taps ORCA card*\nTicket validated! You can now proceed.");
+        
+        // Visual feedback - indicator turns green
+        const flashGraphics = this.add.graphics();
+        flashGraphics.fillStyle(0x00ff00, 1);
+        flashGraphics.fillCircle(298, 142, 1.5);
+        
+        this.tweens.add({
+          targets: flashGraphics,
+          alpha: 0,
+          delay: 800,
+          duration: 500,
+          onComplete: () => flashGraphics.destroy()
+        });
+      }
+    } else if (distance >= 25 && !this.hasTicket) {
+      // Don't show prompt when not near machine (unless near Ceci)
+      const nearCeci = this.ceciHasArrived && Phaser.Math.Distance.Between(
+        this.player.x, this.player.y, this.ceci.x, this.ceci.y
+      ) < 35;
+      
+      if (!nearCeci) {
+        this.promptText.setVisible(false);
+      }
+    }
+  }
+  
   private checkCeciProximity() {
     const distance = Phaser.Math.Distance.Between(
       this.player.x,
@@ -401,7 +518,7 @@ export default class NorthgateScene extends Phaser.Scene {
     );
     
     const near = distance < 35;
-    this.promptText.setVisible(near && !this.cardFragmentCollected);
+    this.promptText.setVisible(near && !this.cardFragmentCollected && this.hasTicket);
     
     if (near) {
       this.promptText.setPosition(this.ceci.x, this.ceci.y - 20);
