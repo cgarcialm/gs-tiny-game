@@ -37,7 +37,7 @@ export class HelpMenu {
       "",
       "Actions:",
       "  E - Interact",
-      "  ENTER/SPACE - Advance dialogue",
+      "  ENTER - Advance dialogue",
       "  ESC - Pause",
       "",
       "Press H to close this menu"

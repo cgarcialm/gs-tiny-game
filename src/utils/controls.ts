@@ -103,11 +103,10 @@ export function getVerticalAxis(scene: Phaser.Scene, controls: GameControls): nu
 }
 
 /**
- * Check if player wants to advance/close dialogue (ENTER or SPACE)
- * Note: ESC is reserved for pause menu
+ * Check if player wants to advance/close dialogue (ENTER only)
+ * Note: SPACE is reserved for jumping, ESC for pause menu
  */
 export function shouldCloseDialogue(controls: GameControls): boolean {
-  return Phaser.Input.Keyboard.JustDown(controls.advance) ||
-         Phaser.Input.Keyboard.JustDown(controls.jump);
+  return Phaser.Input.Keyboard.JustDown(controls.advance);
 }
 

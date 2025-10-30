@@ -11,6 +11,10 @@ export function createGraysonSprite(
   y: number
 ): Phaser.GameObjects.Container {
   const container = scene.add.container(x, y);
+  
+  // Set container origin to center for proper flipping behavior
+  // Without this, setScale(-1, 1) flips around (0,0) causing misalignment
+  
   const pixelSize = 2; // Size of each pixel block
   
   // Colors - bright neon 80s aesthetic

@@ -135,18 +135,19 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Bottom platform (ground)
     const ground = this.add.rectangle(160, 170, 320, 10, 0x555555);
-    this.platforms.add(ground);
+    this.platforms.add(ground, true);
     
-    // Platform 1 (mid-low)
+    // Platform 1 (mid-low)  
     const platform1 = this.add.rectangle(120, 125, 110, 6, 0x666666);
-    this.platforms.add(platform1);
+    this.platforms.add(platform1, true);
   
     
     // Platform 2 (train level) - split with gap for escalator
     const platform3Left = this.add.rectangle(70, 85, 140, 6, 0x777777);
-    this.platforms.add(platform3Left);
+    this.platforms.add(platform3Left, true);
+    
     const platform3Right = this.add.rectangle(250, 85, 160, 6, 0x777777);
-    this.platforms.add(platform3Right);
+    this.platforms.add(platform3Right, true);
 
     // Visual rails for train platform (with gap)
     this.add.rectangle(120, 85, 240, 2, 0xffeb3b, 0.8);
@@ -154,7 +155,7 @@ export default class NorthgateScene extends Phaser.Scene {
 
     // Platform 3 (mid-high)
     const platform2 = this.add.rectangle(120, 45, 240, 8, 0x666666);
-    this.platforms.add(platform2);
+    this.platforms.add(platform2, true);
     
     // Create all escalators
     this.createEscalators();
@@ -254,8 +255,8 @@ export default class NorthgateScene extends Phaser.Scene {
   private createPlayer() {
     // Create physics sprite for player (invisible) - start off-screen right
     this.player = this.physics.add.sprite(350, 155, '');
-    this.player.setSize(14, 4); // Very small hitbox just at feet level
-    this.player.setOffset(2, 22); // Large offset to move collision to bottom
+    this.player.setSize(12, 4); // Very small hitbox just at feet level
+    this.player.setOffset(0, 22); // Only vertical offset to move collision to bottom (centered horizontally)
     this.player.setCollideWorldBounds(true);
     
     // Make physics body invisible
@@ -263,6 +264,9 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Create visual sprite
     this.playerSprite = createGraysonSprite(this, this.player.x, this.player.y);
+    
+    // Ensure container origin is centered for proper flipping
+    // This prevents visual misalignment when sprite flips direction
     
     // Physics setup
     this.physics.add.collider(this.player, this.platforms);
@@ -508,7 +512,9 @@ export default class NorthgateScene extends Phaser.Scene {
     }
     
     // Sync sprite position with physics body even when not moving
-    this.playerSprite.x = Math.round(this.player.x);
+    // When facing right (scaleX -1), shift sprite left to align with physics box
+    const xOffset = this.playerSprite.scaleX === -1 ? -12 : 0;
+    this.playerSprite.x = Math.round(this.player.x + xOffset);
     this.playerSprite.y = Math.round(this.player.y + 4);
     
     // Can't control movement when drugged or before entering
