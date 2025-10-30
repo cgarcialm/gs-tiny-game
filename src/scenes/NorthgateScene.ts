@@ -24,6 +24,7 @@ export default class NorthgateScene extends Phaser.Scene {
   private securityGuard!: Phaser.GameObjects.Container;
   private ticketMachine!: Phaser.GameObjects.Graphics;
   private ticketGate!: Phaser.GameObjects.Rectangle;
+  private syringes: Phaser.Physics.Arcade.Sprite[] = [];
   
   // Dialogue
   private dialogBox!: Phaser.GameObjects.Rectangle;
@@ -58,6 +59,9 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Create ticket machine
     this.createTicketMachine();
+    
+    // Create syringes (hazards)
+    this.createSyringes();
     
     // Input
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -261,6 +265,58 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Collision with gate
     this.physics.add.collider(this.player, this.ticketGate);
+  }
+  
+  private createSyringes() {
+    // Create syringe hazards scattered on platforms
+    // Small, realistic but not overly graphic
+    
+    const syringePositions = [
+      { x: 80, y: 165 },   // Ground level
+      { x: 240, y: 165 },  // Ground level
+      { x: 70, y: 120 },   // Platform 1
+      { x: 270, y: 80 },   // Platform 3 (train level)
+      { x: 180, y: 40 },   // Top platform
+    ];
+    
+    syringePositions.forEach(pos => {
+      const syringe = this.physics.add.sprite(pos.x, pos.y, '');
+      syringe.setSize(8, 3);
+      
+      // Visual - more realistic syringe graphic
+      const syringeGraphics = this.add.graphics();
+      
+      // Sharp needle tip - silver/gray
+      syringeGraphics.fillStyle(0xcccccc, 1);
+      syringeGraphics.fillRect(0, 1, 2, 1);
+      
+      // Needle shaft - darker gray
+      syringeGraphics.fillStyle(0x888888, 1);
+      syringeGraphics.fillRect(2, 1, 3, 1);
+      
+      // Syringe barrel - transparent/white
+      syringeGraphics.fillStyle(0xdddddd, 0.9);
+      syringeGraphics.fillRect(5, 0, 6, 3);
+      
+      // Plunger - orange/red cap
+      syringeGraphics.fillStyle(0xff6600, 1);
+      syringeGraphics.fillRect(11, 0, 2, 3);
+      
+      // Outline for visibility
+      syringeGraphics.lineStyle(1, 0x555555, 0.6);
+      syringeGraphics.strokeRect(5, 0, 6, 3);
+      
+      syringeGraphics.generateTexture('syringe-' + pos.x, 13, 3);
+      syringeGraphics.destroy();
+      
+      syringe.setTexture('syringe-' + pos.x);
+      (syringe.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+      
+      this.syringes.push(syringe);
+      
+      // Add overlap detection
+      this.physics.add.overlap(this.player, syringe, () => this.hitHazard(), undefined, this);
+    });
   }
   
   private createTicketMachine() {
@@ -563,6 +619,19 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Flash effect
     this.cameras.main.flash(200, 255, 0, 0);
+  }
+  
+  private hitHazard() {
+    // Hit syringe hazard - respawn at start
+    this.player.x = 200;
+    this.player.y = 155;
+    this.player.setVelocity(0, 0);
+    
+    // Yellow flash effect (different from train)
+    this.cameras.main.flash(200, 255, 255, 0);
+    
+    // Warning message
+    this.showDialog("Watch your step! Stay safe.");
   }
   
   private collectCardFragment() {
