@@ -4,6 +4,7 @@ import { setupControls, getHorizontalAxis, shouldCloseDialogue, HELP_HINT_X, HEL
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
 import { PauseMenu } from "../utils/pauseMenu";
+import { DialogueManager } from "../utils/dialogueManager";
 
 export default class NorthgateScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -11,6 +12,7 @@ export default class NorthgateScene extends Phaser.Scene {
   private controls!: GameControls;
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
+  private dialogueManager!: DialogueManager;
   
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
   private escalators: Phaser.GameObjects.Rectangle[] = [];
@@ -38,8 +40,6 @@ export default class NorthgateScene extends Phaser.Scene {
   private furryDialogueShown: boolean[] = [false, false];
   
   // Dialogue
-  private dialogBox!: Phaser.GameObjects.Rectangle;
-  private dialogText!: Phaser.GameObjects.Text;
   private dialogVisible = false;
   private promptText!: Phaser.GameObjects.Text;
 
@@ -86,6 +86,9 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Create pause menu
     this.pauseMenu = new PauseMenu(this);
+    
+    // Create dialogue manager
+    this.dialogueManager = new DialogueManager(this);
     
     // UI
     this.createUI();
@@ -428,20 +431,6 @@ export default class NorthgateScene extends Phaser.Scene {
       padding: { left: 4, right: 4, top: 2, bottom: 2 },
       resolution: 2,
     }).setOrigin(0.5).setVisible(false);
-    
-    // Dialogue box
-    this.dialogBox = this.add.rectangle(160, 160, 300, 40, 0x000000, 0.6)
-      .setStrokeStyle(1, 0x99bbff, 0.9)
-      .setOrigin(0.5)
-      .setVisible(false);
-    
-    this.dialogText = this.add.text(20, 146, "", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#dff1ff",
-      wordWrap: { width: 280 },
-      resolution: 2,
-    }).setOrigin(0, 0).setVisible(false);
     
     // Help hint (bottom-right corner) - always visible in later levels
     this.add
@@ -1029,14 +1018,12 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private showDialog(message: string) {
     this.dialogVisible = true;
-    this.dialogBox.setVisible(true);
-    this.dialogText.setText(message).setVisible(true);
+    this.dialogueManager.show(message);
   }
   
   private hideDialog() {
     this.dialogVisible = false;
-    this.dialogBox.setVisible(false);
-    this.dialogText.setVisible(false);
+    this.dialogueManager.hide();
   }
 }
 

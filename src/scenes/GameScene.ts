@@ -5,6 +5,7 @@ import { setupControls, getHorizontalAxis, getVerticalAxis, shouldCloseDialogue,
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
 import { PauseMenu } from "../utils/pauseMenu";
+import { DialogueManager } from "../utils/dialogueManager";
 import { DEBUG_START_LEVEL } from "../config/debug";
 
 type DialogueState = "idle" | "open";
@@ -14,6 +15,7 @@ export default class GameScene extends Phaser.Scene {
   private controls!: GameControls;
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
+  private dialogueManager!: DialogueManager;
 
   private player!: Phaser.GameObjects.Container;
   private npc!: Phaser.GameObjects.Container;
@@ -38,10 +40,8 @@ export default class GameScene extends Phaser.Scene {
   private cardCounterText!: Phaser.GameObjects.Text;
   private helpHintText!: Phaser.GameObjects.Text;
 
-  // dialogue UI
+  // dialogue state
   private dialogState: DialogueState = "idle";
-  private dialogBox!: Phaser.GameObjects.Rectangle;
-  private dialogText!: Phaser.GameObjects.Text;
   
   // Level 0 dialogues - Eboshi
   private eboshiDialogLines: string[] = [
@@ -110,6 +110,9 @@ export default class GameScene extends Phaser.Scene {
     
     // Create pause menu
     this.pauseMenu = new PauseMenu(this);
+    
+    // Create dialogue manager
+    this.dialogueManager = new DialogueManager(this);
 
     // "Press E to interact" prompt (hidden by default)
     this.promptText = this.add
@@ -156,10 +159,6 @@ export default class GameScene extends Phaser.Scene {
     // Only show after Eboshi interaction (level 0), or if already unlocked
     const showHelpHint = this.registry.get('showHelpHint') || false;
     this.helpHintText.setVisible(showHelpHint);
-
-    // Dialogue UI (hidden)
-    this.createDialogUI();
-    this.hideDialog();
     
     // Create image popup (hidden initially)
     this.createImagePopup();
@@ -262,33 +261,14 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  private createDialogUI() {
-    this.dialogBox = this.add
-      .rectangle(160, 160, 300, 40, 0x000000, 0.6)
-      .setStrokeStyle(1, 0x99bbff, 0.9)
-      .setOrigin(0.5);
-
-    this.dialogText = this.add
-      .text(20, 146, "", {
-        fontFamily: "monospace",
-        fontSize: "10px",
-        color: "#dff1ff",
-        wordWrap: { width: 280 },
-        resolution: 2,
-      })
-      .setOrigin(0, 0);
-  }
-
   private showDialog(line: string) {
     this.dialogState = "open";
-    this.dialogBox.setVisible(true);
-    this.dialogText.setText(line).setVisible(true);
+    this.dialogueManager.show(line);
   }
 
   private hideDialog() {
     this.dialogState = "idle";
-    this.dialogBox.setVisible(false);
-    this.dialogText.setVisible(false);
+    this.dialogueManager.hide();
     
     // Show help hint after first dialogue with Eboshi (level 0)
     if (this.completedLevels === 0 && this.hasInteractedWithEboshi) {

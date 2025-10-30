@@ -3,6 +3,7 @@ import { setupControls, getHorizontalAxis } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
 import { PauseMenu } from "../utils/pauseMenu";
+import { DialogueManager } from "../utils/dialogueManager";
 
 const PLAYER_ASCII = String.raw`
    _---
@@ -58,7 +59,6 @@ const NUM_PIECES = 15;
 const CHAR_FONT_SIZE = 7;
 const TITLE_FONT_SIZE = 12;
 const HEART_FONT_SIZE = 8;
-const DIALOG_FONT_SIZE = 10;
 const HINT_FONT_SIZE = 9;
 const LINE_SPACING = 1;
 const CHAR_RESOLUTION = 2;
@@ -73,9 +73,6 @@ const SMUSH_COLOR = "#66ff66";
 const EBO_COLOR = "#ffcc99";
 const CARD_COLOR = 0xffaa00;
 const CARD_STROKE = 0xffdd88;
-const DIALOG_COLOR = "#dff1ff";
-const DIALOG_BG_ALPHA = 0.8;
-const DIALOG_STROKE = 0x99bbff;
 const HEART_COLOR = "#ff0000";
 
 // Speeds
@@ -91,13 +88,6 @@ const APPROACH_DISTANCE = 50;
 // Timings
 const CUTSCENE_DURATION = 2000;
 const CHASE_DELAY = 1000;
-
-// Dialog
-const DIALOG_WIDTH = 300;
-const DIALOG_HEIGHT = 40;
-const DIALOG_X = 20;
-const DIALOG_Y = 146;
-const DIALOG_WORDWRAP = 280;
 
 type SceneState = 
   | "approaching"  // Player approaching Ceci
@@ -116,6 +106,7 @@ export default class TitleScene extends Phaser.Scene {
   private controls!: GameControls;
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
+  private dialogueManager!: DialogueManager;
   private grayson!: Phaser.GameObjects.Text;
   private ceci!: Phaser.GameObjects.Text;
   private smush!: Phaser.GameObjects.Text;
@@ -123,8 +114,6 @@ export default class TitleScene extends Phaser.Scene {
   private card!: Phaser.GameObjects.Rectangle;
   private sceneState: SceneState = "approaching";
   
-  private dialogBox!: Phaser.GameObjects.Rectangle;
-  private dialogText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
   private cardPieces: Phaser.GameObjects.Ellipse[] = [];
   
@@ -206,26 +195,6 @@ export default class TitleScene extends Phaser.Scene {
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5);
 
-    // Dialogue UI
-    this.dialogBox = this.add
-      .rectangle(SCREEN_CENTER_X, SCREEN_CENTER_Y + 70, DIALOG_WIDTH, DIALOG_HEIGHT, 0x000000, DIALOG_BG_ALPHA)
-      .setStrokeStyle(1, DIALOG_STROKE, 0.9)
-      .setOrigin(0.5)
-      .setDepth(1);
-
-    this.dialogText = this.add
-      .text(DIALOG_X, DIALOG_Y, "", {
-        fontFamily: "monospace",
-        fontSize: `${DIALOG_FONT_SIZE}px`,
-        color: DIALOG_COLOR,
-        wordWrap: { width: DIALOG_WORDWRAP },
-        resolution: CHAR_RESOLUTION,
-      })
-      .setOrigin(0, 0)
-      .setDepth(2);
-
-    this.hideDialog();
-
     // Setup standard controls (WASD + arrows, space, E, Enter, ESC, H)
     this.controls = setupControls(this);
     
@@ -234,6 +203,9 @@ export default class TitleScene extends Phaser.Scene {
     
     // Create pause menu
     this.pauseMenu = new PauseMenu(this);
+    
+    // Create dialogue manager
+    this.dialogueManager = new DialogueManager(this);
     
     // Note: No help hint in TitleScene - this is before the game starts
     // Help hint will appear after Eboshi interaction in GameScene
@@ -457,14 +429,12 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   private showDialog(message: string) {
-    this.dialogBox.setVisible(true);
-    this.dialogText.setText(message).setVisible(true);
+    this.dialogueManager.show(message);
     this.hintText.setVisible(false);
   }
 
   private hideDialog() {
-    this.dialogBox.setVisible(false);
-    this.dialogText.setVisible(false);
+    this.dialogueManager.hide();
     this.hintText.setVisible(true);
   }
   
