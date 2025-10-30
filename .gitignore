@@ -23,3 +23,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Sprite analysis tool - ignore input/output images and CSVs
+tools/sprite-analysis/input/*.png
+tools/sprite-analysis/input/*.jpg
+tools/sprite-analysis/input/*.jpeg
+tools/sprite-analysis/output/*.png
+tools/sprite-analysis/output/*.jpg
+tools/sprite-analysis/output/*.jpeg
+tools/sprite-analysis/output/*.csv
