@@ -20,6 +20,7 @@ export default class NorthgateScene extends Phaser.Scene {
   private hasTicket = false;
   private hasMetGuard = false;
   private isDrugged = false;
+  private graysonHasEntered = false;
   
   // NPCs
   private securityGuard!: Phaser.GameObjects.Container;
@@ -235,8 +236,8 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private createPlayer() {
-    // Create physics sprite for player (invisible) - start at bottom, slightly left of center
-    this.player = this.physics.add.sprite(200, 155, '');
+    // Create physics sprite for player (invisible) - start off-screen right
+    this.player = this.physics.add.sprite(350, 155, '');
     this.player.setSize(14, 4); // Very small hitbox just at feet level
     this.player.setOffset(2, 22); // Large offset to move collision to bottom
     this.player.setCollideWorldBounds(true);
@@ -325,8 +326,11 @@ export default class NorthgateScene extends Phaser.Scene {
       this.player, 
       this.syringes, 
       (_player, syringe) => {
-        this.hitHazard();
-        (syringe as Phaser.Physics.Arcade.Sprite).destroy(); // Remove syringe after hit
+        // Only trigger if Grayson has fully entered the scene
+        if (this.graysonHasEntered) {
+          this.hitHazard();
+          (syringe as Phaser.Physics.Arcade.Sprite).destroy(); // Remove syringe after hit
+        }
       }, 
       undefined, 
       this
@@ -428,8 +432,17 @@ export default class NorthgateScene extends Phaser.Scene {
       return;
     }
     
-    // Can't move when drugged
-    if (this.isDrugged) {
+    // Check for Ceci arrival on first train (must happen even before Grayson enters)
+    if (!this.ceciHasArrived && !this.firstTrainPassed) {
+      this.checkCeciArrival();
+    }
+    
+    // Sync sprite position with physics body even when not moving
+    this.playerSprite.x = Math.round(this.player.x);
+    this.playerSprite.y = Math.round(this.player.y + 4);
+    
+    // Can't control movement when drugged or before entering
+    if (this.isDrugged || !this.graysonHasEntered) {
       return;
     }
     
@@ -448,8 +461,8 @@ export default class NorthgateScene extends Phaser.Scene {
     const onGround = this.player.body!.touching.down;
     
     if (onGround && this.keys.SPACE.isDown) {
-      // Small hop
-      this.player.setVelocityY(-140);
+      // Small hop - enough to clear syringes but not reach platforms
+      this.player.setVelocityY(-120);
     }
     
     // Escalator logic
@@ -458,16 +471,6 @@ export default class NorthgateScene extends Phaser.Scene {
     // Update walking animation
     const isMoving = Math.abs(this.player.body!.velocity.x) > 0;
     updateGraysonWalk(this.playerSprite, isMoving);
-    
-    // Sync sprite position with physics body
-    // Add small offset to Y to align feet with platforms
-    this.playerSprite.x = Math.round(this.player.x);
-    this.playerSprite.y = Math.round(this.player.y + 4);
-    
-    // Check for Ceci arrival on first train
-    if (!this.ceciHasArrived && !this.firstTrainPassed) {
-      this.checkCeciArrival();
-    }
     
     // Check security guard interaction
     this.checkSecurityGuard();
@@ -508,6 +511,24 @@ export default class NorthgateScene extends Phaser.Scene {
     });
   }
   
+  private graysonEnters() {
+    // Grayson walks in from the right, stops to the left of the syringe at x: 240
+    this.tweens.add({
+      targets: this.player,
+      x: 220, // Left of the right-side syringe
+      duration: 1500,
+      ease: "Power2",
+      onUpdate: () => {
+        // Face left while walking in
+        this.playerSprite.setScale(1, 1);
+      },
+      onComplete: () => {
+        // Now player can control Grayson
+        this.graysonHasEntered = true;
+      }
+    });
+  }
+  
   private checkFurryProximity() {
     this.furries.forEach((furry, index) => {
       const distance = Phaser.Math.Distance.Between(
@@ -517,8 +538,8 @@ export default class NorthgateScene extends Phaser.Scene {
         furry.y
       );
       
-      // Show dialogue when player passes nearby (only once per furry)
-      if (distance < 30 && !this.furryDialogueShown[index] && !this.dialogVisible) {
+      // Show dialogue when player passes nearby (smaller range - must be close)
+      if (distance < 18 && !this.furryDialogueShown[index] && !this.dialogVisible) {
         this.furryDialogueShown[index] = true;
         const dialogue = furry.getData('dialogue');
         this.showDialog(dialogue);
@@ -587,8 +608,8 @@ export default class NorthgateScene extends Phaser.Scene {
               this.tweens.add({
                 targets: this.ceci,
                 x: 80,
-                duration: 800,
-                ease: "Power2",
+                duration: 1800,
+                ease: "Linear",
                 onComplete: () => {
                   this.ceciHasArrived = true;
                   // Show thought bubble (positioned to the left to avoid station sign)
@@ -602,13 +623,17 @@ export default class NorthgateScene extends Phaser.Scene {
                     resolution: 1,
                   }).setOrigin(0.5);
                   
-                  // Fade out after a while
+                  // Fade out after a while, then Grayson enters
                   this.tweens.add({
                     targets: thoughtText,
                     alpha: 0,
                     delay: 3000,
                     duration: 2000,
-                    onComplete: () => thoughtText.destroy()
+                    onComplete: () => {
+                      thoughtText.destroy();
+                      // Now Grayson enters from the right!
+                      this.graysonEnters();
+                    }
                   });
                 }
               });
