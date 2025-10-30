@@ -28,11 +28,20 @@ export default class GameScene extends Phaser.Scene {
   private dialogState: DialogueState = "idle";
   private dialogBox!: Phaser.GameObjects.Rectangle;
   private dialogText!: Phaser.GameObjects.Text;
-  private dialogLines: string[] = [
+  
+  // Level 0 dialogues - Eboshi
+  private eboshiDialogLines: string[] = [
     "Grayson! You look... different. More defined!",
     "Oh right, peanut butter? No? Well, there's a card piece over there...",
     "*suddenly looks worried* Oh no... I hear something... RUN!!"
   ];
+  
+  // Level 1 dialogues - Ceci
+  private ceciDialogLines: string[] = [
+    "Ceci: Hey! I found another piece of the card!",
+  ];
+  
+  private currentDialogLines: string[] = [];
   private dialogIndex = 0;
   
   // Chase sequence
@@ -77,10 +86,6 @@ export default class GameScene extends Phaser.Scene {
 
     // Setup scene based on completed levels
     this.setupSceneForLevel(this.completedLevels);
-
-    // Card piece on the floor - hidden initially
-    this.cardPiece = createCardPieceSprite(this, 120, 130);
-    this.cardPiece.setVisible(false);
 
     // Input
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -143,12 +148,30 @@ export default class GameScene extends Phaser.Scene {
         
         this.cat = createSmushSprite(this, -50, 95);
         this.cat.setVisible(false);
+        
+        // Card piece on the floor for level 0 - hidden initially
+        this.cardPiece = createCardPieceSprite(this, 120, 130);
+        this.cardPiece.setVisible(false);
+        
+        // Set dialogue lines for this level
+        this.currentDialogLines = this.eboshiDialogLines;
+        
+        // Ensure other level NPCs don't exist
+        this.ceci = undefined as any;
         break;
         
       case 1:
         // Level 1: After Northgate - Return with Ceci
         this.player = createGraysonSprite(this, 350, 90);
         this.ceci = createCeciSprite(this, 380, 90);
+        
+        // Set dialogue lines for this level
+        this.currentDialogLines = this.ceciDialogLines;
+        
+        // Clean up level 0 NPCs and objects - they shouldn't exist in this level
+        this.npc = undefined as any;
+        this.cat = undefined as any;
+        this.cardPiece = undefined as any;
         
         // Walk in together
         this.tweens.add({
@@ -243,23 +266,28 @@ export default class GameScene extends Phaser.Scene {
   private advanceDialog() {
     this.dialogIndex++;
     
-    // Show card piece when Eboshi mentions it (dialogue line 1)
-    if (this.dialogIndex === 1) {
+    // Level 0: Show card piece when Eboshi mentions it (dialogue line 1)
+    if (this.completedLevels === 0 && this.dialogIndex === 1 && this.cardPiece) {
       this.cardPiece.setVisible(true);
       const sparkles = spawnCardPieceSparkles(this, 120, 130);
       this.cardSparkles.push(...sparkles);
     }
     
-    if (this.dialogIndex >= this.dialogLines.length) {
+    if (this.dialogIndex >= this.currentDialogLines.length) {
       this.dialogIndex = 0;
       this.hideDialog();
       
-      // Trigger cat chase after dialogue ends
-      if (!this.catHasAppeared) {
+      // Level 0: Trigger cat chase after Eboshi dialogue ends
+      if (this.completedLevels === 0 && !this.catHasAppeared) {
         this.startCatChase();
       }
+      
+      // Level 1: Show card piece after Ceci dialogue ends
+      if (this.completedLevels === 1) {
+        this.showCeciCardPiece();
+      }
     } else {
-      this.showDialog(this.dialogLines[this.dialogIndex]);
+      this.showDialog(this.currentDialogLines[this.dialogIndex]);
     }
   }
   
@@ -384,8 +412,8 @@ export default class GameScene extends Phaser.Scene {
     // Update walking animation
     updateGraysonWalk(this.player, isMoving);
 
-    // Proximity check to NPC (only if dog exists and is visible)
-    if (this.npc && this.npc.visible) {
+    // Level 0: Proximity check to NPC (Eboshi) - only on level 0
+    if (this.completedLevels === 0 && this.npc && this.npc.visible) {
       const d = Phaser.Math.Distance.Between(
         this.player.x,
         this.player.y,
@@ -405,7 +433,7 @@ export default class GameScene extends Phaser.Scene {
         if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
           this.hasInteractedWithEboshi = true;
           this.dialogIndex = 0;
-          this.showDialog(this.dialogLines[this.dialogIndex]);
+          this.showDialog(this.currentDialogLines[this.dialogIndex]);
           this.promptText.setVisible(false); // Hide prompt once player interacts
         }
       } else if (!near || this.hasInteractedWithEboshi) {
@@ -416,15 +444,13 @@ export default class GameScene extends Phaser.Scene {
       if (near && this.hasInteractedWithEboshi) {
         if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
           this.dialogIndex = 0;
-          this.showDialog(this.dialogLines[this.dialogIndex]);
+          this.showDialog(this.currentDialogLines[this.dialogIndex]);
         }
       }
-    } else {
-      this.promptText.setVisible(false);
     }
     
-    // Proximity check to card piece (if visible and not collected)
-    if (this.cardPiece.visible && !this.cardPieceCollected) {
+    // Level 0: Proximity check to card piece (if visible and not collected)
+    if (this.completedLevels === 0 && this.cardPiece && this.cardPiece.visible && !this.cardPieceCollected) {
       const cardDistance = Phaser.Math.Distance.Between(
         this.player.x,
         this.player.y,
@@ -442,6 +468,8 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private pickUpCardPiece() {
+    if (!this.cardPiece) return; // Safety check
+    
     this.cardPieceCollected = true;
     this.cardPiece.setVisible(false);
     this.promptText.setVisible(false);
@@ -578,28 +606,27 @@ export default class GameScene extends Phaser.Scene {
     if (this.ceciGaveMemory) return;
     this.ceciGaveMemory = true;
     
-    this.showDialog("Ceci: Hey! I found another piece of the card!");
+    // Start Ceci's dialogue (will advance with ENTER/SPACE)
+    this.dialogIndex = 0;
+    this.showDialog(this.currentDialogLines[this.dialogIndex]);
+  }
+  
+  private showCeciCardPiece() {
+    // Show card piece between Grayson and Ceci
+    const cardX = (this.player.x + this.ceci.x) / 2;
+    const cardY = 85;
+    const ceciCardPiece = createCardPieceSprite(this, cardX, cardY);
     
-    this.time.delayedCall(3000, () => {
-      this.hideDialog();
-      
-      // Show card piece between them
-      const cardX = (this.player.x + this.ceci.x) / 2;
-      const cardY = 85;
-      const ceciCardPiece = createCardPieceSprite(this, cardX, cardY);
-      
-      // Sparkles around card
-      spawnCardPieceSparkles(this, cardX, cardY);
-      
-      // Wait for player to press E
-      this.waitForCardPickup(ceciCardPiece, cardX, cardY);
-    });
+    // Sparkles around card
+    spawnCardPieceSparkles(this, cardX, cardY);
+    
+    // Wait for player to press E
+    this.waitForCardPickup(ceciCardPiece, cardX, cardY);
   }
   
   private waitForCardPickup(cardPiece: Phaser.GameObjects.Graphics, cardX: number, cardY: number) {
-    // Show prompt
-    this.promptText.setVisible(true);
-    this.promptText.setPosition(cardX, cardY - 15);
+    // Don't show "E to interact" prompt in level 1+
+    // Player knows they can interact from previous levels
     
     // Check for E press in update
     const checkPickup = () => {
@@ -612,7 +639,6 @@ export default class GameScene extends Phaser.Scene {
       
       if (distance < 30 && Phaser.Input.Keyboard.JustDown(this.keys.E)) {
         // Picked up!
-        this.promptText.setVisible(false);
         cardPiece.destroy();
         
         // Memory collection animation
@@ -650,7 +676,7 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private ceciSuggestsHockey() {
-    this.showDialog("Ceci: One of the many times we went to see the Silvertips!");
+    this.showDialog("Ceci: One of the many times we went to see the Silvertips :)");
     
     this.time.delayedCall(3000, () => {
       this.hideDialog();
@@ -669,22 +695,23 @@ export default class GameScene extends Phaser.Scene {
     // Update text
     this.cardCounterText.setText(`Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`);
     
-    // Pulse animation - scale up and down
+    // Pulse animation - scale up and down (longer, more dramatic)
     this.tweens.add({
       targets: this.cardCounterText,
-      scale: 1.3,
-      duration: 200,
+      scale: 1.5,
+      duration: 400,
       yoyo: true,
+      repeat: 0,
       ease: "Back.easeOut"
     });
     
-    // Color flash - yellow to white and back
+    // Color flash - yellow to white and back (longer)
     this.cardCounterText.setColor("#ffffff");
-    this.time.delayedCall(200, () => {
+    this.time.delayedCall(400, () => {
       this.cardCounterText.setColor("#ffeb3b");
     });
     
-    // Glow effect
+    // Glow effect (longer duration, bigger scale)
     const glow = this.add.text(310, 8, `Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`, {
       fontFamily: "monospace",
       fontSize: "9px",
@@ -695,12 +722,30 @@ export default class GameScene extends Phaser.Scene {
     
     this.tweens.add({
       targets: glow,
-      scale: 1.5,
+      scale: 2,
       alpha: 0,
-      duration: 800,
+      duration: 1500,
       ease: "Power2",
       onComplete: () => glow.destroy()
     });
+    
+    // Add sparkle particles around counter
+    for (let i = 0; i < 3; i++) {
+      const sparkle = this.add.text(310 + (Math.random() - 0.5) * 20, 8 + (Math.random() - 0.5) * 10, "✨", {
+        fontSize: "12px",
+        resolution: 1,
+      }).setOrigin(0.5).setDepth(11);
+      
+      this.tweens.add({
+        targets: sparkle,
+        y: sparkle.y - 20,
+        alpha: 0,
+        duration: 1000,
+        delay: i * 200,
+        ease: "Power2",
+        onComplete: () => sparkle.destroy()
+      });
+    }
   }
   
   private hideImagePopup() {
