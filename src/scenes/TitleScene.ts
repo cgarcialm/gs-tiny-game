@@ -386,7 +386,7 @@ export default class TitleScene extends Phaser.Scene {
       this.showDialog("The fragments scattered into the void...");
       
       // After a delay, Grayson realizes something
-      this.time.delayedCall(2000, () => {
+      this.time.delayedCall(3000, () => {
         this.sceneState = "transformation_start";
         this.showDialog("Grayson: Wait... what's happening to me?");
         
@@ -395,16 +395,16 @@ export default class TitleScene extends Phaser.Scene {
           targets: this.grayson,
           alpha: { from: 1, to: 0.5 },
           yoyo: true,
-          repeat: 3,
+          repeat: 5,
           duration: 300,
         });
         
         // The big realization
-        this.time.delayedCall(2000, () => {
+        this.time.delayedCall(3000, () => {
           this.showDialog("Grayson: Am I getting... PIXELS?!");
           
           // Start transformation
-          this.time.delayedCall(1500, () => {
+          this.time.delayedCall(2500, () => {
             this.startTransformation();
           });
         });
@@ -457,28 +457,39 @@ export default class TitleScene extends Phaser.Scene {
     
     if (!this.pixelGrayson) return;
     
-    const duration = 2.5; // Total transformation time
+    const duration = 4; // Longer transformation for more drama
     const progress = Math.min(this.transformationTime / duration, 1);
     
-    if (progress < 0.8) {
-      // Glitch between ASCII and pixel
-      const flickerSpeed = 10 + progress * 20; // Speed up over time
+    if (progress < 0.85) {
+      // DRAMATIC flicker between ASCII and pixel - MUCH slower
+      const flickerSpeed = 2 + progress * 6; // 2-8 flickers per second (very visible!)
       const showPixel = Math.floor(this.transformationTime * flickerSpeed) % 2 === 0;
       
-      this.grayson.setAlpha(showPixel ? 0 : 1);
+      // Lower alpha makes Grayson almost invisible during flicker
+      this.grayson.setAlpha(showPixel ? 1 : 0);
       this.pixelGrayson.setAlpha(showPixel ? 1 : 0);
       this.pixelGrayson.setScale(0.5 + progress * 0.5);
       
-      // Random glitch rectangles
-      if (this.glitchGraphics && Math.random() < 0.3) {
+      // Bigger, brighter, more frequent glitch rectangles
+      if (this.glitchGraphics && Math.random() < 0.6) {
         this.glitchGraphics.clear();
-        this.glitchGraphics.fillStyle(Math.random() > 0.5 ? 0x00d4ff : 0xff00ff, 0.3);
-        this.glitchGraphics.fillRect(
-          Math.random() * SCREEN_WIDTH,
-          Math.random() * SCREEN_HEIGHT,
-          Math.random() * 50,
-          Math.random() * 50
-        );
+        const color = Math.random() > 0.5 ? 0x00d4ff : 0xff00ff;
+        this.glitchGraphics.fillStyle(color, 0.5);
+        
+        // Multiple large glitch blocks
+        for (let i = 0; i < 4; i++) {
+          this.glitchGraphics.fillRect(
+            Math.random() * SCREEN_WIDTH,
+            Math.random() * SCREEN_HEIGHT,
+            Math.random() * 100 + 30,
+            Math.random() * 100 + 30
+          );
+        }
+      }
+      
+      // Screen shake gets stronger over time
+      if (progress > 0.3) {
+        this.cameras.main.shake(50, 0.003 * (progress - 0.3));
       }
     } else if (progress < 1) {
       // Finalize transformation
