@@ -42,7 +42,6 @@ export default class NorthgateScene extends Phaser.Scene {
   private dialogText!: Phaser.GameObjects.Text;
   private dialogVisible = false;
   private promptText!: Phaser.GameObjects.Text;
-  private helpHintText!: Phaser.GameObjects.Text;
 
   constructor() {
     super("Northgate");
@@ -441,7 +440,7 @@ export default class NorthgateScene extends Phaser.Scene {
     }).setOrigin(0, 0).setVisible(false);
     
     // Help hint (bottom-right corner) - always visible in later levels
-    this.helpHintText = this.add
+    this.add
       .text(HELP_HINT_X, HELP_HINT_Y, "H for Help", {
         fontFamily: "monospace",
         fontSize: "8px",
