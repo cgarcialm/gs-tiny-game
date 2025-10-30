@@ -1,10 +1,11 @@
 import Phaser from "phaser";
-import { setupControls, getHorizontalAxis } from "../utils/controls";
+import { getHorizontalAxis } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
 import { PauseMenu } from "../utils/pauseMenu";
 import { DialogueManager } from "../utils/dialogueManager";
 import { handleMenuInput } from "../utils/menuHandler";
+import { initializeGameScene } from "../utils/sceneSetup";
 
 const PLAYER_ASCII = String.raw`
    _---
@@ -129,7 +130,13 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   create() {
-    this.cameras.main.setRoundPixels(true);
+    // Initialize common scene elements (camera, controls, menus, dialogue)
+    const setup = initializeGameScene(this);
+    this.controls = setup.controls;
+    this.helpMenu = setup.helpMenu;
+    this.pauseMenu = setup.pauseMenu;
+    this.dialogueManager = setup.dialogueManager;
+
     this.cameras.main.setBackgroundColor(BG_COLOR);
 
     // Title
@@ -195,18 +202,6 @@ export default class TitleScene extends Phaser.Scene {
       color: TITLE_COLOR,
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5);
-
-    // Setup standard controls (WASD + arrows, space, E, Enter, ESC, H)
-    this.controls = setupControls(this);
-    
-    // Create help menu
-    this.helpMenu = new HelpMenu(this);
-    
-    // Create pause menu
-    this.pauseMenu = new PauseMenu(this);
-    
-    // Create dialogue manager
-    this.dialogueManager = new DialogueManager(this);
     
     // Note: No help hint in TitleScene - this is before the game starts
     // Help hint will appear after Eboshi interaction in GameScene

@@ -1,12 +1,13 @@
 import Phaser from "phaser";
 import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite, createCeciSprite, createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 import { createCrowdPersonSprite, getRandomCrowdColors } from "../utils/sprites/CrowdPersonSprite";
-import { setupControls, getHorizontalAxis, getVerticalAxis, shouldCloseDialogue, HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
+import { getHorizontalAxis, getVerticalAxis, shouldCloseDialogue, HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
 import { PauseMenu } from "../utils/pauseMenu";
 import { DialogueManager } from "../utils/dialogueManager";
 import { handleMenuInput } from "../utils/menuHandler";
+import { initializeGameScene } from "../utils/sceneSetup";
 import { DEBUG_START_LEVEL } from "../config/debug";
 
 type DialogueState = "idle" | "open";
@@ -90,8 +91,12 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
-    // Set camera to respect pixel art settings
-    this.cameras.main.setRoundPixels(true);
+    // Initialize common scene elements (camera, controls, menus, dialogue)
+    const setup = initializeGameScene(this);
+    this.controls = setup.controls;
+    this.helpMenu = setup.helpMenu;
+    this.pauseMenu = setup.pauseMenu;
+    this.dialogueManager = setup.dialogueManager;
 
     // Pixel grid background (procedural)
     // More intense blue background with bright green thin grid lines
@@ -102,18 +107,6 @@ export default class GameScene extends Phaser.Scene {
 
     // Setup scene based on completed levels
     this.setupSceneForLevel(this.completedLevels);
-
-    // Setup standard controls (WASD + arrows, space, E, Enter, ESC, H)
-    this.controls = setupControls(this);
-    
-    // Create help menu
-    this.helpMenu = new HelpMenu(this);
-    
-    // Create pause menu
-    this.pauseMenu = new PauseMenu(this);
-    
-    // Create dialogue manager
-    this.dialogueManager = new DialogueManager(this);
 
     // "Press E to interact" prompt (hidden by default)
     this.promptText = this.add

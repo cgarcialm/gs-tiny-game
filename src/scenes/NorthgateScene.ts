@@ -1,11 +1,12 @@
 import Phaser from "phaser";
 import { createGraysonSprite, updateGraysonWalk, createCeciSprite, createRandomGuySprite, createSecurityGuardSprite, createFurrySprite } from "../utils/sprites";
-import { setupControls, getHorizontalAxis, shouldCloseDialogue, HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
+import { getHorizontalAxis, shouldCloseDialogue, HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
 import { PauseMenu } from "../utils/pauseMenu";
 import { DialogueManager } from "../utils/dialogueManager";
 import { handleMenuInput } from "../utils/menuHandler";
+import { initializeGameScene } from "../utils/sceneSetup";
 
 export default class NorthgateScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -49,7 +50,12 @@ export default class NorthgateScene extends Phaser.Scene {
   }
 
   create() {
-    this.cameras.main.setRoundPixels(true);
+    // Initialize common scene elements (camera, controls, menus, dialogue)
+    const setup = initializeGameScene(this);
+    this.controls = setup.controls;
+    this.helpMenu = setup.helpMenu;
+    this.pauseMenu = setup.pauseMenu;
+    this.dialogueManager = setup.dialogueManager;
     
     // Background - metro station aesthetic
     this.createStationBackground();
@@ -78,18 +84,6 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Create furries (NPCs)
     this.createFurries();
-    
-    // Setup standard controls (WASD + arrows, space, E, Enter, ESC, H)
-    this.controls = setupControls(this);
-    
-    // Create help menu
-    this.helpMenu = new HelpMenu(this);
-    
-    // Create pause menu
-    this.pauseMenu = new PauseMenu(this);
-    
-    // Create dialogue manager
-    this.dialogueManager = new DialogueManager(this);
     
     // UI
     this.createUI();
