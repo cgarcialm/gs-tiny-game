@@ -50,6 +50,7 @@ export default class GameScene extends Phaser.Scene {
   
   // Interaction tracking
   private hasInteractedWithEboshi = false;
+  private ceciGaveMemory = false;
   
   // Image popup
   private imagePopup!: Phaser.GameObjects.Container;
@@ -154,7 +155,13 @@ export default class GameScene extends Phaser.Scene {
           targets: this.player,
           x: 160,
           duration: 2000,
-          ease: "Linear"
+          ease: "Linear",
+          onComplete: () => {
+            // After entering, Ceci gives Grayson the memory
+            this.time.delayedCall(500, () => {
+              this.ceciGivesMemory();
+            });
+          }
         });
         
         this.tweens.add({
@@ -439,9 +446,9 @@ export default class GameScene extends Phaser.Scene {
     this.cardPiece.setVisible(false);
     this.promptText.setVisible(false);
     
-    // Update counter
+    // Update counter with animation
     this.cardPiecesCollected++;
-    this.cardCounterText.setText(`Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`);
+    this.updateMemoryCounter();
     
     // Spawn celebration sparkles
     const sparkles = spawnCardPieceSparkles(this, this.cardPieceX, this.cardPieceY);
@@ -565,6 +572,135 @@ export default class GameScene extends Phaser.Scene {
     if (this.hockeyOverlay) {
       this.hockeyOverlay.style.display = 'none';
     }
+  }
+  
+  private ceciGivesMemory() {
+    if (this.ceciGaveMemory) return;
+    this.ceciGaveMemory = true;
+    
+    this.showDialog("Ceci: Hey! I found another piece of the card!");
+    
+    this.time.delayedCall(3000, () => {
+      this.hideDialog();
+      
+      // Show card piece between them
+      const cardX = (this.player.x + this.ceci.x) / 2;
+      const cardY = 85;
+      const ceciCardPiece = createCardPieceSprite(this, cardX, cardY);
+      
+      // Sparkles around card
+      spawnCardPieceSparkles(this, cardX, cardY);
+      
+      // Wait for player to press E
+      this.waitForCardPickup(ceciCardPiece, cardX, cardY);
+    });
+  }
+  
+  private waitForCardPickup(cardPiece: Phaser.GameObjects.Graphics, cardX: number, cardY: number) {
+    // Show prompt
+    this.promptText.setVisible(true);
+    this.promptText.setPosition(cardX, cardY - 15);
+    
+    // Check for E press in update
+    const checkPickup = () => {
+      const distance = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        cardX,
+        cardY
+      );
+      
+      if (distance < 30 && Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+        // Picked up!
+        this.promptText.setVisible(false);
+        cardPiece.destroy();
+        
+        // Memory collection animation
+        this.cardPiecesCollected++;
+        this.updateMemoryCounter();
+        
+        // "Memory collected!" message
+        const pickupText = this.add.text(cardX, cardY, "Memory collected!", {
+          fontFamily: "monospace",
+          fontSize: "10px",
+          color: "#ffeb3b",
+          fontStyle: "bold",
+          resolution: 2,
+        }).setOrigin(0.5);
+        
+        this.tweens.add({
+          targets: pickupText,
+          y: cardY - 20,
+          alpha: 0,
+          duration: 1500,
+          ease: "Power2",
+          onComplete: () => {
+            pickupText.destroy();
+            // After memory animation, Ceci suggests hockey game
+            this.ceciSuggestsHockey();
+          }
+        });
+        
+        // Stop checking
+        this.events.off('update', checkPickup);
+      }
+    };
+    
+    this.events.on('update', checkPickup);
+  }
+  
+  private ceciSuggestsHockey() {
+    this.showDialog("Ceci: One of the many times we went to see the Silvertips!");
+    
+    this.time.delayedCall(3000, () => {
+      this.hideDialog();
+      
+      // Fade out and go to hockey scene
+      this.time.delayedCall(1000, () => {
+        this.cameras.main.fadeOut(1000, 0, 0, 0);
+        this.time.delayedCall(1000, () => {
+          this.scene.start("IceHockey");
+        });
+      });
+    });
+  }
+  
+  private updateMemoryCounter() {
+    // Update text
+    this.cardCounterText.setText(`Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`);
+    
+    // Pulse animation - scale up and down
+    this.tweens.add({
+      targets: this.cardCounterText,
+      scale: 1.3,
+      duration: 200,
+      yoyo: true,
+      ease: "Back.easeOut"
+    });
+    
+    // Color flash - yellow to white and back
+    this.cardCounterText.setColor("#ffffff");
+    this.time.delayedCall(200, () => {
+      this.cardCounterText.setColor("#ffeb3b");
+    });
+    
+    // Glow effect
+    const glow = this.add.text(310, 8, `Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`, {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffeb3b",
+      fontStyle: "bold",
+      resolution: 1,
+    }).setOrigin(1, 0).setDepth(9);
+    
+    this.tweens.add({
+      targets: glow,
+      scale: 1.5,
+      alpha: 0,
+      duration: 800,
+      ease: "Power2",
+      onComplete: () => glow.destroy()
+    });
   }
   
   private hideImagePopup() {

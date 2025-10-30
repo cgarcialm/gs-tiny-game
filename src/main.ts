@@ -3,6 +3,7 @@ import BootScene from "./scenes/BootScene";
 import GameScene from "./scenes/GameScene";
 import TitleScene from "./scenes/TitleScene";
 import NorthgateScene from "./scenes/NorthgateScene";
+import IceHockeyScene from "./scenes/IceHockeyScene";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -18,7 +19,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false
     }
   },
-  scene: [BootScene, TitleScene, GameScene, NorthgateScene],
+  scene: [BootScene, TitleScene, GameScene, NorthgateScene, IceHockeyScene],
 };
 
 new Phaser.Game(config);
