@@ -19,6 +19,7 @@ export default class NorthgateScene extends Phaser.Scene {
   private firstTrainPassed = false;
   private hasTicket = false;
   private hasMetGuard = false;
+  private isDrugged = false;
   
   // NPCs
   private securityGuard!: Phaser.GameObjects.Container;
@@ -281,32 +282,28 @@ export default class NorthgateScene extends Phaser.Scene {
     
     syringePositions.forEach(pos => {
       const syringe = this.physics.add.sprite(pos.x, pos.y, '');
-      syringe.setSize(8, 3);
+      syringe.setSize(10, 4);
       
-      // Visual - more realistic syringe graphic
+      // Visual - lighter syringe with measurement lines
       const syringeGraphics = this.add.graphics();
       
-      // Sharp needle tip - silver/gray
-      syringeGraphics.fillStyle(0xcccccc, 1);
-      syringeGraphics.fillRect(0, 1, 2, 1);
+      // Sharp needle - light silver
+      syringeGraphics.fillStyle(0xd0d0d0, 1);
+      syringeGraphics.fillRect(0, 2, 4, 1);
       
-      // Needle shaft - darker gray
-      syringeGraphics.fillStyle(0x888888, 1);
-      syringeGraphics.fillRect(2, 1, 3, 1);
+      // Syringe barrel - very light/transparent
+      syringeGraphics.fillStyle(0xf5f5f5, 0.95);
+      syringeGraphics.fillRect(4, 1, 7, 3);
       
-      // Syringe barrel - transparent/white
-      syringeGraphics.fillStyle(0xdddddd, 0.9);
-      syringeGraphics.fillRect(5, 0, 6, 3);
+      // Plunger inside barrel - light gray
+      syringeGraphics.fillStyle(0xbbbbbb, 0.8);
+      syringeGraphics.fillRect(7, 2, 2, 1);
       
-      // Plunger - orange/red cap
-      syringeGraphics.fillStyle(0xff6600, 1);
-      syringeGraphics.fillRect(11, 0, 2, 3);
+      // Plunger cap/end - orange
+      syringeGraphics.fillStyle(0xff8844, 1);
+      syringeGraphics.fillRect(11, 1, 2, 3);
       
-      // Outline for visibility
-      syringeGraphics.lineStyle(1, 0x555555, 0.6);
-      syringeGraphics.strokeRect(5, 0, 6, 3);
-      
-      syringeGraphics.generateTexture('syringe-' + pos.x, 13, 3);
+      syringeGraphics.generateTexture('syringe-' + pos.x, 13, 5);
       syringeGraphics.destroy();
       
       syringe.setTexture('syringe-' + pos.x);
@@ -390,6 +387,11 @@ export default class NorthgateScene extends Phaser.Scene {
       return;
     }
     
+    // Can't move when drugged
+    if (this.isDrugged) {
+      return;
+    }
+    
     // Player movement - Horizontal movement
     if (this.cursors.left?.isDown || this.keys.A.isDown) {
       this.player.setVelocityX(-this.speed);
@@ -399,6 +401,14 @@ export default class NorthgateScene extends Phaser.Scene {
       this.playerSprite.setScale(-1, 1); // Face right
     } else {
       this.player.setVelocityX(0);
+    }
+    
+    // Small jump (always available)
+    const onGround = this.player.body!.touching.down;
+    
+    if (onGround && this.keys.SPACE.isDown) {
+      // Small hop
+      this.player.setVelocityY(-140);
     }
     
     // Escalator logic
@@ -622,16 +632,30 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private hitHazard() {
-    // Hit syringe hazard - respawn at start
-    this.player.x = 200;
-    this.player.y = 155;
+    // Player got drugged - lay down effect
+    this.isDrugged = true;
     this.player.setVelocity(0, 0);
     
-    // Yellow flash effect (different from train)
+    // Rotate sprite to laying down
+    this.playerSprite.setAngle(90);
+    
+    // Yellow flash effect + screen wobble
     this.cameras.main.flash(200, 255, 255, 0);
+    this.cameras.main.shake(3000, 0.003);
     
     // Warning message
-    this.showDialog("Watch your step! Stay safe.");
+    this.showDialog("Ouch! That wasn't candy...");
+    
+    // After 4 seconds, get back up
+    this.time.delayedCall(4000, () => {
+      this.isDrugged = false;
+      this.playerSprite.setAngle(0);
+      
+      // Respawn at start
+      this.player.x = 200;
+      this.player.y = 155;
+      this.hideDialog();
+    });
   }
   
   private collectCardFragment() {
