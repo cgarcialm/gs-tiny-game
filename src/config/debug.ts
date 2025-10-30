@@ -19,5 +19,5 @@ export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" = "
  * 2 = after level 2
  * etc.
  */
-export const DEBUG_START_LEVEL = 0;
+export const DEBUG_START_LEVEL = 1;
 

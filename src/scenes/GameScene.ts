@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite, createCeciSprite, createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
+import { createCrowdPersonSprite, getRandomCrowdColors } from "../utils/sprites/CrowdPersonSprite";
 import { setupControls, getHorizontalAxis, getVerticalAxis, shouldCloseDialogue, HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
@@ -25,6 +26,12 @@ export default class GameScene extends Phaser.Scene {
   private playerBaseY = 0;
   
   private completedLevels = 0; // 0 = none, 1 = Northgate, 2 = Level2, etc.
+  
+  // Stadium transformation
+  private isTransformingToStadium = false;
+  private transformationTime = 0;
+  private crowdPeople: Phaser.GameObjects.Container[] = [];
+  private stadiumElements: Phaser.GameObjects.GameObject[] = [];
 
   private speed = 80; // px/s
   private promptText!: Phaser.GameObjects.Text;
@@ -67,6 +74,7 @@ export default class GameScene extends Phaser.Scene {
   // Interaction tracking
   private hasInteractedWithEboshi = false;
   private ceciGaveMemory = false;
+  private ceciCardPieceShown = false;
   
   // Image popup
   private imagePopup!: Phaser.GameObjects.Container;
@@ -414,6 +422,13 @@ export default class GameScene extends Phaser.Scene {
       this.updateChaseSequence(dt);
       return;
     }
+    
+    // Handle stadium transformation (no player control)
+    if (this.isTransformingToStadium) {
+      this.transformationTime += dt;
+      // No player input during transformation
+      return;
+    }
 
     // If in dialogue, only allow closing/advancing; no movement
     if (this.dialogState === "open") {
@@ -674,6 +689,9 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private showCeciCardPiece() {
+    if (this.ceciCardPieceShown) return; // Prevent showing twice
+    this.ceciCardPieceShown = true;
+    
     // Show card piece between Grayson and Ceci
     const cardX = (this.player.x + this.ceci.x) / 2;
     const cardY = 85;
@@ -690,8 +708,12 @@ export default class GameScene extends Phaser.Scene {
     // Don't show "E to interact" prompt in level 1+
     // Player knows they can interact from previous levels
     
+    let hasCollected = false; // Prevent double collection
+    
     // Check for E press in update
     const checkPickup = () => {
+      if (hasCollected) return; // Already collected
+      
       const distance = Phaser.Math.Distance.Between(
         this.player.x,
         this.player.y,
@@ -700,8 +722,14 @@ export default class GameScene extends Phaser.Scene {
       );
       
       if (distance < 30 && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+        // Mark as collected immediately
+        hasCollected = true;
+        
         // Picked up!
         cardPiece.destroy();
+        
+        // Stop checking immediately
+        this.events.off('update', checkPickup);
         
         // Memory collection animation
         this.cardPiecesCollected++;
@@ -728,9 +756,6 @@ export default class GameScene extends Phaser.Scene {
             this.ceciSuggestsHockey();
           }
         });
-        
-        // Stop checking
-        this.events.off('update', checkPickup);
       }
     };
     
@@ -743,11 +768,220 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(3000, () => {
       this.hideDialog();
       
-      // Fade out and go to hockey scene
-      this.time.delayedCall(1000, () => {
-        this.cameras.main.fadeOut(1000, 0, 0, 0);
-        this.time.delayedCall(1000, () => {
-          this.scene.start("IceHockey");
+      // Start transforming to stadium instead of fading
+      this.time.delayedCall(500, () => {
+        this.startStadiumTransformation();
+      });
+    });
+  }
+  
+  private startStadiumTransformation() {
+    this.isTransformingToStadium = true;
+    this.transformationTime = 0;
+    
+    // Hide help hint during transformation
+    this.helpHintText.setVisible(false);
+    
+    // Ensure player and Ceci are visible above stadium elements
+    this.player.setDepth(6);
+    if (this.ceci) {
+      this.ceci.setDepth(6);
+    }
+    
+    // Disable player movement during transformation
+    // (handled in update loop by checking isTransformingToStadium)
+    
+    // Create simple stadium elements that fade in
+    this.createStadiumConcourse();
+    
+    // Start spawning crowd after a moment
+    this.time.delayedCall(1000, () => {
+      this.spawnCrowd();
+    });
+  }
+  
+  private createStadiumConcourse() {
+    // Fade out the void grid background to dark gray
+    const overlay = this.add.rectangle(160, 90, 320, 180, 0x2a2a2a, 0);
+    overlay.setDepth(1); // Above grid but below characters
+    this.stadiumElements.push(overlay);
+    
+    this.tweens.add({
+      targets: overlay,
+      alpha: 0.9,
+      duration: 1500,
+      ease: "Power2"
+    });
+    
+    // Add very thick stadium wall at top (ceiling)
+    const wallHeight = 80;
+    const topWall = this.add.rectangle(160, wallHeight / 2, 320, wallHeight, 0x4a4a4a, 1);
+    topWall.setAlpha(0);
+    topWall.setDepth(2); // Above overlay, below characters
+    this.stadiumElements.push(topWall);
+    
+    // Bottom wall - a bit thicker (floor/lower wall)
+    const bottomWall = this.add.rectangle(160, 172, 320, 16, 0x4a4a4a, 1);
+    bottomWall.setAlpha(0);
+    bottomWall.setDepth(2); // Same as top wall
+    this.stadiumElements.push(bottomWall);
+    
+    // Fade in walls
+    this.tweens.add({
+      targets: [topWall, bottomWall],
+      alpha: 1,
+      duration: 1500,
+      ease: "Power2"
+    });
+    
+    // Add gate doors on the LEFT side - align BOTTOM of doors with BOTTOM of wall (y:80)
+    const doorHeight = 60;
+    const wallBottom = wallHeight; // Wall bottom at y:80
+    const doorCenterY = wallBottom - (doorHeight / 2); // Door center at y:50 (80 - 30)
+    
+    const door203 = this.add.rectangle(50, doorCenterY, 35, doorHeight, 0x0d0d0d, 1);
+    door203.setStrokeStyle(2, 0x888888);
+    door203.setAlpha(0);
+    door203.setDepth(3); // Above walls, below characters
+    this.stadiumElements.push(door203);
+    
+    const doorLabel203 = this.add.text(50, doorCenterY - 5, "GATE\n203", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffeb3b",
+      fontStyle: "bold",
+      align: "center",
+      lineSpacing: 1,
+      resolution: 1,
+    }).setOrigin(0.5).setAlpha(0);
+    doorLabel203.setDepth(4); // Above doors
+    this.stadiumElements.push(doorLabel203);
+    
+    const door204 = this.add.rectangle(100, doorCenterY, 35, doorHeight, 0x0d0d0d, 1);
+    door204.setStrokeStyle(2, 0x888888);
+    door204.setAlpha(0);
+    door204.setDepth(3); // Above walls, below characters
+    this.stadiumElements.push(door204);
+    
+    const doorLabel204 = this.add.text(100, doorCenterY - 5, "GATE\n204", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffeb3b",
+      fontStyle: "bold",
+      align: "center",
+      lineSpacing: 1,
+      resolution: 1,
+    }).setOrigin(0.5).setAlpha(0);
+    doorLabel204.setDepth(4); // Above doors
+    this.stadiumElements.push(doorLabel204);
+    
+    // Add food shop sign - on the RIGHT side, pointing right
+    const foodSign = this.add.text(290, 50, "SNACKS →", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#ff6666",
+      backgroundColor: "#000000",
+      padding: { left: 2, right: 2, top: 1, bottom: 1 },
+      resolution: 1,
+    }).setOrigin(0.5).setAlpha(0);
+    foodSign.setDepth(3); // Above walls
+    this.stadiumElements.push(foodSign);
+    
+    // Fade in signs and doors
+    this.tweens.add({
+      targets: [foodSign, door203, door204, doorLabel203, doorLabel204],
+      alpha: 1,
+      duration: 1500,
+      delay: 500,
+      ease: "Power2"
+    });
+  }
+  
+  private spawnCrowd() {
+    // Spawn people walking from both sides at different speeds
+    const numPeople = 25; // More people for a bigger crowd
+    
+    for (let i = 0; i < numPeople; i++) {
+      const fromLeft = Math.random() > 0.5;
+      const startX = fromLeft ? -20 : 340; // Start completely off screen
+      const y = 80 + Math.random() * 70; // Random Y between 80-150 (below the wall)
+      const speed = 30 + Math.random() * 50; // Speed 30-80
+      const direction = fromLeft ? 1 : -1;
+      
+      // Stagger the spawns
+      this.time.delayedCall(i * 150, () => {
+        // Create person sprite with random colors
+        const colors = getRandomCrowdColors();
+        const person = createCrowdPersonSprite(this, startX, y, colors);
+        person.setDepth(5); // Below Grayson/Ceci (6) but above walls (1-4)
+        this.crowdPeople.push(person);
+        
+        // Move person across screen (already visible when they enter)
+        this.tweens.add({
+          targets: person,
+          x: startX + direction * 400,
+          duration: (400 / speed) * 1000,
+          ease: "Linear",
+          onComplete: () => {
+            person.destroy();
+            const index = this.crowdPeople.indexOf(person);
+            if (index > -1) this.crowdPeople.splice(index, 1);
+          }
+        });
+      });
+    }
+    
+    // After crowd starts moving, Ceci gets lost
+    this.time.delayedCall(2000, () => {
+      this.ceciGetsLost();
+    });
+  }
+  
+  private ceciGetsLost() {
+    // Move Ceci farther into the crowd and fade her out
+    const direction = Math.random() > 0.5 ? 1 : -1; // Random direction
+    const targetX = this.ceci.x + direction * 120; // Walk much farther
+    
+    this.tweens.add({
+      targets: this.ceci,
+      x: targetX,
+      y: this.ceci.y + (Math.random() - 0.5) * 30,
+      alpha: 0,
+      duration: 2000, // Slower fade
+      ease: "Power2"
+    });
+    
+    // After Ceci disappears, Grayson looks around
+    this.time.delayedCall(2200, () => {
+      this.showDialog("Grayson: Ceci? Where did you go?!");
+      
+      // Make Grayson walk to the left looking for Ceci
+      this.time.delayedCall(2500, () => { // Longer so player can read
+        this.hideDialog();
+        
+        // Show dialogue as he starts moving
+        this.time.delayedCall(300, () => {
+          this.showDialog("Grayson: Oh boy... I need to find her!");
+        });
+        
+        // Walk to the left while looking around
+        this.player.setScale(1, 1); // Face left
+        
+        this.tweens.add({
+          targets: this.player,
+          x: -20, // Walk all the way off screen to the left
+          duration: 3000,
+          ease: "Linear",
+          onComplete: () => {
+            // After Grayson exits, transition to Ice Hockey scene
+            this.time.delayedCall(1500, () => { // Short pause after exit
+              this.hideDialog();
+              this.cameras.main.fadeOut(800, 0, 0, 0);
+              this.time.delayedCall(800, () => {
+                this.scene.start("IceHockey");
+              });
+            });
+          }
         });
       });
     });
