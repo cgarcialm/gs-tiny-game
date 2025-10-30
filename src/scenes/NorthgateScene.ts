@@ -249,6 +249,7 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private createCeci() {
     // Ceci starts hidden - will arrive on first train
+    // Final position will be on left side of top platform
     this.ceci = createCeciSprite(this, -100, -100);
     this.ceci.setVisible(false);
   }
@@ -273,47 +274,58 @@ export default class NorthgateScene extends Phaser.Scene {
     // Small, realistic but not overly graphic
     
     const syringePositions = [
-      { x: 80, y: 165 },   // Ground level
-      { x: 240, y: 165 },  // Ground level
-      { x: 70, y: 120 },   // Platform 1
-      { x: 270, y: 80 },   // Platform 3 (train level)
-      { x: 180, y: 40 },   // Top platform
+      { x: 80, y: 162 },   // Ground level (y: 170 - 8)
+      { x: 240, y: 162 },  // Ground level
+      { x: 200, y: 77 },   // Platform 3/Train level (y: 85 - 8)
+      { x: 120, y: 37 },   // Top platform (y: 45 - 8) - moved to left
     ];
     
     syringePositions.forEach(pos => {
       const syringe = this.physics.add.sprite(pos.x, pos.y, '');
-      syringe.setSize(10, 4);
       
-      // Visual - lighter syringe with measurement lines
+      // Visual - medium-sized syringe
       const syringeGraphics = this.add.graphics();
       
       // Sharp needle - light silver
       syringeGraphics.fillStyle(0xd0d0d0, 1);
-      syringeGraphics.fillRect(0, 2, 4, 1);
+      syringeGraphics.fillRect(0, 2, 5, 1);
       
       // Syringe barrel - very light/transparent
       syringeGraphics.fillStyle(0xf5f5f5, 0.95);
-      syringeGraphics.fillRect(4, 1, 7, 3);
+      syringeGraphics.fillRect(5, 1, 8, 3);
       
       // Plunger inside barrel - light gray
       syringeGraphics.fillStyle(0xbbbbbb, 0.8);
-      syringeGraphics.fillRect(7, 2, 2, 1);
+      syringeGraphics.fillRect(8, 2, 2, 1);
       
       // Plunger cap/end - orange
       syringeGraphics.fillStyle(0xff8844, 1);
-      syringeGraphics.fillRect(11, 1, 2, 3);
+      syringeGraphics.fillRect(13, 1, 2, 3);
       
-      syringeGraphics.generateTexture('syringe-' + pos.x, 13, 5);
+      syringeGraphics.generateTexture('syringe-' + pos.x, 15, 5);
       syringeGraphics.destroy();
       
       syringe.setTexture('syringe-' + pos.x);
-      (syringe.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+      syringe.setDisplaySize(15, 5);
+      (syringe.body as Phaser.Physics.Arcade.Body).setSize(10, 3); // Smaller hitbox
+      const body = syringe.body as Phaser.Physics.Arcade.Body;
+      body.setAllowGravity(false);
+      body.setImmovable(true);
       
       this.syringes.push(syringe);
-      
-      // Add overlap detection
-      this.physics.add.overlap(this.player, syringe, () => this.hitHazard(), undefined, this);
     });
+    
+    // Add collision detection for all syringes
+    this.physics.add.collider(
+      this.player, 
+      this.syringes, 
+      (player, syringe) => {
+        this.hitHazard();
+        (syringe as Phaser.Physics.Arcade.Sprite).destroy(); // Remove syringe after hit
+      }, 
+      undefined, 
+      this
+    );
   }
   
   private createTicketMachine() {
@@ -497,10 +509,10 @@ export default class NorthgateScene extends Phaser.Scene {
             duration: 1500,
             ease: "Linear",
             onComplete: () => {
-              // Step 3: Ceci walks to final position on top platform
+              // Step 3: Ceci walks to final position on top platform (left side)
               this.tweens.add({
                 targets: this.ceci,
-                x: 200,
+                x: 80,
                 duration: 800,
                 ease: "Power2",
                 onComplete: () => {
@@ -646,14 +658,10 @@ export default class NorthgateScene extends Phaser.Scene {
     // Warning message
     this.showDialog("Ouch! That wasn't candy...");
     
-    // After 4 seconds, get back up
-    this.time.delayedCall(4000, () => {
+    // After 5 seconds, get back up (stay in same position)
+    this.time.delayedCall(3000, () => {
       this.isDrugged = false;
       this.playerSprite.setAngle(0);
-      
-      // Respawn at start
-      this.player.x = 200;
-      this.player.y = 155;
       this.hideDialog();
     });
   }
