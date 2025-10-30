@@ -103,17 +103,18 @@ export default class NorthgateScene extends Phaser.Scene {
     // Platform 1 (mid-low)
     const platform1 = this.add.rectangle(120, 125, 110, 8, 0x666666);
     this.platforms.add(platform1);
+  
     
-    // Platform 2 (mid-high)
-    const platform2 = this.add.rectangle(200, 45, 80, 8, 0x666666);
-    this.platforms.add(platform2);
-    
-    // Platform 3 (train level) - split with gap for escalator
+    // Platform 2 (train level) - split with gap for escalator
     const platform3Left = this.add.rectangle(70, 85, 140, 8, 0x777777);
     this.platforms.add(platform3Left);
     const platform3Right = this.add.rectangle(250, 85, 160, 8, 0x777777);
     this.platforms.add(platform3Right);
     
+    // Platform 3 (mid-high)
+    const platform2 = this.add.rectangle(140, 45, 200, 8, 0x666666);
+    this.platforms.add(platform2);
+
     // Visual rails for train platform (with gap)
     this.add.rectangle(120, 87, 240, 2, 0xffeb3b, 0.8);
     this.add.rectangle(290, 87, 60, 2, 0xffeb3b, 0.8);
