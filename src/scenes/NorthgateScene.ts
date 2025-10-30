@@ -136,14 +136,14 @@ export default class NorthgateScene extends Phaser.Scene {
     this.platforms.add(ground);
     
     // Platform 1 (mid-low)
-    const platform1 = this.add.rectangle(120, 125, 110, 8, 0x666666);
+    const platform1 = this.add.rectangle(120, 125, 110, 6, 0x666666);
     this.platforms.add(platform1);
   
     
     // Platform 2 (train level) - split with gap for escalator
-    const platform3Left = this.add.rectangle(70, 85, 140, 8, 0x777777);
+    const platform3Left = this.add.rectangle(70, 85, 140, 6, 0x777777);
     this.platforms.add(platform3Left);
-    const platform3Right = this.add.rectangle(250, 85, 160, 8, 0x777777);
+    const platform3Right = this.add.rectangle(250, 85, 160, 6, 0x777777);
     this.platforms.add(platform3Right);
 
     // Visual rails for train platform (with gap)
@@ -200,8 +200,10 @@ export default class NorthgateScene extends Phaser.Scene {
     this.train = this.physics.add.sprite(400, 65, '');
     const trainWidth = 100;
     const trainHeight = 35;
-    this.train.setSize(trainWidth, trainHeight);
     this.train.setDisplaySize(trainWidth, trainHeight);
+    // Medium hitbox - not too loose, not too tight
+    this.train.setSize(90, 32);
+    this.train.setOffset(5, 2); // Center the hitbox
     
     // Visual representation - Seattle Light Rail style (blue/white/green)
     const trainGraphics = this.add.graphics();
@@ -795,13 +797,49 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private hitByTrain() {
-    // Player death - respawn at start
-    this.player.x = 200;
-    this.player.y = 155;
-    this.player.setVelocity(0, 0);
+    // Player hit by train - dramatic knockout
+    this.isDrugged = true; // Prevent movement during animation
     
-    // Flash effect
-    this.cameras.main.flash(200, 255, 0, 0);
+    // Disable collisions so Grayson can fly off screen cleanly
+    this.player.setCollideWorldBounds(false);
+    (this.player.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    
+    // Strong red flash (longer)
+    this.cameras.main.flash(1500, 255, 0, 0);
+    
+    // Launch Grayson off screen with big force
+    this.player.setVelocityX(-500);
+    this.player.setVelocityY(-300);
+    
+    // Rapid tumbling while flying off screen
+    this.tweens.add({
+      targets: this.playerSprite,
+      angle: -720, // Two full spins
+      duration: 1500,
+      ease: "Power2"
+    });
+    
+    // After flying off, fade to black
+    this.time.delayedCall(1500, () => {
+      this.cameras.main.fadeOut(800, 0, 0, 0);
+      
+      // Respawn after fade
+      this.time.delayedCall(800, () => {
+        // Re-enable collisions
+        this.player.setCollideWorldBounds(true);
+        (this.player.body as Phaser.Physics.Arcade.Body).setAllowGravity(true);
+        
+        // Reset position
+        this.player.x = 200;
+        this.player.y = 155;
+        this.player.setVelocity(0, 0);
+        this.playerSprite.setAngle(0);
+        this.isDrugged = false;
+        
+        // Fade back in
+        this.cameras.main.fadeIn(600, 0, 0, 0);
+      });
+    });
   }
   
   private hitHazard() {
