@@ -6,6 +6,7 @@ import { PauseMenu } from "../utils/pauseMenu";
 import { DialogueManager } from "../utils/dialogueManager";
 import { handleMenuInput } from "../utils/menuHandler";
 import { initializeGameScene } from "../utils/sceneSetup";
+import { fadeToScene } from "../utils/sceneTransitions";
 
 const PLAYER_ASCII = String.raw`
    _---
@@ -534,10 +535,7 @@ export default class TitleScene extends Phaser.Scene {
     
     // Fade out and transition to game
     this.time.delayedCall(2000, () => {
-      this.cameras.main.fadeOut(1000, 0, 0, 0);
-      this.time.delayedCall(1000, () => {
-        this.scene.start("Game");
-      });
+      fadeToScene(this, "Game", 1000);
     });
   }
 }

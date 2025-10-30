@@ -7,6 +7,8 @@ import { PauseMenu } from "../utils/pauseMenu";
 import { DialogueManager } from "../utils/dialogueManager";
 import { handleMenuInput } from "../utils/menuHandler";
 import { initializeGameScene } from "../utils/sceneSetup";
+import { fadeToScene, fadeIn } from "../utils/sceneTransitions";
+import { PROMPT_TEXT_STYLE, HELP_HINT_TEXT_STYLE, STATION_SIGN_STYLE, SMALL_LABEL_STYLE, THOUGHT_BUBBLE_STYLE } from "../config/textStyles";
 
 export default class NorthgateScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -109,23 +111,10 @@ export default class NorthgateScene extends Phaser.Scene {
     }
     
     // Station sign
-    this.add.text(160, 10, "NORTHGATE STATION", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#00d4ff",
-      fontStyle: "bold",
-      resolution: 1,
-    }).setOrigin(0.5);
+    this.add.text(160, 10, "NORTHGATE STATION", STATION_SIGN_STYLE).setOrigin(0.5);
     
     // Exit sign on top left
-    this.add.text(15, 10, "← EXIT", {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#00ff00",
-      backgroundColor: "rgba(0,0,0,0.6)",
-      padding: { left: 3, right: 3, top: 2, bottom: 2 },
-      resolution: 1,
-    }).setOrigin(0, 0.5);
+    this.add.text(15, 10, "← EXIT", SMALL_LABEL_STYLE).setOrigin(0, 0.5);
   }
   
   private createPlatforms() {
@@ -418,25 +407,11 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private createUI() {
     // Prompt text
-    this.promptText = this.add.text(0, 0, "E to interact", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#cfe8ff",
-      backgroundColor: "rgba(0,0,0,0.35)",
-      padding: { left: 4, right: 4, top: 2, bottom: 2 },
-      resolution: 2,
-    }).setOrigin(0.5).setVisible(false);
+    this.promptText = this.add.text(0, 0, "E to interact", PROMPT_TEXT_STYLE)
+      .setOrigin(0.5).setVisible(false);
     
     // Help hint (bottom-right corner) - always visible in later levels
-    this.add
-      .text(HELP_HINT_X, HELP_HINT_Y, "H for Help", {
-        fontFamily: "monospace",
-        fontSize: "8px",
-        color: "#cfe8ff",
-        backgroundColor: "rgba(0,0,0,0.4)",
-        padding: { left: 3, right: 3, top: 2, bottom: 2 },
-        resolution: 1,
-      })
+    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(10);
     
@@ -573,15 +548,10 @@ export default class NorthgateScene extends Phaser.Scene {
         this.isDrugged = true; // Freeze player
         this.player.setVelocity(0, 0); // Stop movement
         
-        // Fade out and go back to GameScene
-        this.cameras.main.fadeOut(1000, 0, 0, 0);
-        
-        this.time.delayedCall(1000, () => {
-          // Increment completed levels
-          const currentLevels = this.registry.get('completedLevels') || 0;
-          this.registry.set('completedLevels', Math.max(currentLevels, 1));
-          this.scene.start("Game");
-        });
+        // Increment completed levels and transition back to GameScene
+        const currentLevels = this.registry.get('completedLevels') || 0;
+        this.registry.set('completedLevels', Math.max(currentLevels, 1));
+        fadeToScene(this, "Game", 1000);
       }
     }
   }
@@ -717,15 +687,8 @@ export default class NorthgateScene extends Phaser.Scene {
                 onComplete: () => {
                   this.ceciHasArrived = true;
                   // Show thought bubble (positioned to the left to avoid station sign)
-                  const thoughtText = this.add.text(80, 30, "Meeting internet strangers\nat unknown train stations...\nPeak dating.", {
-                    fontFamily: "monospace",
-                    fontSize: "9px",
-                    color: "#cfe8ff",
-                    align: "center",
-                    backgroundColor: "rgba(0,0,0,0.7)",
-                    padding: { left: 4, right: 4, top: 3, bottom: 3 },
-                    resolution: 1,
-                  }).setOrigin(0.5);
+                  const thoughtText = this.add.text(80, 30, "Meeting internet strangers\nat unknown train stations...\nPeak dating.", THOUGHT_BUBBLE_STYLE)
+                    .setOrigin(0.5);
                   
                   // Fade out after a while, then Grayson enters
                   this.tweens.add({
@@ -913,7 +876,7 @@ export default class NorthgateScene extends Phaser.Scene {
         this.isDrugged = false;
         
         // Fade back in
-        this.cameras.main.fadeIn(600, 0, 0, 0);
+        fadeIn(this, 600);
       });
     });
   }
@@ -934,7 +897,7 @@ export default class NorthgateScene extends Phaser.Scene {
     this.time.delayedCall(500, () => {
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.time.delayedCall(500, () => {
-        this.cameras.main.fadeIn(500, 0, 0, 0);
+        fadeIn(this, 500);
       });
     });
     

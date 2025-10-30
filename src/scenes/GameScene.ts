@@ -8,7 +8,9 @@ import { PauseMenu } from "../utils/pauseMenu";
 import { DialogueManager } from "../utils/dialogueManager";
 import { handleMenuInput } from "../utils/menuHandler";
 import { initializeGameScene } from "../utils/sceneSetup";
+import { fadeToScene } from "../utils/sceneTransitions";
 import { DEBUG_START_LEVEL } from "../config/debug";
+import { PROMPT_TEXT_STYLE, HELP_HINT_TEXT_STYLE, COUNTER_TEXT_STYLE, FLOATING_MESSAGE_STYLE } from "../config/textStyles";
 
 type DialogueState = "idle" | "open";
 type ChaseState = "idle" | "chasing";
@@ -110,14 +112,7 @@ export default class GameScene extends Phaser.Scene {
 
     // "Press E to interact" prompt (hidden by default)
     this.promptText = this.add
-      .text(0, 0, "E to interact", {
-        fontFamily: "monospace",
-        fontSize: "10px",
-        color: "#cfe8ff",
-        backgroundColor: "rgba(0,0,0,0.35)",
-        padding: { left: 4, right: 4, top: 2, bottom: 2 },
-        resolution: 2,
-      })
+      .text(0, 0, "E to interact", PROMPT_TEXT_STYLE)
       .setOrigin(0.5)
       .setVisible(false);
 
@@ -126,27 +121,13 @@ export default class GameScene extends Phaser.Scene {
     this.cardPiecesCollected = this.completedLevels;
     
     this.cardCounterText = this.add
-      .text(310, 8, `Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`, {
-        fontFamily: "monospace",
-        fontSize: "9px",
-        color: "#ffeb3b",
-        backgroundColor: "rgba(0,0,0,0.5)",
-        padding: { left: 4, right: 4, top: 2, bottom: 2 },
-        resolution: 1,
-      })
+      .text(310, 8, `Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`, COUNTER_TEXT_STYLE)
       .setOrigin(1, 0)
       .setDepth(10);
     
     // Help hint (bottom-right corner) - shown after first Eboshi interaction in level 0
     this.helpHintText = this.add
-      .text(HELP_HINT_X, HELP_HINT_Y, "H for Help", {
-        fontFamily: "monospace",
-        fontSize: "8px",
-        color: "#cfe8ff",
-        backgroundColor: "rgba(0,0,0,0.4)",
-        padding: { left: 3, right: 3, top: 2, bottom: 2 },
-        resolution: 1,
-      })
+      .text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(10);
     
@@ -513,13 +494,8 @@ export default class GameScene extends Phaser.Scene {
     const sparkles = spawnCardPieceSparkles(this, this.cardPieceX, this.cardPieceY);
     
     // Show pickup message
-    const pickupText = this.add.text(this.cardPieceX, this.cardPieceY - 20, "Memory collected!", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#ffeb3b",
-      fontStyle: "bold",
-      resolution: 2,
-    }).setOrigin(0.5);
+    const pickupText = this.add.text(this.cardPieceX, this.cardPieceY - 20, "Memory collected!", FLOATING_MESSAGE_STYLE)
+      .setOrigin(0.5);
     
     // Animate message floating up and fading
     this.tweens.add({
@@ -690,13 +666,8 @@ export default class GameScene extends Phaser.Scene {
         this.updateMemoryCounter();
         
         // "Memory collected!" message
-        const pickupText = this.add.text(cardX, cardY, "Memory collected!", {
-          fontFamily: "monospace",
-          fontSize: "10px",
-          color: "#ffeb3b",
-          fontStyle: "bold",
-          resolution: 2,
-        }).setOrigin(0.5);
+        const pickupText = this.add.text(cardX, cardY, "Memory collected!", FLOATING_MESSAGE_STYLE)
+          .setOrigin(0.5);
         
         this.tweens.add({
           targets: pickupText,
@@ -930,10 +901,7 @@ export default class GameScene extends Phaser.Scene {
             // After Grayson exits, transition to Ice Hockey scene
             this.time.delayedCall(1500, () => { // Short pause after exit
               this.hideDialog();
-              this.cameras.main.fadeOut(800, 0, 0, 0);
-              this.time.delayedCall(800, () => {
-                this.scene.start("IceHockey");
-              });
+              fadeToScene(this, "IceHockey", 800);
             });
           }
         });
@@ -963,11 +931,8 @@ export default class GameScene extends Phaser.Scene {
     
     // Glow effect (longer duration, bigger scale)
     const glow = this.add.text(310, 8, `Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`, {
-      fontFamily: "monospace",
-      fontSize: "9px",
-      color: "#ffeb3b",
+      ...COUNTER_TEXT_STYLE,
       fontStyle: "bold",
-      resolution: 1,
     }).setOrigin(1, 0).setDepth(9);
     
     this.tweens.add({
