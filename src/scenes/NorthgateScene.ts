@@ -210,10 +210,10 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private createPlayer() {
-    // Create physics sprite for player (invisible)
-    this.player = this.physics.add.sprite(50, 155, '');
-    this.player.setSize(16, 20); // Tighter hitbox for better feet alignment
-    this.player.setOffset(1, 6); // More offset to align feet with platforms
+    // Create physics sprite for player (invisible) - start at bottom right
+    this.player = this.physics.add.sprite(280, 155, '');
+    this.player.setSize(14, 4); // Very small hitbox just at feet level
+    this.player.setOffset(2, 22); // Large offset to move collision to bottom
     this.player.setCollideWorldBounds(true);
     
     // Make physics body invisible
@@ -297,8 +297,9 @@ export default class NorthgateScene extends Phaser.Scene {
     updateGraysonWalk(this.playerSprite, isMoving);
     
     // Sync sprite position with physics body
+    // Add small offset to Y to align feet with platforms
     this.playerSprite.x = Math.round(this.player.x);
-    this.playerSprite.y = Math.round(this.player.y);
+    this.playerSprite.y = Math.round(this.player.y + 4);
     
     // Check proximity to Ceci
     this.checkCeciProximity();
@@ -340,8 +341,8 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private hitByTrain() {
-    // Player death - respawn at start
-    this.player.x = 50;
+    // Player death - respawn at start (bottom right)
+    this.player.x = 280;
     this.player.y = 155;
     this.player.setVelocity(0, 0);
     
