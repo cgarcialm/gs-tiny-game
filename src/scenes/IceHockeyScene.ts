@@ -40,6 +40,9 @@ export default class IceHockeyScene extends Phaser.Scene {
   private memoryFragmentSpawned = false;
   private hockeyStick?: Phaser.GameObjects.Graphics;
   private hasStick = false;
+  private chaseEnemyTimer = 0;
+  private chaseEnemyInterval = 8000; // Spawn chaser every 8 seconds
+  private chasers: Phaser.GameObjects.Container[] = [];
 
   constructor() {
     super("IceHockey");
@@ -65,6 +68,8 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.shootCooldown = 0;
     this.hasStick = false;
     this.hockeyStick = undefined;
+    this.chaseEnemyTimer = 0;
+    this.chasers = [];
     
     console.log('Health after reset:', this.health);
     
@@ -554,6 +559,14 @@ export default class IceHockeyScene extends Phaser.Scene {
     
     console.log('Player died! Health was:', this.health);
     
+    // Destroy all chasers and their text
+    this.chasers.forEach(c => {
+      const text = c.getData('tauntText');
+      if (text && text.active) text.destroy();
+      c.destroy();
+    });
+    this.chasers = [];
+    
     this.showDialog("Grayson: Ow! Maybe I'm not cut out to be a goalie...\nPress ENTER to retry");
     
     // On dialogue close (ENTER press), restart the entire scene
@@ -630,7 +643,9 @@ export default class IceHockeyScene extends Phaser.Scene {
     if (this.gameplayStarted) {
       this.handlePlayerMovement();
       this.updateEnemies();
+      this.updateChasers();
       this.updatePucks();
+      this.updateChaseSpawnTimer();
     }
     
     // After enemies defeated, player can still move to collect memory
@@ -780,7 +795,35 @@ export default class IceHockeyScene extends Phaser.Scene {
           this.enemyHitByPuck(enemy, puck);
         }
       });
+      
+      // Check collision with chasers
+      this.chasers.forEach(chaser => {
+        const distance = Phaser.Math.Distance.Between(puck.x, puck.y, chaser.x, chaser.y);
+        if (distance < 10 && puck.active) {
+          this.chaserHitByPuck(chaser, puck);
+        }
+      });
     });
+  }
+  
+  private chaserHitByPuck(chaser: Phaser.GameObjects.Container, puck: Phaser.Physics.Arcade.Sprite) {
+    // Check distance
+    const distance = Phaser.Math.Distance.Between(puck.x, puck.y, chaser.x, chaser.y);
+    if (distance > 10) return;
+    
+    // Destroy puck
+    const graphics = puck.getData('graphics');
+    if (graphics) graphics.destroy();
+    puck.destroy();
+    const index = this.playerPucks.indexOf(puck);
+    if (index > -1) this.playerPucks.splice(index, 1);
+    
+    // Destroy chaser (one hit kill)
+    const tauntText = chaser.getData('tauntText');
+    if (tauntText && tauntText.active) tauntText.destroy();
+    chaser.destroy();
+    const chaserIndex = this.chasers.indexOf(chaser);
+    if (chaserIndex > -1) this.chasers.splice(chaserIndex, 1);
   }
   
   private handlePlayerMovement() {
@@ -907,9 +950,9 @@ export default class IceHockeyScene extends Phaser.Scene {
       // All enemies defeated! Spawn THE memory fragment at center ice
       this.time.delayedCall(500, () => {
         this.spawnMemoryFragment();
-    });
+      });
+    }
   }
-}
   
   private spawnMemoryFragment() {
     if (this.memoryFragmentSpawned) return;
@@ -938,6 +981,120 @@ export default class IceHockeyScene extends Phaser.Scene {
     });
     
     this.showDialog("All opponents defeated! Press ENTER, then skate to the goal and press E!");
+  }
+  
+  private updateChaseSpawnTimer() {
+    const dt = this.game.loop.delta;
+    this.chaseEnemyTimer += dt;
+    
+    if (this.chaseEnemyTimer >= this.chaseEnemyInterval) {
+      this.chaseEnemyTimer = 0;
+      this.spawnChaseEnemy();
+    }
+  }
+  
+  private spawnChaseEnemy() {
+    // Random spawn from sides with taunting text
+    const spawns = [
+      { x: 90, y: 90, text: "You're mine!" },
+      { x: 230, y: 90, text: "Get him!" },
+      { x: 160, y: 15, text: "No escape!" },
+    ];
+    
+    const spawn = spawns[Math.floor(Math.random() * spawns.length)];
+    
+    // Create chaser (black jersey with red accents - same team)
+    const chaser = createHockeyPlayerSprite(this, spawn.x, spawn.y, 0x1a1a1a, 0xff0000);
+    chaser.setDepth(5);
+    
+    // Add floating text above chaser
+    const tauntText = this.add.text(spawn.x, spawn.y - 15, spawn.text, {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ff0000",
+      fontStyle: "bold",
+      backgroundColor: "#ffffff",
+      padding: { left: 2, right: 2, top: 1, bottom: 1 },
+      resolution: 1,
+    }).setOrigin(0.5).setDepth(15);
+    
+    chaser.setData('tauntText', tauntText);
+    chaser.setData('isChaser', true);
+    
+    // Fade out text after 2 seconds
+    this.time.delayedCall(2000, () => {
+      if (tauntText.active) {
+        this.tweens.add({
+          targets: tauntText,
+          alpha: 0,
+          duration: 500,
+          onComplete: () => {
+            if (tauntText.active) tauntText.destroy();
+          }
+        });
+      }
+    });
+    
+    this.chasers.push(chaser);
+  }
+  
+  private updateChasers() {
+    const chaseSpeed = 60; // Slower than player but relentless
+    const dt = this.game.loop.delta / 1000;
+    
+    this.chasers.forEach(chaser => {
+      // Chase player directly
+      const angle = Phaser.Math.Angle.Between(
+        chaser.x, chaser.y,
+        this.playerPhysics.x, this.playerPhysics.y
+      );
+      
+      chaser.x += Math.cos(angle) * chaseSpeed * dt;
+      chaser.y += Math.sin(angle) * chaseSpeed * dt;
+      
+      // Update text position if it still exists
+      const tauntText = chaser.getData('tauntText');
+      if (tauntText && tauntText.active) {
+        tauntText.setPosition(chaser.x, chaser.y - 15);
+      }
+      
+      // Check if chaser catches player (contact damage!)
+      const distance = Phaser.Math.Distance.Between(
+        chaser.x, chaser.y,
+        this.playerPhysics.x, this.playerPhysics.y
+      );
+      
+      if (distance < 15) {
+        this.hitByChaser(chaser);
+      }
+    });
+  }
+  
+  private hitByChaser(chaser: Phaser.GameObjects.Container) {
+    // Remove chaser
+    const tauntText = chaser.getData('tauntText');
+    if (tauntText && tauntText.active) tauntText.destroy();
+    chaser.destroy();
+    const index = this.chasers.indexOf(chaser);
+    if (index > -1) this.chasers.splice(index, 1);
+    
+    // Take damage
+    this.health--;
+    this.healthDisplay.setText(`HP: ${this.health}/${this.maxHealth}`);
+    
+    // Flash and shake
+    this.playerPhysics.setTint(0xff0000);
+    this.playerPhysics.setAlpha(0.3);
+    this.time.delayedCall(200, () => {
+      this.playerPhysics.clearTint();
+      this.playerPhysics.setAlpha(0);
+    });
+    
+    this.cameras.main.shake(200, 0.003);
+    
+    if (this.health <= 0) {
+      this.playerDeath();
+    }
   }
 }
 
