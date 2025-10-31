@@ -203,10 +203,12 @@ export default class GameScene extends Phaser.Scene {
         
       case 2:
         // Level 2: After Ice Hockey - Smush playing with memories!
-        this.player = createGraysonSprite(this, 160, 130);
+        // Grayson starts off-screen right
+        this.player = createGraysonSprite(this, 340, 90);
+        this.player.setScale(1, 1); // Face left (positive scale = left for Grayson)
         
-        // Smush at center, looking down at card pieces
-        this.cat = createSmushSprite(this, 160, 70);
+        // Smush on left side, vertically centered, looking down at card pieces
+        this.cat = createSmushSprite(this, 80, 90);
         this.cat.setData('lookingDown', true);
         this.cat.setData('playingWithPieces', true);
         
@@ -216,6 +218,29 @@ export default class GameScene extends Phaser.Scene {
         
         // Two card pieces sliding around (Smush batting them)
         this.setupSmushPlayingScene();
+        
+        // Grayson walks in from right to center
+        this.time.delayedCall(500, () => {
+          // Animate walking
+          const walkTimer = this.time.addEvent({
+            delay: 150,
+            repeat: 12, // ~2 seconds of walking
+            callback: () => {
+              updateGraysonWalk(this.player);
+            }
+          });
+          
+          this.tweens.add({
+            targets: this.player,
+            x: 160, // Stop at center
+            duration: 2000,
+            ease: "Linear",
+            onComplete: () => {
+              walkTimer.destroy();
+              // Arrived - dialogue triggers from setupSmushPlayingScene at 3s mark
+            }
+          });
+        });
         break;
         
       // Add more cases for future levels
@@ -1068,9 +1093,9 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private setupSmushPlayingScene() {
-    // Smush is batting around the 2 existing card pieces
-    const piece1 = createCardPieceSprite(this, 120, 60);
-    const piece2 = createCardPieceSprite(this, 200, 60);
+    // Smush is batting around the 2 existing card pieces (near her on the left)
+    const piece1 = createCardPieceSprite(this, 45, 100);  // Not as far left
+    const piece2 = createCardPieceSprite(this, 70, 110);  // More to the right
     piece1.setDepth(10);
     piece2.setDepth(10);
     
@@ -1089,8 +1114,8 @@ export default class GameScene extends Phaser.Scene {
     // Animate pieces bouncing around
     this.animateCardPiecesMoving(piece1, piece2);
     
-    // Show initial dialogue
-    this.time.delayedCall(800, () => {
+    // Show initial dialogue (after Grayson walks in)
+    this.time.delayedCall(3000, () => {
       this.dialogueManager.show("Grayson: Smush! Stop playing with those!\nThose memories are fragile!");
     });
   }
@@ -1118,11 +1143,11 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private animateCardPiecesMoving(piece1: Phaser.GameObjects.Graphics, piece2: Phaser.GameObjects.Graphics) {
-    // Pieces slide around like Smush is batting them
+    // Pieces slide around near Smush's paw area (small movements)
     this.tweens.add({
       targets: piece1,
-      x: 100,
-      y: 80,
+      x: 70,    // Small slide near Smush
+      y: 102,
       duration: 1500,
       yoyo: true,
       repeat: -1,
@@ -1131,8 +1156,8 @@ export default class GameScene extends Phaser.Scene {
     
     this.tweens.add({
       targets: piece2,
-      x: 220,
-      y: 50,
+      x: 50,    // Up-left but shifted right
+      y: 95,    // DECREASE y = UP
       duration: 1200,
       yoyo: true,
       repeat: -1,
