@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { createGraysonTopDownSprite } from "../utils/sprites/GraysonTopDownSprite";
+import { createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 import { setupControls, shouldCloseDialogue } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
@@ -22,6 +23,7 @@ export default class IceHockeyScene extends Phaser.Scene {
   
   private hasShownRealization = false;
   private gameplayStarted = false;
+  private levelCompleted = false;
   
   // Gameplay
   private health = 3;
@@ -29,7 +31,12 @@ export default class IceHockeyScene extends Phaser.Scene {
   private healthDisplay!: Phaser.GameObjects.Text;
   private enemies: Phaser.GameObjects.Container[] = [];
   private pucks: Phaser.Physics.Arcade.Sprite[] = [];
+  private playerPucks: Phaser.Physics.Arcade.Sprite[] = []; // Pucks shot by player
   private speed = 120;
+  private shootCooldown = 0;
+  private shootCooldownTime = 500; // 0.5 second between shots
+  private memoryFragment?: Phaser.GameObjects.Graphics;
+  private memoryFragmentSpawned = false;
 
   constructor() {
     super("IceHockey");
@@ -38,6 +45,23 @@ export default class IceHockeyScene extends Phaser.Scene {
   create() {
     // Set camera to respect pixel art settings
     this.cameras.main.setRoundPixels(true);
+    
+    console.log('Create called - health before reset:', this.health);
+    
+    // Reset game state (in case of restart)
+    this.health = 3; // Explicitly set to 3
+    this.maxHealth = 3;
+    this.gameplayStarted = false;
+    this.hasShownRealization = false;
+    this.levelCompleted = false;
+    this.enemies = [];
+    this.pucks = [];
+    this.playerPucks = [];
+    this.memoryFragment = undefined;
+    this.memoryFragmentSpawned = false;
+    this.shootCooldown = 0;
+    
+    console.log('Health after reset:', this.health);
     
     // Disable gravity for top-down view (no gravity from above!)
     this.physics.world.gravity.y = 0;
@@ -53,8 +77,11 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Create invisible physics body for player
     this.playerPhysics = this.physics.add.sprite(160, 160, '');
     this.playerPhysics.setSize(12, 14); // Small hitbox
-    this.playerPhysics.setCollideWorldBounds(true);
     this.playerPhysics.setAlpha(0); // Invisible
+    
+    // Constrain player to playing field (between boards: x:85-235, y:8-172)
+    this.playerPhysics.setCollideWorldBounds(false); // Don't use world bounds
+    // We'll manually constrain in movement code
     
     // Setup controls
     this.controls = setupControls(this);
@@ -63,7 +90,26 @@ export default class IceHockeyScene extends Phaser.Scene {
     
     // Create UI
     this.createDialogUI();
-    this.createHealthDisplay();
+    
+    // Force destroy and recreate health display every time
+    if (this.healthDisplay) {
+      console.log('Destroying existing health display:', this.healthDisplay.text);
+      this.healthDisplay.destroy(true); // Force destroy with children
+    }
+    
+    // Small delay then recreate
+    this.time.delayedCall(10, () => {
+      console.log('Creating fresh health display with health:', this.health);
+      this.healthDisplay = this.add.text(8, 8, `HP: ${this.health}/${this.maxHealth}`, {
+        fontFamily: "monospace",
+        fontSize: "9px",
+        color: "#ff0000",
+        backgroundColor: "#000000",
+        padding: { left: 4, right: 4, top: 2, bottom: 2 },
+        resolution: 1,
+      }).setOrigin(0, 0).setDepth(100);
+      console.log('Fresh health display text:', this.healthDisplay.text);
+    });
     
     // Grayson enters the field
     this.time.delayedCall(500, () => {
@@ -261,7 +307,11 @@ export default class IceHockeyScene extends Phaser.Scene {
   
   private createHealthDisplay() {
     // Health bar in top-left corner
-    this.healthDisplay = this.add.text(8, 8, `HP: ${this.health}/${this.maxHealth}`, {
+    console.log('createHealthDisplay - health is:', this.health, 'maxHealth is:', this.maxHealth);
+    const displayText = `HP: ${this.health}/${this.maxHealth}`;
+    console.log('Creating health display with text:', displayText);
+    
+    this.healthDisplay = this.add.text(8, 8, displayText, {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#ff0000",
@@ -269,6 +319,8 @@ export default class IceHockeyScene extends Phaser.Scene {
       padding: { left: 4, right: 4, top: 2, bottom: 2 },
       resolution: 1,
     }).setOrigin(0, 0).setDepth(100);
+    
+    console.log('Health display created with text:', this.healthDisplay.text);
   }
   
   private graysonEntersField() {
@@ -371,11 +423,23 @@ export default class IceHockeyScene extends Phaser.Scene {
       this.playerPhysics.y
     );
     
-    // Create puck projectile
+    // Create puck projectile - white with black border
     const puck = this.physics.add.sprite(enemy.x, enemy.y, '');
-    puck.setCircle(3); // Small circular hitbox
-    puck.setTint(0x1a1a1a); // Dark gray/black puck
+    puck.setCircle(4); // Bigger circular hitbox (4px radius)
     puck.setDepth(8);
+    puck.setTint(0xff00ff); // Show physics sprite in magenta for testing
+    puck.setAlpha(0.5); // Semi-transparent to see the hitbox
+    
+    // Draw puck visually (white circle with black border)
+    const puckGraphics = this.add.graphics();
+    puckGraphics.fillStyle(0xffffff, 1);
+    puckGraphics.fillCircle(0, 0, 4); // White puck (4px radius - bigger)
+    puckGraphics.lineStyle(1, 0x000000, 1);
+    puckGraphics.strokeCircle(0, 0, 4); // Black border
+    
+    // Attach graphics to puck sprite
+    puck.setData('graphics', puckGraphics);
+    puckGraphics.setDepth(8);
     
     // Set velocity toward player
     const speed = 150;
@@ -394,6 +458,8 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Destroy puck if it goes off screen
     this.time.delayedCall(3000, () => {
       if (puck && puck.active) {
+        const graphics = puck.getData('graphics');
+        if (graphics) graphics.destroy();
         puck.destroy();
         const index = this.pucks.indexOf(puck);
         if (index > -1) this.pucks.splice(index, 1);
@@ -402,7 +468,9 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private hitByPuck(puck: Phaser.Physics.Arcade.Sprite) {
-    // Destroy the puck
+    // Destroy the puck and its graphics
+    const graphics = puck.getData('graphics');
+    if (graphics) graphics.destroy();
     puck.destroy();
     const index = this.pucks.indexOf(puck);
     if (index > -1) this.pucks.splice(index, 1);
@@ -429,28 +497,24 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private playerDeath() {
+    this.levelCompleted = true; // Stop all gameplay
     this.gameplayStarted = false;
     
-    // Stop all enemies
-    this.enemies.forEach(e => e.setData('shootTimer', -999999));
-    
-    // Destroy all pucks
-    this.pucks.forEach(p => p.destroy());
-    this.pucks = [];
+    console.log('Player died! Health was:', this.health);
     
     this.showDialog("Grayson: Ow! Maybe I'm not cut out to be a goalie...\nPress ENTER to retry");
     
-    // Reset on dialogue close
-    this.time.delayedCall(100, () => {
-      const checkReset = () => {
-        if (!this.dialogVisible && Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
-          this.scene.restart();
-        } else if (!this.dialogVisible) {
-          this.time.delayedCall(100, checkReset);
-        }
-      };
-      checkReset();
-    });
+    // On dialogue close (ENTER press), restart the entire scene
+    const waitForRestart = () => {
+      if (this.dialogVisible && Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+        console.log('ENTER pressed - restarting scene...');
+        this.scene.restart();
+      } else {
+        this.time.delayedCall(100, waitForRestart);
+      }
+    };
+    
+    this.time.delayedCall(100, waitForRestart);
   }
   
   private showDialog(message: string) {
@@ -471,6 +535,11 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   update() {
+    // Stop all updates if level is completed (during fade out)
+    if (this.levelCompleted) {
+      return;
+    }
+    
     // Handle pause menu
     if (Phaser.Input.Keyboard.JustDown(this.controls.escape)) {
       this.pauseMenu.toggle();
@@ -505,10 +574,108 @@ export default class IceHockeyScene extends Phaser.Scene {
     if (this.gameplayStarted) {
       this.handlePlayerMovement();
       this.updateEnemies();
+      this.updatePucks();
+    }
+    
+    // After enemies defeated, player can still move to collect memory
+    if (this.memoryFragmentSpawned && !this.gameplayStarted && !this.dialogVisible) {
+      this.handlePlayerMovement(); // Allow movement to reach memory
+    }
+    
+    // Always check for memory collection (even after enemies defeated)
+    if (this.memoryFragmentSpawned && !this.dialogVisible) {
+      this.checkMemoryCollection();
     }
   }
   
+  private checkMemoryCollection() {
+    // Check if player is near memory fragment and presses E
+    if (!this.memoryFragment) {
+      console.log('No memory fragment exists');
+      return;
+    }
+    
+    console.log('Memory fragment exists at:', this.memoryFragment.x, this.memoryFragment.y);
+    console.log('Player at:', this.playerPhysics.x, this.playerPhysics.y);
+    
+    const distance = Phaser.Math.Distance.Between(
+      this.playerPhysics.x,
+      this.playerPhysics.y,
+      this.memoryFragment.x,
+      this.memoryFragment.y
+    );
+    
+    console.log('Distance to memory:', distance);
+    
+    // Debug: log distance when near
+    if (distance < 30) {
+      console.log('Near memory! Press E to collect');
+      
+      if (Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+        console.log('E pressed! Collecting memory!');
+        // Collect memory!
+        this.memoryFragment.destroy();
+        this.memoryFragment = undefined;
+        
+        // Level complete!
+        this.levelComplete();
+      }
+    }
+  }
+  
+  private levelComplete() {
+    console.log('Level complete called!');
+    this.levelCompleted = true; // Stop all gameplay updates
+    this.gameplayStarted = false;
+    
+    // Immediately fade out and transition (skip dialogue for clean transition)
+    this.cameras.main.fadeOut(1000, 0, 0, 0);
+    
+    this.time.delayedCall(1000, () => {
+      // Update registry: completed ice hockey (level 2)
+      this.registry.set('completedLevels', 2);
+      // Go back to Game scene (level 2 will be next part of story)
+      this.scene.start("Game");
+    });
+  }
+  
+  private updatePucks() {
+    // Update enemy puck graphics positions
+    this.pucks.forEach(puck => {
+      const graphics = puck.getData('graphics');
+      if (graphics) {
+        graphics.x = puck.x;
+        graphics.y = puck.y;
+      }
+    });
+    
+    // Update player puck graphics positions
+    this.playerPucks.forEach(puck => {
+      const graphics = puck.getData('graphics');
+      if (graphics) {
+        graphics.x = puck.x;
+        graphics.y = puck.y;
+      }
+      
+      // Check collision with enemies manually (since we need container collision)
+      this.enemies.forEach(enemy => {
+        const distance = Phaser.Math.Distance.Between(puck.x, puck.y, enemy.x, enemy.y);
+        if (distance < 10 && puck.active) {
+          this.enemyHitByPuck(enemy, puck);
+        }
+      });
+    });
+  }
+  
   private handlePlayerMovement() {
+    const dt = this.game.loop.delta / 1000;
+    
+    // Decrease shoot cooldown
+    if (this.shootCooldown > 0) {
+      this.shootCooldown -= dt;
+      if (this.shootCooldown < 0) this.shootCooldown = 0;
+    }
+    
     // Get movement input from controls
     const vx = this.controls.left.isDown || this.input.keyboard!.addKey('A').isDown ? -1 :
                this.controls.right.isDown || this.input.keyboard!.addKey('D').isDown ? 1 : 0;
@@ -533,9 +700,128 @@ export default class IceHockeyScene extends Phaser.Scene {
       this.playerPhysics.setVelocity(0, 0);
     }
     
+    // Shoot puck with Space
+    if (Phaser.Input.Keyboard.JustDown(this.controls.jump) && this.shootCooldown === 0) {
+      this.playerShootPuck();
+      this.shootCooldown = this.shootCooldownTime / 1000; // Reset cooldown
+    }
+    
+    // Constrain to playing field (between boards)
+    const fieldLeft = 90;   // Just inside left board
+    const fieldRight = 230; // Just inside right board
+    const fieldTop = 12;    // Just inside top board
+    const fieldBottom = 168; // Just inside bottom board
+    
+    this.playerPhysics.x = Phaser.Math.Clamp(this.playerPhysics.x, fieldLeft, fieldRight);
+    this.playerPhysics.y = Phaser.Math.Clamp(this.playerPhysics.y, fieldTop, fieldBottom);
+    
     // Sync visual sprite with physics body
     this.player.x = Math.round(this.playerPhysics.x);
     this.player.y = Math.round(this.playerPhysics.y);
+  }
+  
+  private playerShootPuck() {
+    // Shoot in the direction player is facing
+    const angleRad = (this.player.angle - 90) * (Math.PI / 180);
+    
+    // Create puck projectile
+    const puck = this.physics.add.sprite(this.playerPhysics.x, this.playerPhysics.y, '');
+    puck.setCircle(4);
+    puck.setDepth(8);
+    puck.setTint(0x00ff00); // Green tint for player pucks
+    puck.setAlpha(0.5);
+    
+    // Draw puck visually (green tinted for player)
+    const puckGraphics = this.add.graphics();
+    puckGraphics.fillStyle(0x81c784, 1); // Green (Grayson's shirt color)
+    puckGraphics.fillCircle(0, 0, 4);
+    puckGraphics.lineStyle(1, 0x000000, 1);
+    puckGraphics.strokeCircle(0, 0, 4);
+    
+    puck.setData('graphics', puckGraphics);
+    puckGraphics.setDepth(8);
+    
+    // Set velocity in facing direction
+    const speed = 200; // Faster than enemy pucks
+    puck.setVelocity(
+      Math.cos(angleRad) * speed,
+      Math.sin(angleRad) * speed
+    );
+    
+    this.playerPucks.push(puck);
+    
+    // Collision with enemies is checked in updatePucks()
+    
+    // Destroy puck after time
+    this.time.delayedCall(2000, () => {
+      if (puck && puck.active) {
+        const graphics = puck.getData('graphics');
+        if (graphics) graphics.destroy();
+        puck.destroy();
+        const index = this.playerPucks.indexOf(puck);
+        if (index > -1) this.playerPucks.splice(index, 1);
+      }
+    });
+  }
+  
+  private enemyHitByPuck(enemy: Phaser.GameObjects.Container, puck: Phaser.Physics.Arcade.Sprite) {
+    // Check if puck hits enemy (simple distance check)
+    const distance = Phaser.Math.Distance.Between(puck.x, puck.y, enemy.x, enemy.y);
+    if (distance > 10) return; // Not actually hitting
+    
+    // Destroy puck
+    const graphics = puck.getData('graphics');
+    if (graphics) graphics.destroy();
+    puck.destroy();
+    const index = this.playerPucks.indexOf(puck);
+    if (index > -1) this.playerPucks.splice(index, 1);
+    
+    // One hit kill - enemy defeated!
+    this.enemyDefeated(enemy);
+  }
+  
+  private enemyDefeated(enemy: Phaser.GameObjects.Container) {
+    // Remove enemy
+    enemy.destroy();
+    const index = this.enemies.indexOf(enemy);
+    if (index > -1) this.enemies.splice(index, 1);
+    
+    // Check if ALL enemies defeated
+    if (this.enemies.length === 0) {
+      // All enemies defeated! Spawn THE memory fragment at center ice
+      this.time.delayedCall(500, () => {
+        this.spawnMemoryFragment();
+    });
+  }
+}
+  
+  private spawnMemoryFragment() {
+    if (this.memoryFragmentSpawned) return;
+    this.memoryFragmentSpawned = true;
+    
+    // Stop player movement
+    this.playerPhysics.setVelocity(0, 0);
+    
+    // Spawn at enemy goal net (top) - final destination
+    const fragmentX = 160; // Center horizontally
+    const fragmentY = 15;  // At the top goal net
+    
+    console.log('Spawning memory at:', fragmentX, fragmentY);
+    console.log('Player currently at:', this.playerPhysics.x, this.playerPhysics.y);
+    
+    // Use the card piece sprite (now fixed to work with positioning)
+    this.memoryFragment = createCardPieceSprite(this, fragmentX, fragmentY);
+    this.memoryFragment.setDepth(20); // High depth to be visible above everything
+    
+    console.log('Memory fragment created at:', this.memoryFragment.x, this.memoryFragment.y);
+    console.log('Memory fragment visible:', this.memoryFragment.visible);
+    
+    // Add sparkle effect after a small delay so it doesn't look like immediate collection
+    this.time.delayedCall(300, () => {
+      spawnCardPieceSparkles(this, fragmentX, fragmentY);
+    });
+    
+    this.showDialog("All opponents defeated! Press ENTER, then skate to the goal and press E!");
   }
 }
 
