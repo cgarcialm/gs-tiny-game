@@ -571,15 +571,19 @@ export default class IceHockeyScene extends Phaser.Scene {
       return;
     }
     
-    // Handle dialogue
+    // Handle dialogue (but allow gameplay to continue during stick pickup message)
     if (this.dialogVisible) {
       if (shouldCloseDialogue(this.controls)) {
         this.hideDialog();
       }
-      return;
+      // Only block gameplay if NOT during stick collection
+      if (!this.hasStick || this.memoryFragmentSpawned) {
+        return; // Block for realization and memory dialogues
+      }
+      // Fall through to allow gameplay during stick message
     }
     
-    // Gameplay movement (after dialogue is closed)
+    // Gameplay movement (after dialogue is closed or during stick message)
     if (this.gameplayStarted) {
       this.handlePlayerMovement();
       this.updateEnemies();
@@ -621,7 +625,15 @@ export default class IceHockeyScene extends Phaser.Scene {
       // Add stick to Grayson's sprite
       this.addStickToPlayer();
       
+      // Show temporary message (non-blocking, auto-dismisses)
       this.showDialog("Hockey stick acquired! Press SPACE to shoot pucks!");
+      
+      // Auto-hide after 2.5 seconds
+      this.time.delayedCall(2500, () => {
+        if (this.dialogVisible) {
+          this.hideDialog();
+        }
+      });
     }
   }
   
