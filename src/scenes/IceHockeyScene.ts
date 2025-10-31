@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { createGraysonTopDownSprite } from "../utils/sprites/GraysonTopDownSprite";
+import { createHockeyPlayerSprite } from "../utils/sprites/HockeyPlayerSprite";
 import { createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 import { setupControls, shouldCloseDialogue } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
@@ -338,23 +339,16 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private spawnEnemies() {
-    // Spawn enemy hockey players (simple colored rectangles for now)
+    // Spawn enemy hockey players with proper sprites
     const enemyPositions = [
-      { x: 120, y: 60, color: 0x1a1a1a },  // Black team - top left
-      { x: 200, y: 60, color: 0x1a1a1a },  // Black team - top right
-      { x: 160, y: 30, color: 0x1a1a1a },  // Black team - top center
+      { x: 120, y: 60 },  // Top left
+      { x: 200, y: 60 },  // Top right
+      { x: 160, y: 30 },  // Top center
     ];
     
     enemyPositions.forEach((pos, index) => {
-      const enemy = this.add.container(pos.x, pos.y);
-      
-      // Simple enemy sprite (black/dark gray - opposing team)
-      const graphics = this.add.graphics();
-      graphics.fillStyle(pos.color, 1);
-      graphics.fillRect(-6, -8, 12, 16); // Simple player shape
-      graphics.fillStyle(0xff0000, 1);
-      graphics.fillRect(-4, -6, 8, 4); // Jersey number area (red accent)
-      enemy.add(graphics);
+      // Create proper hockey player sprite (black jersey with red accents)
+      const enemy = createHockeyPlayerSprite(this, pos.x, pos.y, 0x1a1a1a, 0xff0000);
       enemy.setDepth(5);
       
       // Store enemy data

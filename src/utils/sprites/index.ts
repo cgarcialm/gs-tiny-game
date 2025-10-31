@@ -1,6 +1,7 @@
 // Export all sprite functions from a single entry point
 export { createGraysonSprite, updateGraysonWalk } from "./GraysonSprite";
 export { createGraysonTopDownSprite, rotateTopDownSprite } from "./GraysonTopDownSprite";
+export { createHockeyPlayerSprite } from "./HockeyPlayerSprite";
 export { createEboshiSprite } from "./EboshiSprite";
 export { createSmushSprite } from "./SmushSprite";
 export { createCeciSprite } from "./CeciSprite";
