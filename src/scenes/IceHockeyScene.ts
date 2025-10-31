@@ -19,6 +19,8 @@ export default class IceHockeyScene extends Phaser.Scene {
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
   private dialogueManager!: DialogueManager;
+  // @ts-ignore - CheatConsole used for side effects
+  private _cheatConsole: any;
   
   private player!: Phaser.GameObjects.Container;
   private playerPhysics!: Phaser.Physics.Arcade.Sprite;
@@ -65,12 +67,14 @@ export default class IceHockeyScene extends Phaser.Scene {
   create() {
     console.log('Create called - health before reset:', this.health);
     
-    // Initialize common scene setup (camera, controls, menus, dialogue)
+    // Initialize common scene setup (camera, controls, menus, dialogue, cheat console)
     const setup = initializeGameScene(this);
     this.controls = setup.controls;
     this.helpMenu = setup.helpMenu;
     this.pauseMenu = setup.pauseMenu;
     this.dialogueManager = setup.dialogueManager;
+    // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
+    this._cheatConsole = setup.cheatConsole;
     
     // Reset game state (in case of restart)
     this.health = 3; // Explicitly set to 3

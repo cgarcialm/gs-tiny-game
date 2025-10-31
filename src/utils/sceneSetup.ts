@@ -3,6 +3,7 @@ import { setupControls, type GameControls } from "./controls";
 import { HelpMenu } from "./helpMenu";
 import { PauseMenu } from "./pauseMenu";
 import { DialogueManager } from "./dialogueManager";
+import { CheatConsole } from "./cheatConsole";
 
 /**
  * Common objects initialized for a game scene
@@ -12,6 +13,7 @@ export interface SceneSetup {
   helpMenu: HelpMenu;
   pauseMenu: PauseMenu;
   dialogueManager: DialogueManager;
+  cheatConsole: CheatConsole;
 }
 
 /**
@@ -24,6 +26,7 @@ export interface SceneSetup {
  * - Help menu (H key)
  * - Pause menu (ESC key)
  * - Dialogue manager
+ * - Cheat console (Ctrl+Shift+C)
  * 
  * @param scene - The Phaser scene to initialize
  * @returns Object containing all initialized systems
@@ -31,11 +34,12 @@ export interface SceneSetup {
  * @example
  * ```typescript
  * create() {
- *   const { controls, helpMenu, pauseMenu, dialogueManager } = initializeGameScene(this);
+ *   const { controls, helpMenu, pauseMenu, dialogueManager, cheatConsole } = initializeGameScene(this);
  *   this.controls = controls;
  *   this.helpMenu = helpMenu;
  *   this.pauseMenu = pauseMenu;
  *   this.dialogueManager = dialogueManager;
+ *   this.cheatConsole = cheatConsole;
  *   
  *   // ... rest of scene setup
  * }
@@ -57,11 +61,15 @@ export function initializeGameScene(scene: Phaser.Scene): SceneSetup {
   // Create dialogue manager
   const dialogueManager = new DialogueManager(scene);
   
+  // Create cheat console (Ctrl+Shift+C)
+  const cheatConsole = new CheatConsole(scene);
+  
   return {
     controls,
     helpMenu,
     pauseMenu,
     dialogueManager,
+    cheatConsole,
   };
 }
 

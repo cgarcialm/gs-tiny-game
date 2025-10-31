@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import type { GameControls } from "./controls";
 import { HelpMenu } from "./helpMenu";
 import { PauseMenu } from "./pauseMenu";
+import type { CheatConsole } from "./cheatConsole";
 
 /**
  * Handle menu input (pause menu and help menu) for a scene
@@ -12,6 +13,7 @@ import { PauseMenu } from "./pauseMenu";
  * @param helpMenu - The help menu instance
  * @param pauseMenu - The pause menu instance
  * @param onExitToTitle - Optional callback when player chooses to exit to title
+ * @param cheatConsole - Optional cheat console instance to check if it's open
  * @returns true if menus are active (block game input), false if game should process input
  */
 export function handleMenuInput(
@@ -19,8 +21,14 @@ export function handleMenuInput(
   controls: GameControls,
   helpMenu: HelpMenu,
   pauseMenu: PauseMenu,
-  onExitToTitle?: () => void
+  onExitToTitle?: () => void,
+  cheatConsole?: CheatConsole
 ): boolean {
+  // If cheat console is open, block all game input
+  if (cheatConsole?.consoleOpen) {
+    return true;
+  }
+  
   // Handle pause menu toggle (ESC key)
   if (Phaser.Input.Keyboard.JustDown(controls.escape)) {
     pauseMenu.toggle();

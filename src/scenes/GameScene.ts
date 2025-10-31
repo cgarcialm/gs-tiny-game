@@ -20,6 +20,8 @@ export default class GameScene extends Phaser.Scene {
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
   private dialogueManager!: DialogueManager;
+  // @ts-ignore - CheatConsole used for side effects
+  private _cheatConsole: any;
 
   private player!: Phaser.GameObjects.Container;
   private npc!: Phaser.GameObjects.Container;
@@ -93,11 +95,13 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
-    // Initialize common scene elements (camera, controls, menus, dialogue)
+    // Initialize common scene elements (camera, controls, menus, dialogue, cheat console)
     const setup = initializeGameScene(this);
     this.controls = setup.controls;
     this.helpMenu = setup.helpMenu;
     this.pauseMenu = setup.pauseMenu;
+    // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
+    this._cheatConsole = setup.cheatConsole;
     this.dialogueManager = setup.dialogueManager;
 
     // Pixel grid background (procedural)
@@ -349,7 +353,7 @@ export default class GameScene extends Phaser.Scene {
     const dt = this.game.loop.delta / 1000;
 
     // Handle menu input (ESC for pause, H for help)
-    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu)) {
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, this._cheatConsole)) {
       return; // Menus are active, don't process game input
     }
 

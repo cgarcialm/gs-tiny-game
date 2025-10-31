@@ -110,6 +110,8 @@ export default class TitleScene extends Phaser.Scene {
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
   private dialogueManager!: DialogueManager;
+  // @ts-ignore - CheatConsole used for side effects
+  private _cheatConsole: any;
   private grayson!: Phaser.GameObjects.Text;
   private ceci!: Phaser.GameObjects.Text;
   private smush!: Phaser.GameObjects.Text;
@@ -131,12 +133,14 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   create() {
-    // Initialize common scene elements (camera, controls, menus, dialogue)
+    // Initialize common scene elements (camera, controls, menus, dialogue, cheat console)
     const setup = initializeGameScene(this);
     this.controls = setup.controls;
     this.helpMenu = setup.helpMenu;
     this.pauseMenu = setup.pauseMenu;
     this.dialogueManager = setup.dialogueManager;
+    // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
+    this._cheatConsole = setup.cheatConsole;
 
     this.cameras.main.setBackgroundColor(BG_COLOR);
 
@@ -215,7 +219,7 @@ export default class TitleScene extends Phaser.Scene {
     // In title scene, "exit to title" means restart the scene
     if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, () => {
       this.scene.restart();
-    })) {
+    }, this._cheatConsole)) {
       return; // Menus are active, don't process game input
     }
 
