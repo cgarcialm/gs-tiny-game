@@ -15,12 +15,21 @@ export default class IceHockeyScene extends Phaser.Scene {
   private pauseMenu!: PauseMenu;
   
   private player!: Phaser.GameObjects.Container;
+  private playerPhysics!: Phaser.Physics.Arcade.Sprite;
   private dialogBox!: Phaser.GameObjects.Rectangle;
   private dialogText!: Phaser.GameObjects.Text;
   private dialogVisible = false;
   
-  private hasEnteredField = false;
   private hasShownRealization = false;
+  private gameplayStarted = false;
+  
+  // Gameplay
+  private health = 3;
+  private maxHealth = 3;
+  private healthDisplay!: Phaser.GameObjects.Text;
+  private enemies: Phaser.GameObjects.Container[] = [];
+  private pucks: Phaser.Physics.Arcade.Sprite[] = [];
+  private speed = 120;
 
   constructor() {
     super("IceHockey");
@@ -30,6 +39,9 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Set camera to respect pixel art settings
     this.cameras.main.setRoundPixels(true);
     
+    // Disable gravity for top-down view (no gravity from above!)
+    this.physics.world.gravity.y = 0;
+    
     // Create ice hockey rink
     this.createIceRink();
     
@@ -38,13 +50,20 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.player = createGraysonTopDownSprite(this, 160, 160);
     this.player.setDepth(10);
     
+    // Create invisible physics body for player
+    this.playerPhysics = this.physics.add.sprite(160, 160, '');
+    this.playerPhysics.setSize(12, 14); // Small hitbox
+    this.playerPhysics.setCollideWorldBounds(true);
+    this.playerPhysics.setAlpha(0); // Invisible
+    
     // Setup controls
     this.controls = setupControls(this);
     this.helpMenu = new HelpMenu(this);
     this.pauseMenu = new PauseMenu(this);
     
-    // Create dialogue UI
+    // Create UI
     this.createDialogUI();
+    this.createHealthDisplay();
     
     // Grayson enters the field
     this.time.delayedCall(500, () => {
@@ -240,16 +259,26 @@ export default class IceHockeyScene extends Phaser.Scene {
     }).setOrigin(0, 0).setVisible(false).setDepth(100);
   }
   
+  private createHealthDisplay() {
+    // Health bar in top-left corner
+    this.healthDisplay = this.add.text(8, 8, `HP: ${this.health}/${this.maxHealth}`, {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ff0000",
+      backgroundColor: "#000000",
+      padding: { left: 4, right: 4, top: 2, bottom: 2 },
+      resolution: 1,
+    }).setOrigin(0, 0).setDepth(100);
+  }
+  
   private graysonEntersField() {
     // Grayson walks from bottom goal up into the field
     this.tweens.add({
-      targets: this.player,
+      targets: [this.player, this.playerPhysics],
       y: 140, // Walk into the field
       duration: 2000,
       ease: "Linear",
       onComplete: () => {
-        this.hasEnteredField = true;
-        
         // Realization moment
         this.time.delayedCall(500, () => {
           this.showRealization();
@@ -263,6 +292,165 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.hasShownRealization = true;
     
     this.showDialog("Grayson: Wait... I'm on the ice?!\nEveryone thinks I'm the goalie!");
+    
+    // After showing dialogue, start gameplay when player closes it
+  }
+  
+  private startGameplay() {
+    this.gameplayStarted = true;
+    
+    // Spawn enemy hockey players
+    this.spawnEnemies();
+  }
+  
+  private spawnEnemies() {
+    // Spawn enemy hockey players (simple colored rectangles for now)
+    const enemyPositions = [
+      { x: 120, y: 60, color: 0x1a1a1a },  // Black team - top left
+      { x: 200, y: 60, color: 0x1a1a1a },  // Black team - top right
+      { x: 160, y: 30, color: 0x1a1a1a },  // Black team - top center
+    ];
+    
+    enemyPositions.forEach((pos, index) => {
+      const enemy = this.add.container(pos.x, pos.y);
+      
+      // Simple enemy sprite (black/dark gray - opposing team)
+      const graphics = this.add.graphics();
+      graphics.fillStyle(pos.color, 1);
+      graphics.fillRect(-6, -8, 12, 16); // Simple player shape
+      graphics.fillStyle(0xff0000, 1);
+      graphics.fillRect(-4, -6, 8, 4); // Jersey number area (red accent)
+      enemy.add(graphics);
+      enemy.setDepth(5);
+      
+      // Store enemy data
+      enemy.setData('shootTimer', 0);
+      enemy.setData('shootInterval', 2000 + Math.random() * 1000); // Shoot every 2-3 seconds
+      enemy.setData('patrolAngle', index * 120); // Different patrol patterns
+      enemy.setData('startX', pos.x);
+      enemy.setData('startY', pos.y);
+      
+      this.enemies.push(enemy);
+    });
+  }
+  
+  private updateEnemies() {
+    const dt = this.game.loop.delta;
+    
+    this.enemies.forEach((enemy) => {
+      // Simple patrol movement (circular)
+      const patrolAngle = enemy.getData('patrolAngle') + 0.02;
+      enemy.setData('patrolAngle', patrolAngle);
+      
+      const startX = enemy.getData('startX');
+      const startY = enemy.getData('startY');
+      const radius = 15;
+      
+      enemy.x = startX + Math.cos(patrolAngle) * radius;
+      enemy.y = startY + Math.sin(patrolAngle) * radius;
+      
+      // Shooting timer
+      let shootTimer = enemy.getData('shootTimer') + dt;
+      const shootInterval = enemy.getData('shootInterval');
+      
+      if (shootTimer >= shootInterval) {
+        shootTimer = 0;
+        this.enemyShootPuck(enemy);
+      }
+      
+      enemy.setData('shootTimer', shootTimer);
+    });
+  }
+  
+  private enemyShootPuck(enemy: Phaser.GameObjects.Container) {
+    // Calculate angle to player
+    const angle = Phaser.Math.Angle.Between(
+      enemy.x,
+      enemy.y,
+      this.playerPhysics.x,
+      this.playerPhysics.y
+    );
+    
+    // Create puck projectile
+    const puck = this.physics.add.sprite(enemy.x, enemy.y, '');
+    puck.setCircle(3); // Small circular hitbox
+    puck.setTint(0x1a1a1a); // Dark gray/black puck
+    puck.setDepth(8);
+    
+    // Set velocity toward player
+    const speed = 150;
+    puck.setVelocity(
+      Math.cos(angle) * speed,
+      Math.sin(angle) * speed
+    );
+    
+    this.pucks.push(puck);
+    
+    // Setup collision with player
+    this.physics.add.overlap(puck, this.playerPhysics, () => {
+      this.hitByPuck(puck);
+    });
+    
+    // Destroy puck if it goes off screen
+    this.time.delayedCall(3000, () => {
+      if (puck && puck.active) {
+        puck.destroy();
+        const index = this.pucks.indexOf(puck);
+        if (index > -1) this.pucks.splice(index, 1);
+      }
+    });
+  }
+  
+  private hitByPuck(puck: Phaser.Physics.Arcade.Sprite) {
+    // Destroy the puck
+    puck.destroy();
+    const index = this.pucks.indexOf(puck);
+    if (index > -1) this.pucks.splice(index, 1);
+    
+    // Take damage
+    this.health--;
+    this.healthDisplay.setText(`HP: ${this.health}/${this.maxHealth}`);
+    
+    // Flash player red (tint the physics sprite since container doesn't support tint)
+    this.playerPhysics.setTint(0xff0000);
+    this.playerPhysics.setAlpha(0.3); // Make it visible briefly
+    this.time.delayedCall(200, () => {
+      this.playerPhysics.clearTint();
+      this.playerPhysics.setAlpha(0);
+    });
+    
+    // Camera shake
+    this.cameras.main.shake(200, 0.003);
+    
+    // Check if dead
+    if (this.health <= 0) {
+      this.playerDeath();
+    }
+  }
+  
+  private playerDeath() {
+    this.gameplayStarted = false;
+    
+    // Stop all enemies
+    this.enemies.forEach(e => e.setData('shootTimer', -999999));
+    
+    // Destroy all pucks
+    this.pucks.forEach(p => p.destroy());
+    this.pucks = [];
+    
+    this.showDialog("Grayson: Ow! Maybe I'm not cut out to be a goalie...\nPress ENTER to retry");
+    
+    // Reset on dialogue close
+    this.time.delayedCall(100, () => {
+      const checkReset = () => {
+        if (!this.dialogVisible && Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+          this.scene.restart();
+        } else if (!this.dialogVisible) {
+          this.time.delayedCall(100, checkReset);
+        }
+      };
+      checkReset();
+    });
   }
   
   private showDialog(message: string) {
@@ -275,6 +463,11 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.dialogVisible = false;
     this.dialogBox.setVisible(false);
     this.dialogText.setVisible(false);
+    
+    // Start gameplay after realization dialogue
+    if (this.hasShownRealization && !this.gameplayStarted) {
+      this.startGameplay();
+    }
   }
   
   update() {
@@ -308,7 +501,41 @@ export default class IceHockeyScene extends Phaser.Scene {
       return;
     }
     
-    // Movement will be added later
+    // Gameplay movement (after dialogue is closed)
+    if (this.gameplayStarted) {
+      this.handlePlayerMovement();
+      this.updateEnemies();
+    }
+  }
+  
+  private handlePlayerMovement() {
+    // Get movement input from controls
+    const vx = this.controls.left.isDown || this.input.keyboard!.addKey('A').isDown ? -1 :
+               this.controls.right.isDown || this.input.keyboard!.addKey('D').isDown ? 1 : 0;
+    const vy = this.controls.up.isDown || this.input.keyboard!.addKey('W').isDown ? -1 :
+               this.controls.down.isDown || this.input.keyboard!.addKey('S').isDown ? 1 : 0;
+    
+    // Normalize diagonal movement
+    const moving = vx !== 0 || vy !== 0;
+    if (moving) {
+      const len = Math.sqrt(vx * vx + vy * vy);
+      this.playerPhysics.setVelocity(
+        (vx / len) * this.speed,
+        (vy / len) * this.speed
+      );
+      
+      // Rotate player sprite to face movement direction
+      if (vx !== 0 || vy !== 0) {
+        const angle = Math.atan2(vy, vx) * (180 / Math.PI);
+        this.player.setAngle(angle + 90); // +90 because sprite faces up by default
+      }
+    } else {
+      this.playerPhysics.setVelocity(0, 0);
+    }
+    
+    // Sync visual sprite with physics body
+    this.player.x = Math.round(this.playerPhysics.x);
+    this.player.y = Math.round(this.playerPhysics.y);
   }
 }
 
