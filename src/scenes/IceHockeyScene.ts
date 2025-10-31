@@ -533,17 +533,17 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private shootAimedPuck(enemy: Phaser.GameObjects.Container) {
-    // Single puck aimed at player
+    // Single puck aimed at player (BLUE - precision shot)
     const angle = Phaser.Math.Angle.Between(
       enemy.x, enemy.y,
       this.playerPhysics.x, this.playerPhysics.y
     );
     
-    this.createPuck(enemy.x, enemy.y, angle, 150);
+    this.createPuck(enemy.x, enemy.y, angle, 150, 0x4a90e2); // Blue
   }
   
   private shootSpreadPucks(enemy: Phaser.GameObjects.Container) {
-    // 3 pucks in a spread pattern
+    // 3 pucks in a spread pattern (ORANGE - area coverage)
     const baseAngle = Phaser.Math.Angle.Between(
       enemy.x, enemy.y,
       this.playerPhysics.x, this.playerPhysics.y
@@ -556,35 +556,35 @@ export default class IceHockeyScene extends Phaser.Scene {
     ];
     
     spreadAngles.forEach(angle => {
-      this.createPuck(enemy.x, enemy.y, angle, 140);
+      this.createPuck(enemy.x, enemy.y, angle, 140, 0xff9800); // Orange
     });
   }
   
   private shootCircleBurst(enemy: Phaser.GameObjects.Container) {
-    // 8 pucks in all directions (RotMG style!)
+    // 8 pucks in all directions (RED - dangerous!)
     const numPucks = 8;
     for (let i = 0; i < numPucks; i++) {
       const angle = (Math.PI * 2 / numPucks) * i;
-      this.createPuck(enemy.x, enemy.y, angle, 130);
+      this.createPuck(enemy.x, enemy.y, angle, 130, 0xff0000); // Red
     }
   }
   
-  private createPuck(x: number, y: number, angle: number, speed: number) {
+  private createPuck(x: number, y: number, angle: number, speed: number, color: number = 0xffffff) {
     // Create puck projectile
     const puck = this.physics.add.sprite(x, y, '');
     puck.setCircle(4);
     puck.setDepth(8);
     puck.setAlpha(0); // Hide physics sprite
     
-    // Draw puck visually with aura
+    // Draw puck visually with colored aura (RotMG style)
     const puckGraphics = this.add.graphics();
     
-    // Outer glow (bigger, more visible aura)
-    puckGraphics.fillStyle(0xaaaaaa, 0.6);
+    // Outer glow (colored aura matching puck)
+    puckGraphics.fillStyle(color, 0.5);
     puckGraphics.fillCircle(0, 0, 8);
     
-    // Main puck
-    puckGraphics.fillStyle(0xffffff, 1);
+    // Main puck (colored)
+    puckGraphics.fillStyle(color, 1);
     puckGraphics.fillCircle(0, 0, 4);
     puckGraphics.lineStyle(1, 0x000000, 1);
     puckGraphics.strokeCircle(0, 0, 4);
