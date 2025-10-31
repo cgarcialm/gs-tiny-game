@@ -199,8 +199,8 @@ export default class IceHockeyScene extends Phaser.Scene {
     
     // Skates icon in slot 0 (centered in square slot)
     const skatesIcon = this.add.graphics();
-    const skateX = slotsStartX + 1;
-    const skateY = inventoryBarY + 2;
+    const skateX = slotsStartX + 3;
+    const skateY = inventoryBarY + 4;
     // Draw skates from side view for clarity
     // Left skate - boot
     skatesIcon.fillStyle(0x666666, 1);
@@ -219,8 +219,8 @@ export default class IceHockeyScene extends Phaser.Scene {
     const stickSlotX = slotsStartX + slotSize;
     stickIcon.lineStyle(2, 0x5d4037, 1);
     stickIcon.beginPath();
-    stickIcon.moveTo(stickSlotX + 1, inventoryBarY + 1);
-    stickIcon.lineTo(stickSlotX + 12, inventoryBarY + 12);
+    stickIcon.moveTo(stickSlotX + 2, inventoryBarY + 3);
+    stickIcon.lineTo(stickSlotX + 13, inventoryBarY + 14);
     stickIcon.strokePath();
     // Blade at tip
     stickIcon.fillStyle(0xe0e0e0, 1);
