@@ -377,11 +377,11 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private spawnEnemies() {
-    // Spawn enemy hockey players with different shot patterns
+    // Spawn enemy hockey players with different shot and movement patterns
     const enemyData = [
-      { x: 120, y: 60, pattern: 'aimed' },    // Top left - aimed shots
-      { x: 200, y: 60, pattern: 'spread' },   // Top right - spread shots
-      { x: 160, y: 30, pattern: 'circle' },   // Top center - circle burst
+      { x: 120, y: 60, pattern: 'aimed', movement: 'figure8' },     // Top left - figure-8 pattern
+      { x: 200, y: 60, pattern: 'spread', movement: 'zigzag' },     // Top right - zigzag
+      { x: 160, y: 30, pattern: 'circle', movement: 'circle' },     // Top center - circular
     ];
     
     enemyData.forEach((data, index) => {
@@ -392,10 +392,11 @@ export default class IceHockeyScene extends Phaser.Scene {
       // Store enemy data
       enemy.setData('shootTimer', 0);
       enemy.setData('shootInterval', 2000 + Math.random() * 1000); // Shoot every 2-3 seconds
-      enemy.setData('patrolAngle', index * 120); // Different patrol patterns
+      enemy.setData('patrolAngle', index * 120); // For circular movement
       enemy.setData('startX', data.x);
       enemy.setData('startY', data.y);
       enemy.setData('shotPattern', data.pattern); // Shot pattern type
+      enemy.setData('movementPattern', data.movement); // Movement pattern type
       
       this.enemies.push(enemy);
     });
@@ -405,16 +406,39 @@ export default class IceHockeyScene extends Phaser.Scene {
     const dt = this.game.loop.delta;
     
     this.enemies.forEach((enemy) => {
-      // Simple patrol movement (circular)
-      const patrolAngle = enemy.getData('patrolAngle') + 0.02;
-      enemy.setData('patrolAngle', patrolAngle);
-      
+      const movementPattern = enemy.getData('movementPattern');
       const startX = enemy.getData('startX');
       const startY = enemy.getData('startY');
-      const radius = 15;
       
-      enemy.x = startX + Math.cos(patrolAngle) * radius;
-      enemy.y = startY + Math.sin(patrolAngle) * radius;
+      // Different movement patterns (RotMG-style)
+      switch (movementPattern) {
+        case 'circle':
+          // Circular patrol
+          const patrolAngle = enemy.getData('patrolAngle') + 0.02;
+          enemy.setData('patrolAngle', patrolAngle);
+          enemy.x = startX + Math.cos(patrolAngle) * 15;
+          enemy.y = startY + Math.sin(patrolAngle) * 15;
+          break;
+          
+        case 'figure8':
+          // Figure-8 pattern (RotMG classic!)
+          const f8Angle = enemy.getData('patrolAngle') + 0.025;
+          enemy.setData('patrolAngle', f8Angle);
+          // Lissajous curve for figure-8
+          enemy.x = startX + Math.sin(f8Angle) * 25;
+          enemy.y = startY + Math.sin(f8Angle * 2) * 15; // Double frequency for 8-shape
+          break;
+          
+        case 'zigzag':
+          // Zigzag pattern - sharp direction changes (slower)
+          const zzAngle = enemy.getData('patrolAngle') + 0.005; // Even slower movement
+          enemy.setData('patrolAngle', zzAngle);
+          // Use floor to create sharp angles instead of smooth
+          const zzStep = Math.floor(zzAngle / (Math.PI / 4)) % 2;
+          enemy.x = startX + (zzStep === 0 ? 20 : -20);
+          enemy.y = startY + Math.sin(zzAngle) * 25;
+          break;
+      }
       
       // Shooting timer
       let shootTimer = enemy.getData('shootTimer') + dt;
