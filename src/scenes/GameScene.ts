@@ -1116,7 +1116,7 @@ export default class GameScene extends Phaser.Scene {
     
     // Show initial dialogue (after Grayson walks in)
     this.time.delayedCall(3000, () => {
-      this.dialogueManager.show("Grayson: Smush! Stop playing with those!\nThose memories are fragile!");
+      this.dialogueManager.show("Grayson: CAT, stop! I need those to rebuild the anniversary card!");
     });
   }
   
@@ -1233,10 +1233,15 @@ export default class GameScene extends Phaser.Scene {
     
     // Check if both collected
     if (piece1.getData('collected') && piece2 && piece2.getData('collected')) {
-      // Both safe! Now examine the ice hockey memory
-      this.time.delayedCall(800, () => {
-        this.examineIceHockeyMemory();
-      });
+      // Both safe! Mark as complete to prevent re-triggering
+      if (!piece1.getData('examinationStarted')) {
+        piece1.setData('examinationStarted', true);
+        
+        // Now examine the ice hockey memory
+        this.time.delayedCall(800, () => {
+          this.examineIceHockeyMemory();
+        });
+      }
     }
   }
   
@@ -1244,30 +1249,43 @@ export default class GameScene extends Phaser.Scene {
     // Stop Smush animation
     this.tweens.killTweensOf(this.cat);
     
-    // Grayson examines the new memory
-    const iceHockeyMemory = createCardPieceSprite(this, 160, 70);
+    // Grayson pulls the ice hockey memory from his pocket
+    const iceHockeyMemory = createCardPieceSprite(this, this.player.x, this.player.y - 10);
     iceHockeyMemory.setDepth(15);
     
-    // Sparkles around it
-    spawnCardPieceSparkles(this, 160, 70);
+    // Animate it floating up to center for examination
+    this.tweens.add({
+      targets: iceHockeyMemory,
+      x: 160,
+      y: 70,
+      duration: 800,
+      ease: "Power2",
+      onComplete: () => {
+        // Sparkles after it arrives
+        spawnCardPieceSparkles(this, 160, 70);
+      }
+    });
     
-    // Update counter
-    this.cardPiecesCollected++; // 2 → 3
-    this.updateMemoryCounter();
+    // Counter already at 3 from ice hockey - don't increment again!
     
     // Show examination dialogue
     this.time.delayedCall(1000, () => {
-      this.dialogueManager.show("Grayson: Let me check this new memory...\n*The farmers market! That strawberry rhubarb pie...*");
+      this.dialogueManager.show("Grayson: This memory... it's from the farmers market!\nThat strawberry rhubarb pie... our favorite...");
       
-      // After dialogue, continue
+      // After first dialogue
       this.time.delayedCall(4000, () => {
-        this.dialogueManager.show("Smush: *Meow?* (Pie?)\nGrayson: Yes Smush, we're going. But behave!");
+        this.dialogueManager.show("Grayson: This is the last piece. Once I find this memory,\nI can finally put the anniversary card back together!");
         
-        // Transition to farmers market level
+        // Smush reacts
         this.time.delayedCall(4000, () => {
-          this.dialogueManager.hide();
-          fadeToScene(this, "Game", 1000); // Will be farmers market scene later
-          // TODO: Create FarmersMarketScene and transition there
+          this.dialogueManager.show("Smush: *Meow meow!*\nGrayson: I know you want pie. Let's go find that memory.");
+          
+          // Transition to farmers market level
+          this.time.delayedCall(4000, () => {
+            this.dialogueManager.hide();
+            fadeToScene(this, "Game", 1000); // Will be farmers market scene later
+            // TODO: Create FarmersMarketScene and transition there
+          });
         });
       });
     });
