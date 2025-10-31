@@ -519,11 +519,16 @@ export default class IceHockeyScene extends Phaser.Scene {
     const puck = this.physics.add.sprite(x, y, '');
     puck.setCircle(4);
     puck.setDepth(8);
-    puck.setTint(0xff00ff); // Magenta for testing
-    puck.setAlpha(0.5);
+    puck.setAlpha(0); // Hide physics sprite
     
-    // Draw puck visually
+    // Draw puck visually with aura
     const puckGraphics = this.add.graphics();
+    
+    // Outer glow (bigger, more visible aura)
+    puckGraphics.fillStyle(0xaaaaaa, 0.6);
+    puckGraphics.fillCircle(0, 0, 8);
+    
+    // Main puck
     puckGraphics.fillStyle(0xffffff, 1);
     puckGraphics.fillCircle(0, 0, 4);
     puckGraphics.lineStyle(1, 0x000000, 1);
@@ -787,7 +792,7 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private updatePucks() {
-    // Update enemy puck graphics positions
+    // Update enemy puck graphics positions (just move graphics to match physics)
     this.pucks.forEach(puck => {
       const graphics = puck.getData('graphics');
       if (graphics) {
@@ -903,12 +908,17 @@ export default class IceHockeyScene extends Phaser.Scene {
     const puck = this.physics.add.sprite(this.playerPhysics.x, this.playerPhysics.y, '');
     puck.setCircle(4);
     puck.setDepth(8);
-    puck.setTint(0x00ff00); // Green tint for player pucks
-    puck.setAlpha(0.5);
+    puck.setAlpha(0); // Hide physics sprite
     
-    // Draw puck visually (green tinted for player)
+    // Draw puck visually (green with aura)
     const puckGraphics = this.add.graphics();
-    puckGraphics.fillStyle(0x81c784, 1); // Green (Grayson's shirt color)
+    
+    // Outer glow (bigger, more visible green aura)
+    puckGraphics.fillStyle(0x81c784, 0.6);
+    puckGraphics.fillCircle(0, 0, 8);
+    
+    // Main puck (green - Grayson's shirt color)
+    puckGraphics.fillStyle(0x81c784, 1);
     puckGraphics.fillCircle(0, 0, 4);
     puckGraphics.lineStyle(1, 0x000000, 1);
     puckGraphics.strokeCircle(0, 0, 4);
