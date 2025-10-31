@@ -372,24 +372,25 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private spawnEnemies() {
-    // Spawn enemy hockey players with proper sprites
-    const enemyPositions = [
-      { x: 120, y: 60 },  // Top left
-      { x: 200, y: 60 },  // Top right
-      { x: 160, y: 30 },  // Top center
+    // Spawn enemy hockey players with different shot patterns
+    const enemyData = [
+      { x: 120, y: 60, pattern: 'aimed' },    // Top left - aimed shots
+      { x: 200, y: 60, pattern: 'spread' },   // Top right - spread shots
+      { x: 160, y: 30, pattern: 'circle' },   // Top center - circle burst
     ];
     
-    enemyPositions.forEach((pos, index) => {
+    enemyData.forEach((data, index) => {
       // Create proper hockey player sprite (black jersey with red accents)
-      const enemy = createHockeyPlayerSprite(this, pos.x, pos.y, 0x1a1a1a, 0xff0000);
+      const enemy = createHockeyPlayerSprite(this, data.x, data.y, 0x1a1a1a, 0xff0000);
       enemy.setDepth(5);
       
       // Store enemy data
       enemy.setData('shootTimer', 0);
       enemy.setData('shootInterval', 2000 + Math.random() * 1000); // Shoot every 2-3 seconds
       enemy.setData('patrolAngle', index * 120); // Different patrol patterns
-      enemy.setData('startX', pos.x);
-      enemy.setData('startY', pos.y);
+      enemy.setData('startX', data.x);
+      enemy.setData('startY', data.y);
+      enemy.setData('shotPattern', data.pattern); // Shot pattern type
       
       this.enemies.push(enemy);
     });
@@ -424,47 +425,89 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private enemyShootPuck(enemy: Phaser.GameObjects.Container) {
-    // Calculate angle to player
+    const pattern = enemy.getData('shotPattern');
+    
+    switch (pattern) {
+      case 'aimed':
+        this.shootAimedPuck(enemy);
+        break;
+      case 'spread':
+        this.shootSpreadPucks(enemy);
+        break;
+      case 'circle':
+        this.shootCircleBurst(enemy);
+        break;
+      default:
+        this.shootAimedPuck(enemy);
+    }
+  }
+  
+  private shootAimedPuck(enemy: Phaser.GameObjects.Container) {
+    // Single puck aimed at player
     const angle = Phaser.Math.Angle.Between(
-      enemy.x,
-      enemy.y,
-      this.playerPhysics.x,
-      this.playerPhysics.y
+      enemy.x, enemy.y,
+      this.playerPhysics.x, this.playerPhysics.y
     );
     
-    // Create puck projectile - white with black border
-    const puck = this.physics.add.sprite(enemy.x, enemy.y, '');
-    puck.setCircle(4); // Bigger circular hitbox (4px radius)
-    puck.setDepth(8);
-    puck.setTint(0xff00ff); // Show physics sprite in magenta for testing
-    puck.setAlpha(0.5); // Semi-transparent to see the hitbox
+    this.createPuck(enemy.x, enemy.y, angle, 150);
+  }
+  
+  private shootSpreadPucks(enemy: Phaser.GameObjects.Container) {
+    // 3 pucks in a spread pattern
+    const baseAngle = Phaser.Math.Angle.Between(
+      enemy.x, enemy.y,
+      this.playerPhysics.x, this.playerPhysics.y
+    );
     
-    // Draw puck visually (white circle with black border)
+    const spreadAngles = [
+      baseAngle - 0.3, // Left
+      baseAngle,       // Center
+      baseAngle + 0.3  // Right
+    ];
+    
+    spreadAngles.forEach(angle => {
+      this.createPuck(enemy.x, enemy.y, angle, 140);
+    });
+  }
+  
+  private shootCircleBurst(enemy: Phaser.GameObjects.Container) {
+    // 8 pucks in all directions (RotMG style!)
+    const numPucks = 8;
+    for (let i = 0; i < numPucks; i++) {
+      const angle = (Math.PI * 2 / numPucks) * i;
+      this.createPuck(enemy.x, enemy.y, angle, 130);
+    }
+  }
+  
+  private createPuck(x: number, y: number, angle: number, speed: number) {
+    // Create puck projectile
+    const puck = this.physics.add.sprite(x, y, '');
+    puck.setCircle(4);
+    puck.setDepth(8);
+    puck.setTint(0xff00ff); // Magenta for testing
+    puck.setAlpha(0.5);
+    
+    // Draw puck visually
     const puckGraphics = this.add.graphics();
     puckGraphics.fillStyle(0xffffff, 1);
-    puckGraphics.fillCircle(0, 0, 4); // White puck (4px radius - bigger)
+    puckGraphics.fillCircle(0, 0, 4);
     puckGraphics.lineStyle(1, 0x000000, 1);
-    puckGraphics.strokeCircle(0, 0, 4); // Black border
+    puckGraphics.strokeCircle(0, 0, 4);
     
-    // Attach graphics to puck sprite
     puck.setData('graphics', puckGraphics);
     puckGraphics.setDepth(8);
     
-    // Set velocity toward player
-    const speed = 150;
-    puck.setVelocity(
-      Math.cos(angle) * speed,
-      Math.sin(angle) * speed
-    );
+    // Set velocity
+    puck.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
     
     this.pucks.push(puck);
     
-    // Setup collision with player
+    // Collision with player
     this.physics.add.overlap(puck, this.playerPhysics, () => {
       this.hitByPuck(puck);
     });
     
-    // Destroy puck if it goes off screen
+    // Destroy after time
     this.time.delayedCall(3000, () => {
       if (puck && puck.active) {
         const graphics = puck.getData('graphics');
