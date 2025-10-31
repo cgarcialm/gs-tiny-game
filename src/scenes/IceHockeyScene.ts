@@ -305,24 +305,6 @@ export default class IceHockeyScene extends Phaser.Scene {
     }).setOrigin(0, 0).setVisible(false).setDepth(100);
   }
   
-  private createHealthDisplay() {
-    // Health bar in top-left corner
-    console.log('createHealthDisplay - health is:', this.health, 'maxHealth is:', this.maxHealth);
-    const displayText = `HP: ${this.health}/${this.maxHealth}`;
-    console.log('Creating health display with text:', displayText);
-    
-    this.healthDisplay = this.add.text(8, 8, displayText, {
-      fontFamily: "monospace",
-      fontSize: "9px",
-      color: "#ff0000",
-      backgroundColor: "#000000",
-      padding: { left: 4, right: 4, top: 2, bottom: 2 },
-      resolution: 1,
-    }).setOrigin(0, 0).setDepth(100);
-    
-    console.log('Health display created with text:', this.healthDisplay.text);
-  }
-  
   private graysonEntersField() {
     // Grayson walks from bottom goal up into the field
     this.tweens.add({
