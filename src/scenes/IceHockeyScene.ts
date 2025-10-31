@@ -38,6 +38,8 @@ export default class IceHockeyScene extends Phaser.Scene {
   private shootCooldownTime = 500; // 0.5 second between shots
   private memoryFragment?: Phaser.GameObjects.Graphics;
   private memoryFragmentSpawned = false;
+  private hockeyStick?: Phaser.GameObjects.Graphics;
+  private hasStick = false;
 
   constructor() {
     super("IceHockey");
@@ -61,6 +63,8 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.memoryFragment = undefined;
     this.memoryFragmentSpawned = false;
     this.shootCooldown = 0;
+    this.hasStick = false;
+    this.hockeyStick = undefined;
     
     console.log('Health after reset:', this.health);
     
@@ -112,10 +116,39 @@ export default class IceHockeyScene extends Phaser.Scene {
       console.log('Fresh health display text:', this.healthDisplay.text);
     });
     
+    // Spawn hockey stick on the ice
+    this.spawnHockeyStick();
+    
     // Grayson enters the field
     this.time.delayedCall(500, () => {
       this.graysonEntersField();
     });
+  }
+  
+  private spawnHockeyStick() {
+    // Spawn stick at center ice
+    const stickX = 160;
+    const stickY = 90;
+    
+    this.hockeyStick = this.add.graphics();
+    this.hockeyStick.setPosition(stickX, stickY);
+    
+    // Draw hockey stick (brown stick with silver blade)
+    const STICK_BROWN = 0x5d4037;
+    const BLADE_SILVER = 0xc0c0c0;
+    
+    // Stick shaft (angled diagonal)
+    this.hockeyStick.lineStyle(3, STICK_BROWN, 1);
+    this.hockeyStick.beginPath();
+    this.hockeyStick.moveTo(-10, -10);
+    this.hockeyStick.lineTo(6, 6);
+    this.hockeyStick.strokePath();
+    
+    // Blade at the end (silver)
+    this.hockeyStick.fillStyle(BLADE_SILVER, 1);
+    this.hockeyStick.fillRect(5, 5, 5, 3);
+    
+    this.hockeyStick.setDepth(6);
   }
   
   private createIceRink() {
@@ -558,10 +591,62 @@ export default class IceHockeyScene extends Phaser.Scene {
       this.handlePlayerMovement(); // Allow movement to reach memory
     }
     
+    // Check for stick collection (before gameplay starts)
+    if (!this.hasStick && this.hockeyStick && !this.dialogVisible) {
+      this.checkStickCollection();
+    }
+    
     // Always check for memory collection (even after enemies defeated)
     if (this.memoryFragmentSpawned && !this.dialogVisible) {
       this.checkMemoryCollection();
     }
+  }
+  
+  private checkStickCollection() {
+    if (!this.hockeyStick) return;
+    
+    const distance = Phaser.Math.Distance.Between(
+      this.playerPhysics.x,
+      this.playerPhysics.y,
+      this.hockeyStick.x,
+      this.hockeyStick.y
+    );
+    
+    if (distance < 20 && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+      // Collect stick!
+      this.hasStick = true;
+      this.hockeyStick.destroy();
+      this.hockeyStick = undefined;
+      
+      // Add stick to Grayson's sprite
+      this.addStickToPlayer();
+      
+      this.showDialog("Hockey stick acquired! Press SPACE to shoot pucks!");
+    }
+  }
+  
+  private addStickToPlayer() {
+    // Add hockey stick graphics to player container
+    const stickGraphics = this.add.graphics();
+    
+    const STICK_BROWN = 0x5d4037;
+    const BLADE_SILVER = 0xc0c0c0;
+    
+    // Draw stick diagonally across player - extends on BOTH sides
+    // From upper-left to lower-right, sticking out on both ends
+    stickGraphics.lineStyle(3, STICK_BROWN, 1);
+    stickGraphics.beginPath();
+    stickGraphics.moveTo(-10, -5); // Upper-left (visible above player)
+    stickGraphics.lineTo(8, 8);    // Lower-right (visible below player)
+    stickGraphics.strokePath();
+    
+    // Add blade at lower-right end
+    stickGraphics.fillStyle(BLADE_SILVER, 1);
+    stickGraphics.fillRect(7, 7, 4, 2);
+    
+    // Add to player container so it moves with player
+    // Add at index 0 so it's drawn FIRST (behind Grayson's body)
+    this.player.addAt(stickGraphics, 0);
   }
   
   private checkMemoryCollection() {
@@ -676,8 +761,8 @@ export default class IceHockeyScene extends Phaser.Scene {
       this.playerPhysics.setVelocity(0, 0);
     }
     
-    // Shoot puck with Space
-    if (Phaser.Input.Keyboard.JustDown(this.controls.jump) && this.shootCooldown === 0) {
+    // Shoot puck with Space (only if has stick)
+    if (this.hasStick && Phaser.Input.Keyboard.JustDown(this.controls.jump) && this.shootCooldown === 0) {
       this.playerShootPuck();
       this.shootCooldown = this.shootCooldownTime / 1000; // Reset cooldown
     }
