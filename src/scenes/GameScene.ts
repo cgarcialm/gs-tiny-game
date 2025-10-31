@@ -197,6 +197,24 @@ export default class GameScene extends Phaser.Scene {
         });
         break;
         
+      case 2:
+        // Level 2: After Ice Hockey - Return to void
+        this.player = createGraysonSprite(this, 160, 90);
+        
+        // Auto-collect ice hockey memory with animation
+        this.time.delayedCall(1000, () => {
+          this.cardPiecesCollected++; // From 2 to 3
+          this.updateMemoryCounter();
+          
+          // Show message
+          this.time.delayedCall(2000, () => {
+            this.showDialog("That was intense! All memories collected...");
+            
+            // Future: Continue story from here
+          });
+        });
+        break;
+        
       // Add more cases for future levels
       default:
         this.player = createGraysonSprite(this, 160, 90);
