@@ -55,6 +55,11 @@ export default class IceHockeyScene extends Phaser.Scene {
   private chaseEnemyInterval = 8000; // Spawn chaser every 8 seconds
   private chasers: Phaser.GameObjects.Container[] = [];
   
+  // Minimap
+  private minimapContainer!: Phaser.GameObjects.Container;
+  private playerDot!: Phaser.GameObjects.Rectangle;
+  private enemyDots: Phaser.GameObjects.Graphics[] = [];
+  
   // Invincibility frames
   private isInvincible = false;
   private invincibilityDuration = 1500; // 1 second of invincibility
@@ -121,6 +126,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     // We'll manually constrain in movement code
     
     // Create visual sidebar UI (RotMG style)
+    this.createMinimap();
     this.createVisualSidebar();
     
     // Spawn skates and hockey stick on the ice
@@ -133,13 +139,94 @@ export default class IceHockeyScene extends Phaser.Scene {
     });
   }
   
+  private createMinimap() {
+    // Minimap above sidebar (RotMG style) - same width as sidebar
+    const minimapWidth = 68; // Match sidebar width
+    const minimapHeight = 60;
+    const minimapX = 320 - minimapWidth - 8;
+    const minimapY = 10; // Top-right area
+    
+    // Minimap background (semi-transparent like RotMG)
+    const minimapBg = this.add.rectangle(minimapX, minimapY, minimapWidth, minimapHeight, 0x1a1a1a, 0.95);
+    minimapBg.setOrigin(0, 0).setDepth(100);
+    minimapBg.setStrokeStyle(1, 0x666666, 1);
+    
+    // Ice rink outline (scaled down) - vertical field!
+    const rinkGraphics = this.add.graphics();
+    rinkGraphics.lineStyle(1, 0x4a90e2, 0.5); // Blue outline
+    // Field is vertical: ~150px wide, ~164px tall in game
+    const fieldW = 28; // Narrower (horizontal)
+    const fieldH = 48; // Taller (vertical)
+    rinkGraphics.strokeRect(minimapX + 20, minimapY + 6, fieldW, fieldH);
+    rinkGraphics.setDepth(101);
+    
+    this.minimapContainer = this.add.container(0, 0);
+    this.minimapContainer.setDepth(102);
+    
+    // Player dot (white square)
+    this.playerDot = this.add.rectangle(0, 0, 3, 3, 0xffffff, 1);
+    this.minimapContainer.add(this.playerDot);
+  }
+  
+  private updateMinimap() {
+    // Scale factor: vertical field (~150 wide, ~164 tall → 28×48 on minimap)
+    const scaleX = 28 / 150;
+    const scaleY = 48 / 164;
+    const minimapX = 320 - 68 - 8;
+    const minimapY = 10;
+    const offsetX = minimapX + 20;
+    const offsetY = minimapY + 6;
+    
+    // Update player position
+    const mapPlayerX = offsetX + (this.playerPhysics.x - 90) * scaleX;
+    const mapPlayerY = offsetY + (this.playerPhysics.y - 12) * scaleY;
+    this.playerDot.setPosition(mapPlayerX, mapPlayerY);
+    
+    // Clear old enemy dots
+    this.enemyDots.forEach(dot => dot.destroy());
+    this.enemyDots = [];
+    
+    // Draw enemy dots (red)
+    this.enemies.forEach(enemy => {
+      const mapX = offsetX + (enemy.x - 90) * scaleX;
+      const mapY = offsetY + (enemy.y - 12) * scaleY;
+      const dot = this.add.graphics();
+      dot.fillStyle(0xff0000, 1);
+      dot.fillCircle(mapX, mapY, 2);
+      dot.setDepth(102);
+      this.enemyDots.push(dot);
+    });
+    
+    // Draw chaser dots (orange)
+    this.chasers.forEach(chaser => {
+      const mapX = offsetX + (chaser.x - 90) * scaleX;
+      const mapY = offsetY + (chaser.y - 12) * scaleY;
+      const dot = this.add.graphics();
+      dot.fillStyle(0xff9800, 1);
+      dot.fillCircle(mapX, mapY, 2);
+      dot.setDepth(102);
+      this.enemyDots.push(dot);
+    });
+    
+    // Draw memory dot (yellow) if spawned
+    if (this.memoryFragmentSpawned && this.memoryFragment) {
+      const mapX = offsetX + (this.memoryFragment.x - 90) * scaleX;
+      const mapY = offsetY + (this.memoryFragment.y - 12) * scaleY;
+      const dot = this.add.graphics();
+      dot.fillStyle(0xffeb3b, 1);
+      dot.fillCircle(mapX, mapY, 2);
+      dot.setDepth(102);
+      this.enemyDots.push(dot);
+    }
+  }
+  
   private createVisualSidebar() {
     // Visual HP bar with hearts (RotMG style) - bottom-right corner
     // Background panel - solid dark gray like RotMG (taller for all elements)
     const panelWidth = 68;
     const panelHeight = 85; // Taller to fit portrait, stats, and inventory
     const panelX = 320 - panelWidth - 8; // Right edge minus width minus margin
-    const panelY = 180 - panelHeight - 50; // Bottom edge - moved up more
+    const panelY = 180 - panelHeight - 20; // Moved down for minimap space
     
     const panelBg = this.add.rectangle(panelX, panelY, panelWidth, panelHeight, 0x2a2a2a, 1);
     panelBg.setOrigin(0, 0).setDepth(100);
@@ -848,11 +935,13 @@ export default class IceHockeyScene extends Phaser.Scene {
       this.updateChasers();
       this.updatePucks();
       this.updateChaseSpawnTimer();
+      this.updateMinimap(); // Update minimap positions
     }
     
     // After enemies defeated, player can still move to collect memory
     if (this.memoryFragmentSpawned && !this.gameplayStarted && !this.dialogueManager.isVisible()) {
       this.handlePlayerMovement(); // Allow movement to reach memory
+      this.updateMinimap(); // Keep minimap updated
     }
     
     // Check for equipment collection

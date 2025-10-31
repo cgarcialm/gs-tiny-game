@@ -14,7 +14,7 @@ export class DialogueManager {
     
     // Create container for dialogue UI
     this.container = scene.add.container(0, 0);
-    this.container.setDepth(100); // Above game elements but below menus
+    this.container.setDepth(110); // Above game elements and sidebar
     
     // Dialogue box background
     this.dialogBox = scene.add.rectangle(160, 160, 300, 40, 0x000000, 0.6);
