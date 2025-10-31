@@ -135,9 +135,9 @@ export default class IceHockeyScene extends Phaser.Scene {
   
   private createVisualSidebar() {
     // Visual HP bar with hearts (RotMG style) - bottom-right corner
-    // Background panel - solid dark gray like RotMG (taller for portrait)
+    // Background panel - solid dark gray like RotMG (taller for all elements)
     const panelWidth = 68;
-    const panelHeight = 70; // Taller to fit portrait + class name
+    const panelHeight = 85; // Taller to fit portrait, stats, and inventory
     const panelX = 320 - panelWidth - 8; // Right edge minus width minus margin
     const panelY = 180 - panelHeight - 50; // Bottom edge - moved up more
     
@@ -148,7 +148,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Character portrait at top (mini Grayson sprite - RotMG style)
     // Left-aligned like RotMG
     const portraitX = panelX + 6;
-    const portraitY = panelY + 6;
+    const portraitY = panelY + 7;
     
     // Draw tiny Grayson (8x8 pixels like RotMG)
     const portrait = this.add.graphics();
@@ -176,8 +176,8 @@ export default class IceHockeyScene extends Phaser.Scene {
       resolution: 1,
     }).setOrigin(0, 0).setDepth(101);
     
-    // HP Label (above inventory with spacing)
-    this.add.text(panelX + 4, panelY + 32, "HP:", {
+    // HP Label (middle section)
+    this.add.text(panelX + 4, panelY + 34, "HP:", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#ffffff",
@@ -185,14 +185,22 @@ export default class IceHockeyScene extends Phaser.Scene {
     }).setOrigin(0, 0).setDepth(101);
     
     // Draw 3 hearts (same line as HP label)
-    this.healthDisplay = this.add.container(panelX + 22, panelY + 32);
+    this.healthDisplay = this.add.container(panelX + 22, panelY + 33);
     this.healthDisplay.setDepth(101);
     this.updateHealthHearts();
+    
+    // Defeated stat (RotMG style - between HP and inventory)
+    this.scoreDisplay = this.add.text(panelX + 4, panelY + 46, `KIL  ${this.enemiesDefeated}/${this.totalEnemies}`, {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#ffffff",
+      resolution: 1,
+    }).setOrigin(0, 0).setDepth(101);
     
     // Equipment inventory bar (RotMG style - square slots centered)
     const slotSize = 16; // Bigger square slots to fit icons
     const totalSlots = 3;
-    const inventoryBarY = panelY + 45; // Below HP with spacing
+    const inventoryBarY = panelY + 60; // At bottom with good spacing
     const inventoryBarHeight = slotSize + 1; // Match slot size
     const inventoryBarWidth = panelWidth - 1; // 1px margin on right only
     const inventoryBarX = panelX; // Start at panel edge (no left margin)
@@ -258,13 +266,13 @@ export default class IceHockeyScene extends Phaser.Scene {
     stickIcon.fillRect(stickSlotX + 11, inventoryBarY + 11, 3, 2);
     stickIcon.setDepth(101);
     
-    // Memory/card piece icon in slot 2 (centered in square slot)
+    // Memory/card piece icon in slot 2 (better centered)
     const cardIcon = this.add.graphics();
     const cardSlotX = slotsStartX + slotSize * 2;
     cardIcon.fillStyle(0xffaa00, 1); // Orange card
-    cardIcon.fillRect(cardSlotX + 3, inventoryBarY + 3, 8, 8);
+    cardIcon.fillRect(cardSlotX + 4, inventoryBarY + 4, 8, 8); // Moved right and down
     cardIcon.fillStyle(0xff0000, 1); // Red heart
-    cardIcon.fillCircle(cardSlotX + 7, inventoryBarY + 7, 2);
+    cardIcon.fillCircle(cardSlotX + 8, inventoryBarY + 8, 2); // Centered in card
     cardIcon.setDepth(101);
     cardIcon.setAlpha(0.4); // Dim initially
     
@@ -278,16 +286,6 @@ export default class IceHockeyScene extends Phaser.Scene {
     skatesIcon.setAlpha(0.4);
     stickIcon.setAlpha(0.4);
     cardIcon.setAlpha(0.4);
-    
-    // Create scoreboard display (top-right)
-    this.scoreDisplay = this.add.text(312, 8, `Defeated: ${this.enemiesDefeated}/${this.totalEnemies}`, {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#ffeb3b",
-      backgroundColor: "#000000",
-      padding: { left: 3, right: 3, top: 2, bottom: 2 },
-      resolution: 1,
-    }).setOrigin(1, 0).setDepth(100);
   }
   
   private updateHealthHearts() {
@@ -1269,14 +1267,14 @@ export default class IceHockeyScene extends Phaser.Scene {
     const index = this.enemies.indexOf(enemy);
     if (index > -1) this.enemies.splice(index, 1);
     
-    // Update score
+    // Update score (RotMG stat format)
     this.enemiesDefeated++;
-    this.scoreDisplay.setText(`Defeated: ${this.enemiesDefeated}/${this.totalEnemies}`);
+    this.scoreDisplay.setText(`KIL  ${this.enemiesDefeated}/${this.totalEnemies}`);
     
-    // Flash score on kill
-    this.scoreDisplay.setColor("#ffffff");
+    // Flash score on kill (green like RotMG stat boost)
+    this.scoreDisplay.setColor("#00ff00");
     this.time.delayedCall(200, () => {
-      this.scoreDisplay.setColor("#ffeb3b");
+      this.scoreDisplay.setColor("#ffffff");
     });
     
     // Check if ALL enemies defeated
