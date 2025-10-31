@@ -37,13 +37,17 @@ export default class IceHockeyScene extends Phaser.Scene {
   private enemies: Phaser.GameObjects.Container[] = [];
   private pucks: Phaser.Physics.Arcade.Sprite[] = [];
   private playerPucks: Phaser.Physics.Arcade.Sprite[] = []; // Pucks shot by player
-  private speed = 120;
+  private speed = 80; // Start slow without skates
+  private normalSpeed = 80;
+  private skateSpeed = 140;
   private shootCooldown = 0;
   private shootCooldownTime = 500; // 0.5 second between shots
   private memoryFragment?: Phaser.GameObjects.Graphics;
   private memoryFragmentSpawned = false;
   private hockeyStick?: Phaser.GameObjects.Graphics;
   private hasStick = false;
+  private skates?: Phaser.GameObjects.Graphics;
+  private hasSkates = false;
   private chaseEnemyTimer = 0;
   private chaseEnemyInterval = 8000; // Spawn chaser every 8 seconds
   private chasers: Phaser.GameObjects.Container[] = [];
@@ -77,6 +81,9 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.shootCooldown = 0;
     this.hasStick = false;
     this.hockeyStick = undefined;
+    this.hasSkates = false;
+    this.skates = undefined;
+    this.speed = this.normalSpeed; // Reset to slow speed
     this.chaseEnemyTimer = 0;
     this.chasers = [];
     this.isInvincible = false;
@@ -142,17 +149,32 @@ export default class IceHockeyScene extends Phaser.Scene {
       resolution: 1,
     }).setOrigin(1, 0).setDepth(100);
     
-    // Create stick status display (below HP)
-    this.stickDisplay = this.add.text(8, 20, "No Stick", {
+    // Create equipment status displays (below HP with more spacing)
+    // Skates status
+    const skatesDisplay = this.add.text(8, 24, "❌ Skates", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: "7px",
       color: "#999999",
       backgroundColor: "#000000",
-      padding: { left: 3, right: 3, top: 2, bottom: 2 },
+      padding: { left: 3, right: 3, top: 1, bottom: 1 },
       resolution: 1,
     }).setOrigin(0, 0).setDepth(100);
     
-    // Spawn hockey stick on the ice
+    // Stick status (below skates)
+    this.stickDisplay = this.add.text(8, 34, "❌ Stick", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#999999",
+      backgroundColor: "#000000",
+      padding: { left: 3, right: 3, top: 1, bottom: 1 },
+      resolution: 1,
+    }).setOrigin(0, 0).setDepth(100);
+    
+    // Store both for easy access
+    this.stickDisplay.setData('skatesDisplay', skatesDisplay);
+    
+    // Spawn skates and hockey stick on the ice
+    this.spawnSkates();
     this.spawnHockeyStick();
     
     // Grayson enters the field
@@ -161,10 +183,37 @@ export default class IceHockeyScene extends Phaser.Scene {
     });
   }
   
+  private spawnSkates() {
+    // Spawn skates near left board (close to border)
+    const skatesX = 100;
+    const skatesY = 120;
+    
+    this.skates = this.add.graphics();
+    this.skates.setPosition(skatesX, skatesY);
+    
+    // Draw ice skates (silver blades with black boots)
+    const BLADE_SILVER = 0xc0c0c0;
+    const BOOT_BLACK = 0x1a1a1a;
+    
+    // Left skate
+    this.skates.fillStyle(BOOT_BLACK, 1);
+    this.skates.fillRect(-6, -3, 5, 6); // Boot
+    this.skates.fillStyle(BLADE_SILVER, 1);
+    this.skates.fillRect(-7, 2, 6, 2); // Blade extending out
+    
+    // Right skate
+    this.skates.fillStyle(BOOT_BLACK, 1);
+    this.skates.fillRect(1, -3, 5, 6); // Boot
+    this.skates.fillStyle(BLADE_SILVER, 1);
+    this.skates.fillRect(1, 2, 6, 2); // Blade extending out
+    
+    this.skates.setDepth(6);
+  }
+  
   private spawnHockeyStick() {
-    // Spawn stick at center ice
-    const stickX = 160;
-    const stickY = 90;
+    // Spawn stick near right board (close to border - mirrored from skates)
+    const stickX = 220;
+    const stickY = 120;
     
     this.hockeyStick = this.add.graphics();
     this.hockeyStick.setPosition(stickX, stickY);
@@ -673,16 +722,19 @@ export default class IceHockeyScene extends Phaser.Scene {
       return;
     }
     
-    // Handle dialogue (but allow gameplay to continue during stick pickup message)
+    // Handle dialogue (but allow gameplay to continue during equipment pickup messages)
     if (this.dialogVisible) {
       if (shouldCloseDialogue(this.controls)) {
         this.hideDialog();
       }
-      // Only block gameplay if NOT during stick collection
-      if (!this.hasStick || this.memoryFragmentSpawned) {
+      // Only block gameplay if NOT during equipment collection
+      // Block for: realization dialogue, memory dialogue
+      // Allow: skates message, stick message
+      const isEquipmentMessage = (this.hasStick || this.hasSkates) && !this.memoryFragmentSpawned;
+      if (!isEquipmentMessage) {
         return; // Block for realization and memory dialogues
       }
-      // Fall through to allow gameplay during stick message
+      // Fall through to allow gameplay during equipment messages
     }
     
     // Gameplay movement (after dialogue is closed or during stick message)
@@ -699,7 +751,11 @@ export default class IceHockeyScene extends Phaser.Scene {
       this.handlePlayerMovement(); // Allow movement to reach memory
     }
     
-    // Check for stick collection (before gameplay starts)
+    // Check for equipment collection
+    if (!this.hasSkates && this.skates && !this.dialogVisible) {
+      this.checkSkatesCollection();
+    }
+    
     if (!this.hasStick && this.hockeyStick && !this.dialogVisible) {
       this.checkStickCollection();
     }
@@ -707,6 +763,39 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Always check for memory collection (even after enemies defeated)
     if (this.memoryFragmentSpawned && !this.dialogVisible) {
       this.checkMemoryCollection();
+    }
+  }
+  
+  private checkSkatesCollection() {
+    if (!this.skates) return;
+    
+    const distance = Phaser.Math.Distance.Between(
+      this.playerPhysics.x,
+      this.playerPhysics.y,
+      this.skates.x,
+      this.skates.y
+    );
+    
+    if (distance < 20 && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+      // Collect skates!
+      this.hasSkates = true;
+      this.skates.destroy();
+      this.skates = undefined;
+      
+      // Increase movement speed
+      this.speed = this.skateSpeed;
+      
+      // Update equipment display
+      this.updateEquipmentDisplay();
+      
+      // Show temporary message
+      this.showDialog("Ice skates equipped! You move faster now!");
+      
+      this.time.delayedCall(2500, () => {
+        if (this.dialogVisible) {
+          this.hideDialog();
+        }
+      });
     }
   }
   
@@ -729,9 +818,8 @@ export default class IceHockeyScene extends Phaser.Scene {
       // Add stick to Grayson's sprite
       this.addStickToPlayer();
       
-      // Update stick status display
-      this.stickDisplay.setText("Has Stick!");
-      this.stickDisplay.setColor("#00ff00"); // Green when has stick
+      // Update equipment display
+      this.updateEquipmentDisplay();
       
       // Show temporary message (non-blocking, auto-dismisses)
       this.showDialog("Hockey stick acquired! Press SPACE to shoot pucks!");
@@ -742,6 +830,28 @@ export default class IceHockeyScene extends Phaser.Scene {
           this.hideDialog();
         }
       });
+    }
+  }
+  
+  private updateEquipmentDisplay() {
+    const skatesDisplay = this.stickDisplay.getData('skatesDisplay');
+    
+    // Update skates display
+    if (this.hasSkates) {
+      skatesDisplay.setText("✓ Skates");
+      skatesDisplay.setColor("#00ff00"); // Green
+    } else {
+      skatesDisplay.setText("❌ Skates");
+      skatesDisplay.setColor("#999999"); // Gray
+    }
+    
+    // Update stick display
+    if (this.hasStick) {
+      this.stickDisplay.setText("✓ Stick");
+      this.stickDisplay.setColor("#00ff00"); // Green
+    } else {
+      this.stickDisplay.setText("❌ Stick");
+      this.stickDisplay.setColor("#999999"); // Gray
     }
   }
   
