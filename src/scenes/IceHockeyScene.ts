@@ -135,9 +135,9 @@ export default class IceHockeyScene extends Phaser.Scene {
   
   private createVisualSidebar() {
     // Visual HP bar with hearts (RotMG style) - bottom-right corner
-    // Background panel - solid dark gray like RotMG (wider to fill space)
+    // Background panel - solid dark gray like RotMG (taller for portrait)
     const panelWidth = 68;
-    const panelHeight = 42;
+    const panelHeight = 70; // Taller to fit portrait + class name
     const panelX = 320 - panelWidth - 8; // Right edge minus width minus margin
     const panelY = 180 - panelHeight - 50; // Bottom edge - moved up more
     
@@ -145,8 +145,39 @@ export default class IceHockeyScene extends Phaser.Scene {
     panelBg.setOrigin(0, 0).setDepth(100);
     panelBg.setStrokeStyle(1, 0x666666, 1);
     
-    // HP Label
-    this.add.text(panelX + 4, panelY + 4, "HP:", {
+    // Character portrait at top (mini Grayson sprite - RotMG style)
+    // Left-aligned like RotMG
+    const portraitX = panelX + 6;
+    const portraitY = panelY + 6;
+    
+    // Draw tiny Grayson (8x8 pixels like RotMG)
+    const portrait = this.add.graphics();
+    portrait.fillStyle(0x81c784, 1); // Green shirt
+    portrait.fillRect(portraitX, portraitY + 2, 8, 6);
+    portrait.fillStyle(0xffe5cc, 1); // Skin (head)
+    portrait.fillRect(portraitX + 1, portraitY, 6, 3);
+    portrait.setDepth(101);
+    
+    // Character name (to the right of portrait)
+    const textX = portraitX + 12; // Right of portrait
+    
+    this.add.text(textX, portraitY + 2, "Grayson", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#ffffff",
+      resolution: 1,
+    }).setOrigin(0, 0).setDepth(101);
+    
+    // Class name (below portrait, left-aligned with portrait)
+    this.add.text(portraitX, portraitY + 12, "Goalie", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#ffeb3b",
+      resolution: 1,
+    }).setOrigin(0, 0).setDepth(101);
+    
+    // HP Label (above inventory with spacing)
+    this.add.text(panelX + 4, panelY + 32, "HP:", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#ffffff",
@@ -154,14 +185,14 @@ export default class IceHockeyScene extends Phaser.Scene {
     }).setOrigin(0, 0).setDepth(101);
     
     // Draw 3 hearts (same line as HP label)
-    this.healthDisplay = this.add.container(panelX + 22, panelY + 3);
+    this.healthDisplay = this.add.container(panelX + 22, panelY + 32);
     this.healthDisplay.setDepth(101);
     this.updateHealthHearts();
     
     // Equipment inventory bar (RotMG style - square slots centered)
     const slotSize = 16; // Bigger square slots to fit icons
     const totalSlots = 3;
-    const inventoryBarY = panelY + 18;
+    const inventoryBarY = panelY + 45; // Below HP with spacing
     const inventoryBarHeight = slotSize + 1; // Match slot size
     const inventoryBarWidth = panelWidth - 1; // 1px margin on right only
     const inventoryBarX = panelX; // Start at panel edge (no left margin)
