@@ -147,7 +147,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     const minimapY = 10; // Top-right area
     
     // Minimap background (semi-transparent like RotMG)
-    const minimapBg = this.add.rectangle(minimapX, minimapY, minimapWidth, minimapHeight, 0x1a1a1a, 0.95);
+    const minimapBg = this.add.rectangle(minimapX, minimapY, minimapWidth, minimapHeight, 0x1a1a1a, 0.9);
     minimapBg.setOrigin(0, 0).setDepth(100);
     minimapBg.setStrokeStyle(1, 0x666666, 1);
     
@@ -644,8 +644,52 @@ export default class IceHockeyScene extends Phaser.Scene {
     // After showing dialogue, start gameplay when player closes it
   }
   
+  private spawnCrowdChatter(message: string, fromLeftSide: boolean = true) {
+    // Crowd text appears from the left stands (no background, with black stroke)
+    // Constrained to stay on screen (x: 25-70 for left side)
+    const x = fromLeftSide ? 35 + Math.random() * 30 : 250 + Math.random() * 30;
+    const y = 20 + Math.random() * 140; // Vertical span of stands
+    
+    const crowdText = this.add.text(x, y, message, {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffeb3b", // Yellow
+      fontStyle: "bold",
+      stroke: "#000000", // Black outline
+      strokeThickness: 3, // Thick stroke for visibility
+      align: "center", // Center-align multi-line text
+      resolution: 2,
+    }).setOrigin(0.5).setDepth(50);
+    
+    // Float up slowly
+    this.tweens.add({
+      targets: crowdText,
+      y: y - 40,
+      duration: 6000,
+      ease: "Power1",
+    });
+    
+    // Fade out after staying visible for a while
+    this.tweens.add({
+      targets: crowdText,
+      alpha: 0,
+      duration: 2000, // 2 second fade
+      delay: 4000, // Stay visible for 4 seconds first
+      ease: "Power1",
+      onComplete: () => crowdText.destroy()
+    });
+  }
+  
   private startGameplay() {
     this.gameplayStarted = true;
+    
+    // Crowd chatter about equipment (after dialog closed)
+    this.time.delayedCall(500, () => {
+      this.spawnCrowdChatter("You need\nskates!");
+    });
+    this.time.delayedCall(200, () => {
+      this.spawnCrowdChatter("Grab the\nstick!");
+    });
     
     // Spawn enemy hockey players
     this.spawnEnemies();
@@ -1235,6 +1279,14 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private playerShootPuck() {
+    // Crowd encouragement on first shot (from left stands)
+    if (!this.stickDisplay.getData('hasShot')) {
+      this.stickDisplay.setData('hasShot', true);
+      const shootMessages = ["Nice shot!", "Get 'em!", "Yeah!"];
+      const msg = shootMessages[Math.floor(Math.random() * shootMessages.length)];
+      this.spawnCrowdChatter(msg);
+    }
+    
     // Shoot in the direction player is facing
     const angleRad = (this.player.angle - 90) * (Math.PI / 180);
     
@@ -1348,6 +1400,11 @@ export default class IceHockeyScene extends Phaser.Scene {
     const enemyX = enemy.x;
     const enemyY = enemy.y;
     
+    // Crowd celebration (from left stands)
+    const celebMessages = ["Score!", "Great\nshot!", "Yes!", "He got\none!"];
+    const msg = celebMessages[Math.floor(Math.random() * celebMessages.length)];
+    this.spawnCrowdChatter(msg);
+    
     // Particle explosion (RotMG style death burst)
     this.createDeathParticles(enemyX, enemyY);
     
@@ -1444,6 +1501,11 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private spawnChaseEnemy() {
+    // Crowd warning about incoming chaser (from left stands)
+    const warnMessages = ["Behind you!", "Incoming!", "Look out!"];
+    const msg = warnMessages[Math.floor(Math.random() * warnMessages.length)];
+    this.spawnCrowdChatter(msg);
+    
     // Random spawn from sides with taunting text
     const spawns = [
       { x: 90, y: 90, text: "You're mine!" },
@@ -1539,6 +1601,11 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Reduce health
     this.health--;
     this.updateHealthHearts(); // Update visual hearts
+    
+    // Crowd reaction to hit (from left stands)
+    const hitMessages = ["Ouch!", "Watch out!", "Get up!", "Careful!"];
+    const msg = hitMessages[Math.floor(Math.random() * hitMessages.length)];
+    this.spawnCrowdChatter(msg);
     
     // Camera shake
     this.cameras.main.shake(200, 0.003);
