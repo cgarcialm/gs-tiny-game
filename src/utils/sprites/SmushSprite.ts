@@ -13,14 +13,15 @@ export function createSmushSprite(
   const container = scene.add.container(x, y);
   const pixelSize = 2; // Size of each pixel block
   
-  // Colors - brown cat with beige spots
-  const BLACK = 0x1a1a1a;           // Black for body accents
-  const BROWN_DARK = 0x2c1810;      // Dark brown for main body
-  const BROWN_MED = 0x5d4037;       // Medium brown for shading
-  const BEIGE = 0xa1887f;           // Beige for spots
-  const BEIGE_LIGHT = 0xbcaaa4;     // Light beige for highlights
-  const NOSE_BLACK = 0x000000;      // Black nose
-  const EYE_YELLOW = 0xffd54f;      // Yellow eyes
+  // Colors - tortoiseshell cat (black with orange patches)
+  const BLACK = 0x000000;           // Pure black (base color)
+  const BLACK_SOFT = 0x1a1a1a;      // Softer black for variation
+  const ORANGE = 0xd97c3c;          // Orange patches (tortie)
+  const ORANGE_DARK = 0xb5632e;     // Darker orange
+  const TAN = 0xc4a57b;             // Tan patches
+  const WHITE = 0xffffff;           // White chin patch
+  const NOSE_PINK = 0xe89db5;       // Pink nose
+  const EYE_YELLOW = 0xf4e04d;      // Bright yellow eyes
   const EYE_PUPIL = 0x000000;       // Black pupil
   
   // Create graphics object for drawing pixels
@@ -41,157 +42,156 @@ export function createSmushSprite(
     graphics.setBlendMode(Phaser.BlendModes.NORMAL);
     
     // EARS (pointy triangular ears)
-    // Left ear
-    drawPixel(4, 1, BLACK);          // Black tip of ear
-    drawPixel(5, 1, BROWN_DARK);
-    drawPixel(4, 2, BROWN_DARK);
-    drawPixel(5, 2, BROWN_MED);
+    // Left ear (black)
+    drawPixel(4, 1, BLACK);
+    drawPixel(5, 1, BLACK);
+    drawPixel(4, 2, BLACK);
+    drawPixel(5, 2, BLACK);
     
-    // Right ear
-    drawPixel(12, 1, BROWN_DARK);
-    drawPixel(13, 1, BLACK);         // Black tip of ear
-    drawPixel(12, 2, BROWN_MED);
-    drawPixel(13, 2, BROWN_DARK);
+    // Right ear (very dark - almost black with brown tint)
+    drawPixel(12, 1, BLACK);
+    drawPixel(13, 1, BLACK);
+    drawPixel(12, 2, BLACK_SOFT);
+    drawPixel(13, 2, BLACK_SOFT);
     
-    // HEAD (round, chubby)
-    // Top of head
-    drawPixel(6, 2, BLACK);          // Black accent on head
-    drawPixel(7, 2, BROWN_DARK);
-    drawPixel(8, 2, BLACK);
-    drawPixel(9, 2, BROWN_DARK);
-    drawPixel(10, 2, BROWN_DARK);
-    drawPixel(11, 2, BLACK);         // Black accent on head
+    // HEAD (tortoiseshell pattern - mostly black with orange patches)
+    // Top of head (black left side, orange right side)
+    drawPixel(6, 2, BLACK);
+    drawPixel(7, 2, BLACK);
+    drawPixel(8, 2, BLACK_SOFT);
+    drawPixel(9, 2, ORANGE_DARK);    // Orange patch starts
+    drawPixel(10, 2, ORANGE);
+    drawPixel(11, 2, ORANGE);
     
-    // Upper face
-    drawPixel(5, 3, BROWN_DARK);
-    drawPixel(6, 3, BROWN_MED);
-    drawPixel(7, 3, BROWN_DARK);
-    drawPixel(8, 3, BLACK);    // Small beige spot
-    drawPixel(9, 3, BROWN_DARK);
-    drawPixel(10, 3, BROWN_MED);
-    drawPixel(11, 3, BROWN_DARK);
-    drawPixel(12, 3, BROWN_DARK);
+    // Upper face (mottled pattern)
+    drawPixel(5, 3, BLACK);
+    drawPixel(6, 3, BLACK);
+    drawPixel(7, 3, BLACK_SOFT);
+    drawPixel(8, 3, TAN);            // Tan patch
+    drawPixel(9, 3, ORANGE);         // Orange patch
+    drawPixel(10, 3, ORANGE);
+    drawPixel(11, 3, ORANGE_DARK);
+    drawPixel(12, 3, BLACK);
     
     // Face with eyes
-    drawPixel(5, 4, BROWN_DARK);
+    drawPixel(5, 4, BLACK);
     drawPixel(6, 4, EYE_YELLOW);     // Left eye
-    drawPixel(7, 4, BROWN_MED);
-    drawPixel(8, 4, BEIGE_LIGHT);    // Small beige between eyes
-    drawPixel(9, 4, BROWN_MED);
+    drawPixel(7, 4, BLACK);
+    drawPixel(8, 4, TAN);            // Tan between eyes
+    drawPixel(9, 4, BLACK_SOFT);
     drawPixel(10, 4, EYE_YELLOW);    // Right eye
-    drawPixel(11, 4, BROWN_DARK);
-    drawPixel(12, 4, BROWN_DARK);
+    drawPixel(11, 4, ORANGE);
+    drawPixel(12, 4, BLACK);
     
-    // Face lower (with nose)
-    drawPixel(5, 5, BROWN_DARK);
-    drawPixel(6, 5, BROWN_MED);
-    drawPixel(7, 5, BROWN_MED);    // Beige around nose
-    drawPixel(8, 5, NOSE_BLACK);     // Nose
-    drawPixel(9, 5, BROWN_MED);    // Beige around nose
-    drawPixel(10, 5, BROWN_MED);
-    drawPixel(11, 5, BROWN_DARK);
+    // Face lower (with pink nose)
+    drawPixel(5, 5, BLACK);
+    drawPixel(6, 5, BLACK_SOFT);
+    drawPixel(7, 5, TAN);
+    drawPixel(8, 5, NOSE_PINK);      // Pink nose
+    drawPixel(9, 5, TAN);
+    drawPixel(10, 5, BLACK_SOFT);
+    drawPixel(11, 5, ORANGE);
     
-    // Cheeks/whisker area
-    drawPixel(4, 6, BROWN_DARK);
-    drawPixel(5, 6, BROWN_DARK);
-    drawPixel(6, 6, BROWN_MED);
-    drawPixel(7, 6, BEIGE_LIGHT);    // Small beige spot on chin
-    drawPixel(8, 6, BROWN_MED);
-    drawPixel(9, 6, BEIGE_LIGHT);
-    drawPixel(10, 6, BROWN_DARK);
-    drawPixel(11, 6, BROWN_DARK);
+    // Cheeks/whisker area (with white chin patch)
+    drawPixel(4, 6, BLACK);
+    drawPixel(5, 6, BLACK);
+    drawPixel(6, 6, BLACK_SOFT);
+    drawPixel(7, 6, WHITE);          // White chin
+    drawPixel(8, 6, WHITE);          // White chin
+    drawPixel(9, 6, TAN);
+    drawPixel(10, 6, ORANGE);
+    drawPixel(11, 6, BLACK);
     drawPixel(12, 6, BLACK);
     
     // Pupils (small dark dots in eyes)
     drawSmallDot(6, 4, EYE_PUPIL, 1.2);
     drawSmallDot(10, 4, EYE_PUPIL, 1.2);
     
-    // BODY (chubby, sitting position)
+    // BODY (tortoiseshell pattern - mottled black, orange, tan)
     // Neck/upper body
-    drawPixel(6, 7, BLACK);          // Black accent on neck
-    drawPixel(7, 7, BROWN_MED);
-    drawPixel(8, 7, BROWN_MED);
-    drawPixel(9, 7, BROWN_MED);
-    drawPixel(10, 7, BLACK);         // Black accent on neck
+    drawPixel(6, 7, BLACK);
+    drawPixel(7, 7, BLACK_SOFT);
+    drawPixel(8, 7, TAN);
+    drawPixel(9, 7, ORANGE);
+    drawPixel(10, 7, BLACK);
     
-    // Wide body with beige spot
-    drawPixel(5, 8, BLACK);          // Black accent on shoulder
-    drawPixel(6, 8, BROWN_DARK);
-    drawPixel(7, 8, BROWN_MED);          // Beige spot on chest
-    drawPixel(8, 8, BEIGE);
-    drawPixel(9, 8, BROWN_MED);
-    drawPixel(10, 8, BROWN_DARK);
-    drawPixel(11, 8, BLACK);         // Black accent on side
+    // Wide body (tortie patches)
+    drawPixel(5, 8, BLACK);
+    drawPixel(6, 8, BLACK);
+    drawPixel(7, 8, TAN);            // Tan patch
+    drawPixel(8, 8, ORANGE);         // Orange patch
+    drawPixel(9, 9, ORANGE_DARK);
+    drawPixel(10, 8, BLACK_SOFT);
+    drawPixel(11, 8, BLACK);
     
-    // Mid body (widest part - chubby!)
-    drawPixel(4, 9, BROWN_DARK);
-    drawPixel(5, 9, BROWN_DARK);
-    drawPixel(6, 9, BROWN_MED);
-    drawPixel(7, 9, BLACK);          // Black accent on body
-    drawPixel(8, 9, BEIGE);
-    drawPixel(9, 9, BLACK);          // Black accent on body
-    drawPixel(10, 9, BROWN_MED);
-    drawPixel(11, 9, BROWN_DARK);
-    drawPixel(12, 9, BROWN_DARK);
+    // Mid body (widest part - chubby with patches!)
+    drawPixel(4, 9, BLACK);
+    drawPixel(5, 9, BLACK);
+    drawPixel(6, 9, ORANGE_DARK);    // Orange patch
+    drawPixel(7, 9, ORANGE);
+    drawPixel(8, 9, TAN);
+    drawPixel(9, 9, BLACK);
+    drawPixel(10, 9, BLACK_SOFT);
+    drawPixel(11, 9, ORANGE);
+    drawPixel(12, 9, BLACK);
     
-    drawPixel(4, 10, BROWN_DARK);
-    drawPixel(5, 10, BROWN_DARK);
-    drawPixel(6, 10, BROWN_MED);         // Beige spot on side
-    drawPixel(7, 10, BLACK);         // Black accent on body
-    drawPixel(8, 10, BEIGE);
-    drawPixel(9, 10, BLACK);         // Black accent on body
-    drawPixel(10, 10, BROWN_MED);
-    drawPixel(11, 10, BROWN_DARK);
-    drawPixel(12, 10, BROWN_DARK);
+    drawPixel(4, 10, BLACK);
+    drawPixel(5, 10, BLACK);
+    drawPixel(6, 10, ORANGE);
+    drawPixel(7, 10, TAN);
+    drawPixel(8, 10, BLACK);
+    drawPixel(9, 10, BLACK_SOFT);
+    drawPixel(10, 10, ORANGE_DARK);
+    drawPixel(11, 10, BLACK);
+    drawPixel(12, 10, BLACK);
     
-    // Lower body
-    drawPixel(4, 11, BLACK);         // Black accent
-    drawPixel(5, 11, BROWN_MED);
-    drawPixel(6, 11, BLACK);         // Black accent
-    drawPixel(7, 11, BROWN_DARK);
-    drawPixel(8, 11, BROWN_MED);
-    drawPixel(9, 11, BROWN_DARK);
-    drawPixel(10, 11, BLACK);        // Black accent
-    drawPixel(11, 11, BROWN_DARK);
-    drawPixel(12, 11, BLACK);        // Black accent
+    // Lower body (mottled)
+    drawPixel(4, 11, BLACK);
+    drawPixel(5, 11, BLACK_SOFT);
+    drawPixel(6, 11, BLACK);
+    drawPixel(7, 11, TAN);
+    drawPixel(8, 11, ORANGE);
+    drawPixel(9, 11, BLACK);
+    drawPixel(10, 11, BLACK);
+    drawPixel(11, 11, ORANGE_DARK);
+    drawPixel(12, 11, BLACK);
     
     // Bottom body (sitting)
-    drawPixel(5, 12, BLACK);         // Black accent
-    drawPixel(6, 12, BROWN_DARK);
-    drawPixel(7, 12, BROWN_MED);
-    drawPixel(8, 12, BLACK);         // Black accent
-    drawPixel(9, 12, BROWN_MED);
-    drawPixel(10, 12, BROWN_DARK);
-    drawPixel(11, 12, BLACK);        // Black accent
-    drawPixel(12, 12, BLACK);        // Black accent
+    drawPixel(5, 12, BLACK);
+    drawPixel(6, 12, BLACK);
+    drawPixel(7, 12, BLACK_SOFT);
+    drawPixel(8, 12, TAN);
+    drawPixel(9, 12, BLACK);
+    drawPixel(10, 12, BLACK);
+    drawPixel(11, 12, BLACK);
+    drawPixel(12, 12, BLACK);
     
-    // FRONT PAWS (small, tucked in)
-    drawPixel(5, 13, BEIGE);
-    drawPixel(6, 13, BROWN_DARK);
-    drawPixel(7, 13, BROWN_DARK);
-    drawPixel(9, 13, BROWN_DARK);
-    drawPixel(10, 13, BEIGE);
-    // drawPixel(11, 13, BEIGE);
+    // FRONT PAWS (small, black)
+    drawPixel(5, 13, BLACK);
+    drawPixel(6, 13, BLACK);
+    drawPixel(7, 13, BLACK_SOFT);
+    drawPixel(9, 13, BLACK);
+    drawPixel(10, 13, BLACK);
     
-    // TAIL (curled to the side - darker, thicker, with light tip, away from face)
-    // Tail base (attached to body)
-    drawPixel(13, 11, BLACK);        // Dark tail base
-    drawPixel(13, 10, BLACK);        // Dark tail base
-    drawPixel(14, 10, BLACK);        // Thicker tail base
+    // TAIL (curled - tortie pattern)
+    // Tail base
+    drawPixel(13, 11, BLACK);
+    drawPixel(13, 10, BLACK);
+    drawPixel(14, 10, ORANGE_DARK);  // Orange in tail
     
-    // Mid tail (curving up and to the right)
-    drawPixel(14, 9, BLACK);         // Dark tail
-    drawPixel(15, 9, BROWN_DARK);    // Thicker tail
-    drawPixel(15, 8, BLACK);         // Dark tail
-    drawPixel(16, 8, BROWN_DARK);    // Thicker tail
+    // Mid tail
+    drawPixel(14, 9, BLACK);
+    drawPixel(15, 9, ORANGE);        // Orange stripe
+    drawPixel(15, 8, BLACK);
+    drawPixel(16, 8, TAN);
     
-    // Upper tail (staying away from face)
-    drawPixel(16, 7, BLACK);         // Dark tail with spots
-    drawPixel(16, 6, BROWN_DARK);    // Dark tail
+    // Upper tail
+    drawPixel(16, 7, BLACK);
+    drawPixel(16, 6, ORANGE);
     
-    // Tail tip (light beige)
-    drawPixel(15, 6, BEIGE_LIGHT);   // Light beige tip
-    drawPixel(15, 5, BEIGE);         // Light beige tip extension
+    // Tail tip (black with tan)
+    drawPixel(15, 6, BLACK);
+    drawPixel(15, 5, TAN);
   };
   
   // Initial draw
