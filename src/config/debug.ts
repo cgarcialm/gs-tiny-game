@@ -10,7 +10,7 @@
  * "Northgate" = Skip to Northgate Station
  * "IceHockey" = Skip to Ice Hockey scene
  */
-export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" = "IceHockey";
+export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" = "Title";
 
 /**
  * Set to desired level number to skip ahead in GameScene (only applies if starting in "Game")
