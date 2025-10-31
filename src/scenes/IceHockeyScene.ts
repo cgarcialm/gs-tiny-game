@@ -32,9 +32,9 @@ export default class IceHockeyScene extends Phaser.Scene {
   // Gameplay
   private health = 3;
   private maxHealth = 3;
-  private healthDisplay!: Phaser.GameObjects.Text;
+  private healthDisplay!: Phaser.GameObjects.Container; // Container with hearts
   private scoreDisplay!: Phaser.GameObjects.Text;
-  private stickDisplay!: Phaser.GameObjects.Text;
+  private stickDisplay!: Phaser.GameObjects.Container; // Container for equipment icons
   private enemiesDefeated = 0;
   private totalEnemies = 3;
   private enemies: Phaser.GameObjects.Container[] = [];
@@ -120,25 +120,133 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.playerPhysics.setCollideWorldBounds(false); // Don't use world bounds
     // We'll manually constrain in movement code
     
-    // Create health display and equipment UI
-    if (this.healthDisplay) {
-      console.log('Destroying existing health display:', this.healthDisplay.text);
-      this.healthDisplay.destroy(true); // Force destroy with children
-    }
+    // Create visual sidebar UI (RotMG style)
+    this.createVisualSidebar();
     
-    // Small delay then recreate
-    this.time.delayedCall(10, () => {
-      console.log('Creating fresh health display with health:', this.health);
-      this.healthDisplay = this.add.text(8, 8, `HP: ${this.health}/${this.maxHealth}`, {
-        fontFamily: "monospace",
-        fontSize: "9px",
-        color: "#ff0000",
-        backgroundColor: "#000000",
-        padding: { left: 4, right: 4, top: 2, bottom: 2 },
-        resolution: 1,
-      }).setOrigin(0, 0).setDepth(100);
-      console.log('Fresh health display text:', this.healthDisplay.text);
+    // Spawn skates and hockey stick on the ice
+    this.spawnSkates();
+    this.spawnHockeyStick();
+    
+    // Grayson enters the field
+    this.time.delayedCall(500, () => {
+      this.graysonEntersField();
     });
+  }
+  
+  private createVisualSidebar() {
+    // Visual HP bar with hearts (RotMG style) - bottom-right corner
+    // Background panel - solid dark gray like RotMG (wider to fill space)
+    const panelWidth = 68;
+    const panelHeight = 42;
+    const panelX = 320 - panelWidth - 8; // Right edge minus width minus margin
+    const panelY = 180 - panelHeight - 50; // Bottom edge - moved up more
+    
+    const panelBg = this.add.rectangle(panelX, panelY, panelWidth, panelHeight, 0x2a2a2a, 1);
+    panelBg.setOrigin(0, 0).setDepth(100);
+    panelBg.setStrokeStyle(1, 0x666666, 1);
+    
+    // HP Label
+    this.add.text(panelX + 4, panelY + 4, "HP:", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffffff",
+      resolution: 1,
+    }).setOrigin(0, 0).setDepth(101);
+    
+    // Draw 3 hearts (same line as HP label)
+    this.healthDisplay = this.add.container(panelX + 22, panelY + 3);
+    this.healthDisplay.setDepth(101);
+    this.updateHealthHearts();
+    
+    // Equipment inventory bar (RotMG style - square slots centered)
+    const slotSize = 13; // Slightly smaller square slots to fit perfectly
+    const totalSlots = 3;
+    const inventoryBarY = panelY + 20;
+    const inventoryBarHeight = 14; // Fixed height
+    const inventoryBarWidth = panelWidth - 1; // 1px margin on right only
+    const inventoryBarX = panelX; // Start at panel edge (no left margin)
+    
+    // Calculate centered position for square slots
+    const totalSlotsWidth = slotSize * totalSlots;
+    const slotsStartX = inventoryBarX + (inventoryBarWidth - totalSlotsWidth) / 2;
+    const leftMargin = slotsStartX - inventoryBarX;
+    const rightMargin = leftMargin;
+    
+    // Draw inventory bar
+    const inventoryBar = this.add.graphics();
+    
+    // Fill side margins with border/grid color (fills to panel edges)
+    inventoryBar.fillStyle(0x444444, 1);
+    inventoryBar.fillRect(inventoryBarX, inventoryBarY, leftMargin, inventoryBarHeight); // Left margin
+    inventoryBar.fillRect(slotsStartX + totalSlotsWidth, inventoryBarY, rightMargin, inventoryBarHeight); // Right margin
+    
+    // Fill the 3 actual slots with dark background
+    inventoryBar.fillStyle(0x1a1a1a, 1);
+    inventoryBar.fillRect(slotsStartX, inventoryBarY, totalSlotsWidth, inventoryBarHeight);
+    inventoryBar.setDepth(100);
+    
+    // Draw grid lines ONLY between the 3 slots
+    inventoryBar.lineStyle(1, 0x444444, 1);
+    for (let i = 1; i < totalSlots; i++) {
+      const x = slotsStartX + (i * slotSize);
+      inventoryBar.lineBetween(x, inventoryBarY, x, inventoryBarY + slotSize);
+    }
+    // Border around the 3 slots (top, bottom, left, right)
+    inventoryBar.lineBetween(slotsStartX, inventoryBarY, slotsStartX + totalSlotsWidth, inventoryBarY); // Top
+    inventoryBar.lineBetween(slotsStartX, inventoryBarY + slotSize, slotsStartX + totalSlotsWidth, inventoryBarY + slotSize); // Bottom
+    inventoryBar.lineBetween(slotsStartX, inventoryBarY, slotsStartX, inventoryBarY + slotSize); // Left
+    inventoryBar.lineBetween(slotsStartX + totalSlotsWidth, inventoryBarY, slotsStartX + totalSlotsWidth, inventoryBarY + slotSize); // Right
+    
+    // Skates icon in slot 0 (centered in square slot)
+    const skatesIcon = this.add.graphics();
+    const skateX = slotsStartX + 1;
+    const skateY = inventoryBarY + 2;
+    // Draw skates from side view for clarity
+    // Left skate - boot
+    skatesIcon.fillStyle(0x666666, 1);
+    skatesIcon.fillRect(skateX, skateY + 2, 5, 4); // Boot
+    skatesIcon.fillStyle(0xe0e0e0, 1); // Bright silver blade
+    skatesIcon.fillRect(skateX, skateY + 5, 6, 2); // Blade extending forward
+    // Right skate - boot  
+    skatesIcon.fillStyle(0x666666, 1);
+    skatesIcon.fillRect(skateX + 7, skateY + 2, 5, 4); // Boot
+    skatesIcon.fillStyle(0xe0e0e0, 1);
+    skatesIcon.fillRect(skateX + 6, skateY + 5, 6, 2); // Blade extending forward
+    skatesIcon.setDepth(101);
+    
+    // Stick icon in slot 1 (centered in square slot)
+    const stickIcon = this.add.graphics();
+    const stickSlotX = slotsStartX + slotSize;
+    stickIcon.lineStyle(2, 0x5d4037, 1);
+    stickIcon.beginPath();
+    stickIcon.moveTo(stickSlotX + 1, inventoryBarY + 1);
+    stickIcon.lineTo(stickSlotX + 12, inventoryBarY + 12);
+    stickIcon.strokePath();
+    // Blade at tip
+    stickIcon.fillStyle(0xe0e0e0, 1);
+    stickIcon.fillRect(stickSlotX + 11, inventoryBarY + 11, 3, 2);
+    stickIcon.setDepth(101);
+    
+    // Memory/card piece icon in slot 2 (centered in square slot)
+    const cardIcon = this.add.graphics();
+    const cardSlotX = slotsStartX + slotSize * 2;
+    cardIcon.fillStyle(0xffaa00, 1); // Orange card
+    cardIcon.fillRect(cardSlotX + 3, inventoryBarY + 3, 8, 8);
+    cardIcon.fillStyle(0xff0000, 1); // Red heart
+    cardIcon.fillCircle(cardSlotX + 7, inventoryBarY + 7, 2);
+    cardIcon.setDepth(101);
+    cardIcon.setAlpha(0.4); // Dim initially
+    
+    // Store for updates - create container first
+    this.stickDisplay = this.add.container(0, 0);
+    this.stickDisplay.setData('skatesIcon', skatesIcon);
+    this.stickDisplay.setData('stickIcon', stickIcon);
+    this.stickDisplay.setData('cardIcon', cardIcon);
+    
+    // Dim icons initially (not collected) - 40% opacity
+    skatesIcon.setAlpha(0.4);
+    stickIcon.setAlpha(0.4);
+    cardIcon.setAlpha(0.4);
     
     // Create scoreboard display (top-right)
     this.scoreDisplay = this.add.text(312, 8, `Defeated: ${this.enemiesDefeated}/${this.totalEnemies}`, {
@@ -149,39 +257,25 @@ export default class IceHockeyScene extends Phaser.Scene {
       padding: { left: 3, right: 3, top: 2, bottom: 2 },
       resolution: 1,
     }).setOrigin(1, 0).setDepth(100);
+  }
+  
+  private updateHealthHearts() {
+    // Clear existing hearts
+    this.healthDisplay.removeAll(true);
     
-    // Create equipment status displays (below HP with more spacing)
-    // Skates status
-    const skatesDisplay = this.add.text(8, 24, "❌ Skates", {
-      fontFamily: "monospace",
-      fontSize: "7px",
-      color: "#999999",
-      backgroundColor: "#000000",
-      padding: { left: 3, right: 3, top: 1, bottom: 1 },
-      resolution: 1,
-    }).setOrigin(0, 0).setDepth(100);
-    
-    // Stick status (below skates)
-    this.stickDisplay = this.add.text(8, 34, "❌ Stick", {
-      fontFamily: "monospace",
-      fontSize: "7px",
-      color: "#999999",
-      backgroundColor: "#000000",
-      padding: { left: 3, right: 3, top: 1, bottom: 1 },
-      resolution: 1,
-    }).setOrigin(0, 0).setDepth(100);
-    
-    // Store both for easy access
-    this.stickDisplay.setData('skatesDisplay', skatesDisplay);
-    
-    // Spawn skates and hockey stick on the ice
-    this.spawnSkates();
-    this.spawnHockeyStick();
-    
-    // Grayson enters the field
-    this.time.delayedCall(500, () => {
-      this.graysonEntersField();
-    });
+    // Draw hearts based on current health
+    for (let i = 0; i < this.maxHealth; i++) {
+      const heartX = i * 12;
+      const isFilled = i < this.health;
+      
+      const heart = this.add.text(heartX, 0, "♥", {
+        fontSize: "12px",
+        color: isFilled ? "#ff0000" : "#333333",
+        resolution: 1,
+      }).setOrigin(0, 0);
+      
+      this.healthDisplay.add(heart);
+    }
   }
   
   private spawnSkates() {
@@ -815,24 +909,21 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private updateEquipmentDisplay() {
-    const skatesDisplay = this.stickDisplay.getData('skatesDisplay');
+    const skatesIcon = this.stickDisplay.getData('skatesIcon');
+    const stickIcon = this.stickDisplay.getData('stickIcon');
     
-    // Update skates display
+    // Update skates icon (brighten when collected)
     if (this.hasSkates) {
-      skatesDisplay.setText("✓ Skates");
-      skatesDisplay.setColor("#00ff00"); // Green
+      skatesIcon.setAlpha(1); // Bright when collected
     } else {
-      skatesDisplay.setText("❌ Skates");
-      skatesDisplay.setColor("#999999"); // Gray
+      skatesIcon.setAlpha(0.4); // Dim when not collected (40%)
     }
     
-    // Update stick display
+    // Update stick icon (brighten when collected)
     if (this.hasStick) {
-      this.stickDisplay.setText("✓ Stick");
-      this.stickDisplay.setColor("#00ff00"); // Green
+      stickIcon.setAlpha(1); // Bright when collected
     } else {
-      this.stickDisplay.setText("❌ Stick");
-      this.stickDisplay.setColor("#999999"); // Gray
+      stickIcon.setAlpha(0.4); // Dim when not collected (40%)
     }
   }
   
@@ -900,11 +991,20 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.levelCompleted = true; // Stop all gameplay updates
     this.gameplayStarted = false;
     
-    // Update registry: completed ice hockey (level 2)
-    this.registry.set('completedLevels', 2);
+    // Light up the card icon in inventory
+    const cardIcon = this.stickDisplay.getData('cardIcon');
+    if (cardIcon) {
+      cardIcon.setAlpha(1); // Bright when collected
+    }
     
-    // Use fadeToScene utility for clean transition
-    fadeToScene(this, "Game", 1000);
+    // Small delay to show the card lighting up
+    this.time.delayedCall(500, () => {
+      // Update registry: completed ice hockey (level 2)
+      this.registry.set('completedLevels', 2);
+      
+      // Use fadeToScene utility for clean transition
+      fadeToScene(this, "Game", 1000);
+    });
   }
   
   private updatePucks() {
@@ -1320,7 +1420,7 @@ export default class IceHockeyScene extends Phaser.Scene {
   private takeDamage() {
     // Reduce health
     this.health--;
-    this.healthDisplay.setText(`HP: ${this.health}/${this.maxHealth}`);
+    this.updateHealthHearts(); // Update visual hearts
     
     // Camera shake
     this.cameras.main.shake(200, 0.003);
