@@ -2,10 +2,13 @@ import Phaser from "phaser";
 import { createGraysonTopDownSprite } from "../utils/sprites/GraysonTopDownSprite";
 import { createHockeyPlayerSprite } from "../utils/sprites/HockeyPlayerSprite";
 import { createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
-import { setupControls, shouldCloseDialogue } from "../utils/controls";
+import { shouldCloseDialogue } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
-import { HelpMenu } from "../utils/helpMenu";
-import { PauseMenu } from "../utils/pauseMenu";
+import { initializeGameScene } from "../utils/sceneSetup";
+import type { DialogueManager } from "../utils/dialogueManager";
+import type { HelpMenu } from "../utils/helpMenu";
+import type { PauseMenu } from "../utils/pauseMenu";
+import { fadeToScene } from "../utils/sceneTransitions";
 
 /**
  * Ice Hockey Game Scene - Everett Silvertips
@@ -15,12 +18,10 @@ export default class IceHockeyScene extends Phaser.Scene {
   private controls!: GameControls;
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
+  private dialogueManager!: DialogueManager;
   
   private player!: Phaser.GameObjects.Container;
   private playerPhysics!: Phaser.Physics.Arcade.Sprite;
-  private dialogBox!: Phaser.GameObjects.Rectangle;
-  private dialogText!: Phaser.GameObjects.Text;
-  private dialogVisible = false;
   
   private hasShownRealization = false;
   private gameplayStarted = false;
@@ -62,10 +63,14 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
 
   create() {
-    // Set camera to respect pixel art settings
-    this.cameras.main.setRoundPixels(true);
-    
     console.log('Create called - health before reset:', this.health);
+    
+    // Initialize common scene setup (camera, controls, menus, dialogue)
+    const setup = initializeGameScene(this);
+    this.controls = setup.controls;
+    this.helpMenu = setup.helpMenu;
+    this.pauseMenu = setup.pauseMenu;
+    this.dialogueManager = setup.dialogueManager;
     
     // Reset game state (in case of restart)
     this.health = 3; // Explicitly set to 3
@@ -111,15 +116,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.playerPhysics.setCollideWorldBounds(false); // Don't use world bounds
     // We'll manually constrain in movement code
     
-    // Setup controls
-    this.controls = setupControls(this);
-    this.helpMenu = new HelpMenu(this);
-    this.pauseMenu = new PauseMenu(this);
-    
-    // Create UI
-    this.createDialogUI();
-    
-    // Force destroy and recreate health display every time
+    // Create health display and equipment UI
     if (this.healthDisplay) {
       console.log('Destroying existing health display:', this.healthDisplay.text);
       this.healthDisplay.destroy(true); // Force destroy with children
@@ -408,22 +405,6 @@ export default class IceHockeyScene extends Phaser.Scene {
     }
   }
   
-  private createDialogUI() {
-    this.dialogBox = this.add.rectangle(160, 160, 300, 40, 0x000000, 0.6)
-      .setStrokeStyle(1, 0x99bbff, 0.9)
-      .setOrigin(0.5)
-      .setVisible(false)
-      .setDepth(100);
-    
-    this.dialogText = this.add.text(20, 146, "", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#dff1ff",
-      wordWrap: { width: 280 },
-      resolution: 2,
-    }).setOrigin(0, 0).setVisible(false).setDepth(100);
-  }
-  
   private graysonEntersField() {
     // Grayson walks from bottom goal up into the field
     this.tweens.add({
@@ -666,7 +647,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     
     // On dialogue close (ENTER press), restart the entire scene
     const waitForRestart = () => {
-      if (this.dialogVisible && Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+      if (this.dialogueManager.isVisible() && Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
         console.log('ENTER pressed - restarting scene...');
         this.scene.restart();
       } else {
@@ -678,15 +659,11 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private showDialog(message: string) {
-    this.dialogVisible = true;
-    this.dialogBox.setVisible(true);
-    this.dialogText.setText(message).setVisible(true);
+    this.dialogueManager.show(message);
   }
   
   private hideDialog() {
-    this.dialogVisible = false;
-    this.dialogBox.setVisible(false);
-    this.dialogText.setVisible(false);
+    this.dialogueManager.hide();
     
     // Start gameplay after realization dialogue
     if (this.hasShownRealization && !this.gameplayStarted) {
@@ -723,7 +700,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     }
     
     // Handle dialogue (but allow gameplay to continue during equipment pickup messages)
-    if (this.dialogVisible) {
+    if (this.dialogueManager.isVisible()) {
       if (shouldCloseDialogue(this.controls)) {
         this.hideDialog();
       }
@@ -747,21 +724,21 @@ export default class IceHockeyScene extends Phaser.Scene {
     }
     
     // After enemies defeated, player can still move to collect memory
-    if (this.memoryFragmentSpawned && !this.gameplayStarted && !this.dialogVisible) {
+    if (this.memoryFragmentSpawned && !this.gameplayStarted && !this.dialogueManager.isVisible()) {
       this.handlePlayerMovement(); // Allow movement to reach memory
     }
     
     // Check for equipment collection
-    if (!this.hasSkates && this.skates && !this.dialogVisible) {
+    if (!this.hasSkates && this.skates && !this.dialogueManager.isVisible()) {
       this.checkSkatesCollection();
     }
     
-    if (!this.hasStick && this.hockeyStick && !this.dialogVisible) {
+    if (!this.hasStick && this.hockeyStick && !this.dialogueManager.isVisible()) {
       this.checkStickCollection();
     }
     
     // Always check for memory collection (even after enemies defeated)
-    if (this.memoryFragmentSpawned && !this.dialogVisible) {
+    if (this.memoryFragmentSpawned && !this.dialogueManager.isVisible()) {
       this.checkMemoryCollection();
     }
   }
@@ -792,7 +769,7 @@ export default class IceHockeyScene extends Phaser.Scene {
       this.showDialog("Ice skates equipped! You move faster now!");
       
       this.time.delayedCall(2500, () => {
-        if (this.dialogVisible) {
+        if (this.dialogueManager.isVisible()) {
           this.hideDialog();
         }
       });
@@ -826,7 +803,7 @@ export default class IceHockeyScene extends Phaser.Scene {
       
       // Auto-hide after 2.5 seconds
       this.time.delayedCall(2500, () => {
-        if (this.dialogVisible) {
+        if (this.dialogueManager.isVisible()) {
           this.hideDialog();
         }
       });
@@ -919,15 +896,11 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.levelCompleted = true; // Stop all gameplay updates
     this.gameplayStarted = false;
     
-    // Immediately fade out and transition (skip dialogue for clean transition)
-    this.cameras.main.fadeOut(1000, 0, 0, 0);
+    // Update registry: completed ice hockey (level 2)
+    this.registry.set('completedLevels', 2);
     
-    this.time.delayedCall(1000, () => {
-      // Update registry: completed ice hockey (level 2)
-      this.registry.set('completedLevels', 2);
-      // Go back to Game scene (level 2 will be next part of story)
-      this.scene.start("Game");
-    });
+    // Use fadeToScene utility for clean transition
+    fadeToScene(this, "Game", 1000);
   }
   
   private updatePucks() {
