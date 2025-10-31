@@ -30,6 +30,10 @@ export default class IceHockeyScene extends Phaser.Scene {
   private health = 3;
   private maxHealth = 3;
   private healthDisplay!: Phaser.GameObjects.Text;
+  private scoreDisplay!: Phaser.GameObjects.Text;
+  private stickDisplay!: Phaser.GameObjects.Text;
+  private enemiesDefeated = 0;
+  private totalEnemies = 3;
   private enemies: Phaser.GameObjects.Container[] = [];
   private pucks: Phaser.Physics.Arcade.Sprite[] = [];
   private playerPucks: Phaser.Physics.Arcade.Sprite[] = []; // Pucks shot by player
@@ -76,6 +80,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.chaseEnemyTimer = 0;
     this.chasers = [];
     this.isInvincible = false;
+    this.enemiesDefeated = 0;
     
     console.log('Health after reset:', this.health);
     
@@ -126,6 +131,26 @@ export default class IceHockeyScene extends Phaser.Scene {
       }).setOrigin(0, 0).setDepth(100);
       console.log('Fresh health display text:', this.healthDisplay.text);
     });
+    
+    // Create scoreboard display (top-right)
+    this.scoreDisplay = this.add.text(312, 8, `Defeated: ${this.enemiesDefeated}/${this.totalEnemies}`, {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffeb3b",
+      backgroundColor: "#000000",
+      padding: { left: 3, right: 3, top: 2, bottom: 2 },
+      resolution: 1,
+    }).setOrigin(1, 0).setDepth(100);
+    
+    // Create stick status display (below HP)
+    this.stickDisplay = this.add.text(8, 20, "No Stick", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#999999",
+      backgroundColor: "#000000",
+      padding: { left: 3, right: 3, top: 2, bottom: 2 },
+      resolution: 1,
+    }).setOrigin(0, 0).setDepth(100);
     
     // Spawn hockey stick on the ice
     this.spawnHockeyStick();
@@ -704,6 +729,10 @@ export default class IceHockeyScene extends Phaser.Scene {
       // Add stick to Grayson's sprite
       this.addStickToPlayer();
       
+      // Update stick status display
+      this.stickDisplay.setText("Has Stick!");
+      this.stickDisplay.setColor("#00ff00"); // Green when has stick
+      
       // Show temporary message (non-blocking, auto-dismisses)
       this.showDialog("Hockey stick acquired! Press SPACE to shoot pucks!");
       
@@ -970,6 +999,16 @@ export default class IceHockeyScene extends Phaser.Scene {
     enemy.destroy();
     const index = this.enemies.indexOf(enemy);
     if (index > -1) this.enemies.splice(index, 1);
+    
+    // Update score
+    this.enemiesDefeated++;
+    this.scoreDisplay.setText(`Defeated: ${this.enemiesDefeated}/${this.totalEnemies}`);
+    
+    // Flash score on kill
+    this.scoreDisplay.setColor("#ffffff");
+    this.time.delayedCall(200, () => {
+      this.scoreDisplay.setColor("#ffeb3b");
+    });
     
     // Check if ALL enemies defeated
     if (this.enemies.length === 0) {
