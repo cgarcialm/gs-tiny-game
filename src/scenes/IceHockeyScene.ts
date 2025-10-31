@@ -43,6 +43,11 @@ export default class IceHockeyScene extends Phaser.Scene {
   private chaseEnemyTimer = 0;
   private chaseEnemyInterval = 8000; // Spawn chaser every 8 seconds
   private chasers: Phaser.GameObjects.Container[] = [];
+  
+  // Invincibility frames
+  private isInvincible = false;
+  private invincibilityDuration = 1500; // 1 second of invincibility
+  private blinkInterval = 100; // Blink every 100ms
 
   constructor() {
     super("IceHockey");
@@ -70,6 +75,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.hockeyStick = undefined;
     this.chaseEnemyTimer = 0;
     this.chasers = [];
+    this.isInvincible = false;
     
     console.log('Health after reset:', this.health);
     
@@ -549,6 +555,9 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private hitByPuck(puck: Phaser.Physics.Arcade.Sprite) {
+    // Check invincibility
+    if (this.isInvincible) return;
+    
     // Destroy the puck and its graphics
     const graphics = puck.getData('graphics');
     if (graphics) graphics.destroy();
@@ -556,25 +565,8 @@ export default class IceHockeyScene extends Phaser.Scene {
     const index = this.pucks.indexOf(puck);
     if (index > -1) this.pucks.splice(index, 1);
     
-    // Take damage
-    this.health--;
-    this.healthDisplay.setText(`HP: ${this.health}/${this.maxHealth}`);
-    
-    // Flash player red (tint the physics sprite since container doesn't support tint)
-    this.playerPhysics.setTint(0xff0000);
-    this.playerPhysics.setAlpha(0.3); // Make it visible briefly
-    this.time.delayedCall(200, () => {
-      this.playerPhysics.clearTint();
-      this.playerPhysics.setAlpha(0);
-    });
-    
-    // Camera shake
-    this.cameras.main.shake(200, 0.003);
-    
-    // Check if dead
-    if (this.health <= 0) {
-      this.playerDeath();
-    }
+    // Take damage and start invincibility
+    this.takeDamage();
   }
   
   private playerDeath() {
@@ -1095,6 +1087,9 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private hitByChaser(chaser: Phaser.GameObjects.Container) {
+    // Check invincibility
+    if (this.isInvincible) return;
+    
     // Remove chaser
     const tauntText = chaser.getData('tauntText');
     if (tauntText && tauntText.active) tauntText.destroy();
@@ -1102,23 +1097,47 @@ export default class IceHockeyScene extends Phaser.Scene {
     const index = this.chasers.indexOf(chaser);
     if (index > -1) this.chasers.splice(index, 1);
     
-    // Take damage
+    // Take damage and start invincibility
+    this.takeDamage();
+  }
+  
+  private takeDamage() {
+    // Reduce health
     this.health--;
     this.healthDisplay.setText(`HP: ${this.health}/${this.maxHealth}`);
     
-    // Flash and shake
-    this.playerPhysics.setTint(0xff0000);
-    this.playerPhysics.setAlpha(0.3);
-    this.time.delayedCall(200, () => {
-      this.playerPhysics.clearTint();
-      this.playerPhysics.setAlpha(0);
-    });
-    
+    // Camera shake
     this.cameras.main.shake(200, 0.003);
     
+    // Check if dead
     if (this.health <= 0) {
       this.playerDeath();
+      return;
     }
+    
+    // Start invincibility frames
+    this.isInvincible = true;
+    
+    // Blinking effect during invincibility
+    let blinkCount = 0;
+    const maxBlinks = this.invincibilityDuration / this.blinkInterval;
+    
+    const blinkTimer = this.time.addEvent({
+      delay: this.blinkInterval,
+      repeat: maxBlinks - 1,
+      callback: () => {
+        blinkCount++;
+        // Toggle visibility
+        this.player.setAlpha(blinkCount % 2 === 0 ? 0.3 : 1);
+      }
+    });
+    
+    // End invincibility after duration
+    this.time.delayedCall(this.invincibilityDuration, () => {
+      this.isInvincible = false;
+      this.player.setAlpha(1); // Ensure fully visible
+      blinkTimer.destroy();
+    });
   }
 }
 
