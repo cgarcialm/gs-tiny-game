@@ -159,10 +159,10 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.updateHealthHearts();
     
     // Equipment inventory bar (RotMG style - square slots centered)
-    const slotSize = 13; // Slightly smaller square slots to fit perfectly
+    const slotSize = 16; // Bigger square slots to fit icons
     const totalSlots = 3;
-    const inventoryBarY = panelY + 20;
-    const inventoryBarHeight = 14; // Fixed height
+    const inventoryBarY = panelY + 18;
+    const inventoryBarHeight = slotSize + 1; // Match slot size
     const inventoryBarWidth = panelWidth - 1; // 1px margin on right only
     const inventoryBarX = panelX; // Start at panel edge (no left margin)
     
