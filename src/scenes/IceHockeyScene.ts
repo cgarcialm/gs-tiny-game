@@ -1073,11 +1073,62 @@ export default class IceHockeyScene extends Phaser.Scene {
     const index = this.playerPucks.indexOf(puck);
     if (index > -1) this.playerPucks.splice(index, 1);
     
+    // White flash on hit (RotMG style)
+    this.flashEnemyWhite(enemy);
+    
+    // Damage number floats up
+    this.showDamageNumber(enemy.x, enemy.y);
+    
     // One hit kill - enemy defeated!
     this.enemyDefeated(enemy);
   }
   
+  private flashEnemyWhite(enemy: Phaser.GameObjects.Container) {
+    // Get the graphics object (first child in container)
+    const graphics = enemy.list[0] as Phaser.GameObjects.Graphics;
+    if (!graphics) return;
+    
+    // Tint white temporarily (RotMG style hit flash)
+    graphics.setAlpha(0.3);
+    const whiteFlash = this.add.rectangle(enemy.x, enemy.y, 14, 20, 0xffffff, 0.8);
+    whiteFlash.setDepth(15);
+    
+    this.time.delayedCall(80, () => {
+      graphics.setAlpha(1);
+      whiteFlash.destroy();
+    });
+  }
+  
+  private showDamageNumber(x: number, y: number) {
+    // Floating damage number (RotMG white damage text)
+    const damageText = this.add.text(x, y - 10, "1", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+      fontStyle: "bold",
+      stroke: "#000000",
+      strokeThickness: 2,
+      resolution: 2,
+    }).setOrigin(0.5).setDepth(50);
+    
+    // Float up and fade (classic RotMG)
+    this.tweens.add({
+      targets: damageText,
+      y: y - 25,
+      alpha: 0,
+      duration: 600,
+      ease: "Power2",
+      onComplete: () => damageText.destroy()
+    });
+  }
+  
   private enemyDefeated(enemy: Phaser.GameObjects.Container) {
+    const enemyX = enemy.x;
+    const enemyY = enemy.y;
+    
+    // Particle explosion (RotMG style death burst)
+    this.createDeathParticles(enemyX, enemyY);
+    
     // Remove enemy
     enemy.destroy();
     const index = this.enemies.indexOf(enemy);
@@ -1098,6 +1149,35 @@ export default class IceHockeyScene extends Phaser.Scene {
       // All enemies defeated! Spawn THE memory fragment at center ice
       this.time.delayedCall(500, () => {
         this.spawnMemoryFragment();
+      });
+    }
+  }
+  
+  private createDeathParticles(x: number, y: number) {
+    // RotMG-style particle burst on death
+    const particleCount = 8;
+    const colors = [0x1a1a1a, 0xff0000, 0xffffff, 0x666666]; // Enemy colors
+    
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 / particleCount) * i;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      const particle = this.add.rectangle(x, y, 3, 3, color, 1);
+      particle.setDepth(20);
+      
+      // Burst outward
+      const distance = 20 + Math.random() * 10;
+      const targetX = x + Math.cos(angle) * distance;
+      const targetY = y + Math.sin(angle) * distance;
+      
+      this.tweens.add({
+        targets: particle,
+        x: targetX,
+        y: targetY,
+        alpha: 0,
+        duration: 400 + Math.random() * 200,
+        ease: "Power2",
+        onComplete: () => particle.destroy()
       });
     }
   }
