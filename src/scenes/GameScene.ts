@@ -202,21 +202,20 @@ export default class GameScene extends Phaser.Scene {
         break;
         
       case 2:
-        // Level 2: After Ice Hockey - Return to void
-        this.player = createGraysonSprite(this, 160, 90);
+        // Level 2: After Ice Hockey - Smush playing with memories!
+        this.player = createGraysonSprite(this, 160, 130);
         
-        // Auto-collect ice hockey memory with animation
-        this.time.delayedCall(1000, () => {
-          this.cardPiecesCollected++; // From 2 to 3
-          this.updateMemoryCounter();
-          
-          // Show message
-          this.time.delayedCall(2000, () => {
-            this.showDialog("That was intense! All memories collected...");
-            
-            // Future: Continue story from here
-          });
-        });
+        // Smush at center, looking down at card pieces
+        this.cat = createSmushSprite(this, 160, 70);
+        this.cat.setData('lookingDown', true);
+        this.cat.setData('playingWithPieces', true);
+        
+        // Redraw sprite with looking down pupils
+        const redraw = this.cat.getData('redraw');
+        if (redraw) redraw();
+        
+        // Two card pieces sliding around (Smush batting them)
+        this.setupSmushPlayingScene();
         break;
         
       // Add more cases for future levels
@@ -388,11 +387,20 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // If in dialogue, only allow closing/advancing; no movement
-    if (this.dialogState === "open") {
+    if (this.dialogState === "open" || this.dialogueManager.isVisible()) {
       if (shouldCloseDialogue(this.controls)) {
-        this.advanceDialog();
+        if (this.dialogState === "open") {
+          this.advanceDialog();
+        } else {
+          this.dialogueManager.hide();
+        }
       }
       return;
+    }
+    
+    // Level 2: Check for collecting moving pieces from Smush
+    if (this.completedLevels === 2 && this.cardPiece && this.cardPiece.getData('isMovingPiece')) {
+      this.checkSmushPieceCollection();
     }
 
     // Movement (WASD + arrow keys)
@@ -1057,5 +1065,186 @@ export default class GameScene extends Phaser.Scene {
       this.meowTexts.forEach(text => text.destroy());
       this.meowTexts = [];
     }
+  }
+  
+  private setupSmushPlayingScene() {
+    // Smush is batting around the 2 existing card pieces
+    const piece1 = createCardPieceSprite(this, 120, 60);
+    const piece2 = createCardPieceSprite(this, 200, 60);
+    piece1.setDepth(10);
+    piece2.setDepth(10);
+    
+    piece1.setData('isMovingPiece', true);
+    piece2.setData('isMovingPiece', true);
+    piece1.setData('collected', false);
+    piece2.setData('collected', false);
+    
+    // Store pieces
+    this.cardPiece = piece1; // Reuse cardPiece for first one
+    piece1.setData('piece2', piece2); // Link to second piece
+    
+    // Animate Smush batting at pieces (sprite swap animation)
+    this.animateSmushPlaying();
+    
+    // Animate pieces bouncing around
+    this.animateCardPiecesMoving(piece1, piece2);
+    
+    // Show initial dialogue
+    this.time.delayedCall(800, () => {
+      this.dialogueManager.show("Grayson: Smush! Stop playing with those!\nThose memories are fragile!");
+    });
+  }
+  
+  private animateSmushPlaying() {
+    // Alternate between normal and extended paw sprites
+    const drawNormal = this.cat.getData('drawNormal');
+    const drawExtended = this.cat.getData('drawExtendedPaw');
+    
+    let pawExtended = false;
+    
+    // Swap sprites periodically (paw in/out)
+    this.time.addEvent({
+      delay: 700, // Every 0.7 seconds
+      loop: true,
+      callback: () => {
+        pawExtended = !pawExtended;
+        if (pawExtended) {
+          drawExtended();
+        } else {
+          drawNormal();
+        }
+      }
+    });
+  }
+  
+  private animateCardPiecesMoving(piece1: Phaser.GameObjects.Graphics, piece2: Phaser.GameObjects.Graphics) {
+    // Pieces slide around like Smush is batting them
+    this.tweens.add({
+      targets: piece1,
+      x: 100,
+      y: 80,
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut"
+    });
+    
+    this.tweens.add({
+      targets: piece2,
+      x: 220,
+      y: 50,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut"
+    });
+  }
+  
+  private checkSmushPieceCollection() {
+    // Check if player can collect the moving pieces
+    if (!this.cardPiece || !this.cardPiece.getData('isMovingPiece')) return;
+    
+    const piece1 = this.cardPiece;
+    const piece2 = piece1.getData('piece2');
+    
+    // Check piece 1
+    if (!piece1.getData('collected')) {
+      const dist1 = Phaser.Math.Distance.Between(
+        this.player.x, this.player.y,
+        piece1.x, piece1.y
+      );
+      
+      if (dist1 < 20 && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+        piece1.setData('collected', true);
+        this.tweens.killTweensOf(piece1);
+        
+        // Move to safe spot (left side)
+        this.tweens.add({
+          targets: piece1,
+          x: 40,
+          y: 40,
+          duration: 500,
+          ease: "Power2"
+        });
+        
+        const meow = this.add.text(this.cat.x, this.cat.y - 15, "*Meow!*", {
+          fontSize: "8px",
+          color: "#ffeb3b",
+          fontStyle: "bold",
+          resolution: 2
+        }).setOrigin(0.5);
+        
+        this.tweens.add({
+          targets: meow,
+          y: this.cat.y - 30,
+          alpha: 0,
+          duration: 1000,
+          onComplete: () => meow.destroy()
+        });
+      }
+    }
+    
+    // Check piece 2
+    if (piece2 && !piece2.getData('collected')) {
+      const dist2 = Phaser.Math.Distance.Between(
+        this.player.x, this.player.y,
+        piece2.x, piece2.y
+      );
+      
+      if (dist2 < 20 && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+        piece2.setData('collected', true);
+        this.tweens.killTweensOf(piece2);
+        
+        // Move to safe spot (next to first piece)
+        this.tweens.add({
+          targets: piece2,
+          x: 52,
+          y: 40,
+          duration: 500,
+          ease: "Power2"
+        });
+      }
+    }
+    
+    // Check if both collected
+    if (piece1.getData('collected') && piece2 && piece2.getData('collected')) {
+      // Both safe! Now examine the ice hockey memory
+      this.time.delayedCall(800, () => {
+        this.examineIceHockeyMemory();
+      });
+    }
+  }
+  
+  private examineIceHockeyMemory() {
+    // Stop Smush animation
+    this.tweens.killTweensOf(this.cat);
+    
+    // Grayson examines the new memory
+    const iceHockeyMemory = createCardPieceSprite(this, 160, 70);
+    iceHockeyMemory.setDepth(15);
+    
+    // Sparkles around it
+    spawnCardPieceSparkles(this, 160, 70);
+    
+    // Update counter
+    this.cardPiecesCollected++; // 2 → 3
+    this.updateMemoryCounter();
+    
+    // Show examination dialogue
+    this.time.delayedCall(1000, () => {
+      this.dialogueManager.show("Grayson: Let me check this new memory...\n*The farmers market! That strawberry rhubarb pie...*");
+      
+      // After dialogue, continue
+      this.time.delayedCall(4000, () => {
+        this.dialogueManager.show("Smush: *Meow?* (Pie?)\nGrayson: Yes Smush, we're going. But behave!");
+        
+        // Transition to farmers market level
+        this.time.delayedCall(4000, () => {
+          this.dialogueManager.hide();
+          fadeToScene(this, "Game", 1000); // Will be farmers market scene later
+          // TODO: Create FarmersMarketScene and transition there
+        });
+      });
+    });
   }
 }

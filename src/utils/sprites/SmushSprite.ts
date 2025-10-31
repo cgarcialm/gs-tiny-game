@@ -103,9 +103,15 @@ export function createSmushSprite(
     drawPixel(11, 6, BLACK);
     drawPixel(12, 6, BLACK);
     
-    // Pupils (small dark dots in eyes)
-    drawSmallDot(6, 4, EYE_PUPIL, 1.2);
-    drawSmallDot(10, 4, EYE_PUPIL, 1.2);
+    // Pupils (small dark dots in eyes) - positioned for looking down or center
+    const lookingDown = container.getData('lookingDown') || false;
+    if (lookingDown) {
+      drawSmallDot(6, 4.5, EYE_PUPIL, 1.2); // Lower in eye
+      drawSmallDot(10, 4.5, EYE_PUPIL, 1.2);
+    } else {
+      drawSmallDot(6, 4, EYE_PUPIL, 1.2); // Center
+      drawSmallDot(10, 4, EYE_PUPIL, 1.2);
+    }
     
     // BODY (tortoiseshell pattern - mottled black, orange, tan)
     // Neck/upper body
@@ -202,6 +208,52 @@ export function createSmushSprite(
   
   // Store redraw function for potential future animations
   container.setData("redraw", redrawSprite);
+  
+  // Store a function to draw with extended paw
+  const drawWithExtendedPaw = () => {
+    graphics.clear();
+    graphics.setBlendMode(Phaser.BlendModes.NORMAL);
+    
+    // Redraw entire sprite but skip the tucked left paw pixels (5,13), (6,13), (7,13)
+    // Just copy the redrawSprite logic but comment out those specific pixels
+    
+    // [Copy all of redrawSprite here but skip (5,13), (6,13), (7,13)]
+    // For now, let's just clear those specific pixels after drawing
+    redrawSprite();
+    
+    // Erase the tucked left paw by drawing transparent/background color
+    graphics.fillStyle(0x003d4d, 1); // Background grid color
+    graphics.fillRect((5 * pixelSize) + offsetX, (12 * pixelSize) + offsetY, pixelSize, pixelSize);
+    graphics.fillRect((6 * pixelSize) + offsetX, (12 * pixelSize) + offsetY, pixelSize, pixelSize);
+    graphics.fillRect((5 * pixelSize) + offsetX, (13 * pixelSize) + offsetY, pixelSize, pixelSize);
+    graphics.fillRect((6 * pixelSize) + offsetX, (13 * pixelSize) + offsetY, pixelSize, pixelSize);
+    graphics.fillRect((7 * pixelSize) + offsetX, (13 * pixelSize) + offsetY, pixelSize, pixelSize);
+    
+    // Add extended left paw (more vertical, thicker)
+    // Row 9-10: Upper leg
+    drawPixel(3, 9, BLACK);
+    drawPixel(4, 9, BLACK);         // Thicker
+    drawPixel(3, 10, BLACK_SOFT);
+    drawPixel(4, 10, BLACK);
+    
+    // Row 11: Middle leg
+    drawPixel(2, 11, BLACK);
+    drawPixel(3, 11, BLACK_SOFT);   // Thicker
+    
+    // Row 12: Lower leg
+    drawPixel(2, 12, BLACK);
+    drawPixel(3, 12, BLACK);        // Thicker
+    
+    // Row 13: Paw end
+    drawPixel(1, 13, BLACK);
+    drawPixel(2, 13, BLACK_SOFT);
+    
+    // Paw pad at end (pink)
+    drawSmallDot(1.5, 13, NOSE_PINK, 1.2);
+  };
+  
+  container.setData("drawExtendedPaw", drawWithExtendedPaw);
+  container.setData("drawNormal", redrawSprite);
   
   return container;
 }
