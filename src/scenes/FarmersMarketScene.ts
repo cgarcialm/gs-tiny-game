@@ -85,6 +85,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.smushPhysics.setSize(10, 12); // Smaller hitbox
     this.smushPhysics.setAlpha(0);
     this.smushPhysics.setCollideWorldBounds(false); // Allow off-screen initially
+    this.smushPhysics.setGravityY(0); // Explicitly disable gravity
     
     // Smush also collides with walls
     this.physics.add.collider(this.smushPhysics, this.walls);
@@ -94,6 +95,15 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Animate entrances through tunnels
     this.time.delayedCall(300, () => {
+      let graysonDone = false;
+      let smushDone = false;
+      
+      const checkBothDone = () => {
+        if (graysonDone && smushDone) {
+          this.entranceComplete = true; // Enable sprite syncing only when BOTH finish
+        }
+      };
+      
       // Grayson walks UP from bottom (through bottom tunnel)
       this.tweens.add({
         targets: [this.player, this.playerPhysics],
@@ -102,7 +112,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
         ease: "Linear",
         onComplete: () => {
           this.playerPhysics.setCollideWorldBounds(true);
-          this.entranceComplete = true; // Enable sprite syncing
+          graysonDone = true;
+          checkBothDone();
         }
       });
       
@@ -114,6 +125,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
         ease: "Linear",
         onComplete: () => {
           this.smushPhysics.setCollideWorldBounds(true);
+          smushDone = true;
+          checkBothDone();
         }
       });
       
@@ -280,17 +293,19 @@ export default class FarmersMarketScene extends Phaser.Scene {
       return;
     }
     
-    // Player movement
-    this.handlePlayerMovement();
-    
-    // Smush AI (competitive - also tries to get pies)
-    this.updateSmushAI();
-    
-    // Check tunnel wrapping (Pac-Man teleport)
-    this.checkTunnelWrapping();
-    
-    // Check pie collection for both
-    this.checkPieCollection();
+    // Player movement (only after entrance)
+    if (this.entranceComplete) {
+      this.handlePlayerMovement();
+      
+      // Smush AI (competitive - also tries to get pies)
+      this.updateSmushAI();
+      
+      // Check tunnel wrapping (Pac-Man teleport)
+      this.checkTunnelWrapping();
+      
+      // Check pie collection for both
+      this.checkPieCollection();
+    }
     
     // Sync sprites with physics (only after entrance completes)
     if (this.entranceComplete) {
@@ -468,7 +483,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.dialogueManager.show("Smush: *Meow meow!* (I win!)\nGrayson: Okay okay, let's try again...");
     
     this.time.delayedCall(3000, () => {
-      this.scene.restart();
+      // Proper restart - stops current scene and starts fresh
+      this.scene.stop();
+      this.scene.start("FarmersMarket");
     });
   }
 }
