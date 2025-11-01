@@ -30,7 +30,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private pies: Phaser.GameObjects.Graphics[] = []; // Collectible pies
   private graysonPiesEaten = 0;
   private smushPiesEaten = 0;
-  private piesNeeded = 3; // Each needs 3 to win
+  private totalDots = 0; // Set after spawning
+  private dotsNeeded = 0; // Calculated as percentage
   
   private walls!: Phaser.Physics.Arcade.StaticGroup; // Collision walls
   
@@ -138,7 +139,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
 
   private createWalls() {
-    // Use rectangles with physics enabled (they render properly)
+    // Use rectangles with physics enabled - matching NEW visual walls
     this.walls = this.physics.add.staticGroup();
     
     // Helper to create physics rectangle
@@ -158,29 +159,30 @@ export default class FarmersMarketScene extends Phaser.Scene {
     addWall(5, 5, 4, 170); // Left
     addWall(311, 5, 4, 170); // Right
     
-    // Match visual walls EXACTLY
-    // Pink blocks
-    addWall(30, 23, 115, 30); // Top-left
-    addWall(175, 23, 115, 30); // Top-right
+    // Pink blocks (4 total)
+    addWall(22, 22, 56, 26); // Top-left 1
+    addWall(242, 22, 56, 26); // Top-right 1
+    addWall(92, 22, 56, 26); // Top-left 2
+    addWall(172, 22, 56, 26); // Top-right 2
     
     // Peach side blocks
-    addWall(30, 70, 30, 30); // Left
-    addWall(260, 70, 30, 30); // Right
+    addWall(22, 62, 46, 26); // Left
+    addWall(252, 62, 46, 26); // Right
     
     // Center mint block
-    addWall(115, 70, 90, 41);
+    addWall(112, 62, 98, 56);
     
     // Lavender side blocks
-    addWall(30, 115, 30, 40); // Left
-    addWall(260, 115, 30, 40); // Right
+    addWall(22, 102, 46, 56); // Left
+    addWall(252, 102, 46, 56); // Right
     
     // Yellow bottom blocks
-    addWall(95, 130, 50, 25); // Left
-    addWall(175, 130, 50, 25); // Right
+    addWall(82, 132, 66, 26); // Left
+    addWall(172, 132, 66, 26); // Right
     
     // Yellow vertical extensions
-    addWall(225, 70, 15, 85); // Right
-    addWall(80, 70, 15, 85); // Left
+    addWall(82, 62, 17, 96); // Left
+    addWall(221, 62, 17, 96); // Right
   }
   
   private createMarketMaze() {
@@ -215,67 +217,98 @@ export default class FarmersMarketScene extends Phaser.Scene {
     walls.fillRect(5, 5, 4, 170); // Left
     walls.fillRect(311, 5, 4, 170); // Right
     
-    // Top row blocks (pastel pink) - moved up 2px
+    // Top row blocks (pastel pink)
     walls.fillStyle(0xfda4af, 1);
-    walls.fillRect(30, 23, 115, 30); // Top-left
-    walls.fillRect(175, 23, 115, 30); // Top-right
+    walls.fillRect(22, 22, 56, 26); // Top-left
+    walls.fillRect(242, 22, 56, 26); // Top-right 1 (mirrored)
+
+    // Top row blocks (pastel pink)
+    walls.fillStyle(0xbfdbfe, 1);
+    walls.fillRect(92, 22, 56, 26); // Top-left
+    walls.fillRect(172, 22, 56, 26); // Top-right 2 (mirrored)
     
-    // Second row side blocks (pastel peach) - moved up 2px
+    // Second row side blocks (pastel peach)
     walls.fillStyle(0xfed7aa, 1);
-    walls.fillRect(30, 70, 30, 30); // Left
-    walls.fillRect(260, 70, 30, 30); // Right
+    walls.fillRect(22, 62, 46, 26); // Left
+    walls.fillRect(252, 62, 46, 26); // Right (mirrored)
     
-    // Center block (pastel mint) - moved up 2px
+    // Center block (pastel mint)
     walls.fillStyle(0xa7f3d0, 1);
-    walls.fillRect(115, 70, 90, 41);
+    walls.fillRect(112, 62, 98, 56);
     
-    // Third row side blocks (pastel lavender) - moved up 2px
+    // Third row side blocks (pastel lavender)
     walls.fillStyle(0xddd6fe, 1);
-    walls.fillRect(30, 115, 30, 40); // Left
-    walls.fillRect(260, 115, 30, 40); // Right
-    
-    // Bottom row blocks (pastel yellow) - moved up 2px
+    walls.fillRect(22, 102, 46, 56); // Left
+    walls.fillRect(252, 102, 46, 56); // Right (mirrored)
+
+    // Bottom row blocks (pastel yellow)
     walls.fillStyle(0xfef08a, 1);
-    walls.fillRect(95, 130, 50, 25); // Bottom-left
-    walls.fillRect(175, 130, 50, 25); // Bottom-right
-    
-    // Vertical extensions from bottom yellow blocks going up - moved up 2px
-    walls.fillRect(225, 70, 15, 85); // Right side: narrow vertical
-    walls.fillRect(80, 70, 15, 85); // Left side: mirrored
+    walls.fillRect(82, 132, 66, 26); // Left
+    walls.fillRect(172, 132, 66, 26); // Right (mirrored)
+
+    // Vertical extensions from bottom yellow blocks
+    walls.fillRect(82, 62, 17, 96); // Left
+    walls.fillRect(221, 62, 17, 96); // Right (mirrored)
     
     walls.setDepth(5);
   }
 
   private spawnPies() {
-    // Spawn pies at random positions (avoiding walls)
-    const pieColors = [
-      0xfda4af, // Rose
-      0xfed7aa, // Peach  
-      0xfbbf24, // Soft gold
-    ];
+    // Full grid - you adjust boundaries and I'll mirror
+    const dotColor = 0xfef08a;
+    const spacing = 10;
     
-    const numPies = 10; // Start with 10 pies
+    const addDot = (x: number, y: number) => {
+      const dot = this.add.graphics();
+      dot.fillStyle(dotColor, 0.4);
+      dot.fillCircle(0, 0, 3);
+      dot.fillStyle(dotColor, 1);
+      dot.fillCircle(0, 0, 2);
+      dot.setPosition(x, y);
+      dot.setDepth(3);
+      dot.setData('isPie', true);
+      dot.setData('collected', false);
+      this.pies.push(dot);
+    };
     
-    for (let i = 0; i < numPies; i++) {
-      // Random position in playable area
-      const x = 40 + Math.random() * 240;
-      const y = 40 + Math.random() * 120;
-      
-      const pie = this.add.graphics();
-      const color = pieColors[i % pieColors.length];
-      
-      // Pie with subtle glow
-      pie.fillStyle(color, 0.5);
-      pie.fillCircle(0, 0, 6); // Glow
-      pie.fillStyle(color, 1);
-      pie.fillCircle(0, 0, 4); // Pie (larger than Pac-Man dots)
-      
-      pie.setPosition(x, y);
-      pie.setDepth(3);
-      pie.setData('isPie', true);
-      pie.setData('collected', false);
-      this.pies.push(pie);
+    // Dense grid covering entire playfield
+    for (let x = 15; x < 310; x += spacing) {
+      for (let y = 15; y < 170; y += spacing) {
+        addDot(x, y);
+      }
     }
+    
+    this.totalDots = this.pies.length;
+    this.dotsNeeded = Math.ceil(this.totalDots * 0.6);
+    console.log(`Total dots: ${this.totalDots}, Need ${this.dotsNeeded} to win`);
+  }
+  
+  private isInWall(x: number, y: number): boolean {
+    // Check if position overlaps with any wall rectangles
+    // Pink blocks
+    if ((x >= 30 && x <= 145 && y >= 23 && y <= 53) ||
+        (x >= 175 && x <= 290 && y >= 23 && y <= 53)) return true;
+    
+    // Peach blocks
+    if ((x >= 30 && x <= 60 && y >= 70 && y <= 100) ||
+        (x >= 260 && x <= 290 && y >= 70 && y <= 100)) return true;
+    
+    // Center mint block
+    if (x >= 115 && x <= 205 && y >= 70 && y <= 111) return true;
+    
+    // Lavender blocks
+    if ((x >= 30 && x <= 60 && y >= 115 && y <= 155) ||
+        (x >= 260 && x <= 290 && y >= 115 && y <= 155)) return true;
+    
+    // Yellow blocks
+    if ((x >= 95 && x <= 145 && y >= 130 && y <= 155) ||
+        (x >= 175 && x <= 225 && y >= 130 && y <= 155)) return true;
+    
+    // Yellow extensions
+    if ((x >= 80 && x <= 95 && y >= 70 && y <= 155) ||
+        (x >= 225 && x <= 240 && y >= 70 && y <= 155)) return true;
+    
+    return false;
   }
 
 
@@ -433,9 +466,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
         pie.setAlpha(0.3); // Fade but don't destroy yet
         this.graysonPiesEaten++;
         
-        console.log(`Grayson: ${this.graysonPiesEaten}/${this.piesNeeded}`);
+        console.log(`Grayson: ${this.graysonPiesEaten}/${this.dotsNeeded}`);
         
-        if (this.graysonPiesEaten >= this.piesNeeded) {
+        if (this.graysonPiesEaten >= this.dotsNeeded) {
           this.graysonWins();
         }
         return;
@@ -449,12 +482,13 @@ export default class FarmersMarketScene extends Phaser.Scene {
       
       if (distSmush < 12) {
         pie.setData('collected', true);
-        pie.setAlpha(0.3); // Fade
+        pie.setAlpha(0); // Invisible when collected
+        pie.destroy(); // Remove completely
         this.smushPiesEaten++;
         
-        console.log(`Smush: ${this.smushPiesEaten}/${this.piesNeeded}`);
+        console.log(`Smush: ${this.smushPiesEaten}/${this.dotsNeeded}`);
         
-        if (this.smushPiesEaten >= this.piesNeeded) {
+        if (this.smushPiesEaten >= this.dotsNeeded) {
           this.smushWins();
         }
         return;
