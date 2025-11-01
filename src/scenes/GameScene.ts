@@ -1116,7 +1116,7 @@ export default class GameScene extends Phaser.Scene {
     
     // Show initial dialogue (after Grayson walks in)
     this.time.delayedCall(3000, () => {
-      this.dialogueManager.show("Grayson: CAT, stop! I need those to rebuild the anniversary card!");
+      this.dialogueManager.show("Grayson: CAT! I need those to rebuild the anniversary card!");
     });
   }
   
@@ -1248,13 +1248,13 @@ export default class GameScene extends Phaser.Scene {
         
         this.tweens.add({
           targets: this.cat,
-          x: 240, // Right side of screen
+          x: 240, // Right side (original position)
           duration: 1200,
           ease: "Power2"
         });
         
-        // Now examine the ice hockey memory
-        this.time.delayedCall(800, () => {
+        // Now examine the ice hockey memory (wait for Smush to finish running)
+        this.time.delayedCall(1300, () => {
           this.examineIceHockeyMemory();
         });
       }
