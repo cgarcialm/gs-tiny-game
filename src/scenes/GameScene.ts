@@ -1194,21 +1194,6 @@ export default class GameScene extends Phaser.Scene {
           duration: 500,
           ease: "Power2"
         });
-        
-        const meow = this.add.text(this.cat.x, this.cat.y - 15, "*Meow!*", {
-          fontSize: "8px",
-          color: "#ffeb3b",
-          fontStyle: "bold",
-          resolution: 2
-        }).setOrigin(0.5);
-        
-        this.tweens.add({
-          targets: meow,
-          y: this.cat.y - 30,
-          alpha: 0,
-          duration: 1000,
-          onComplete: () => meow.destroy()
-        });
       }
     }
     
@@ -1253,18 +1238,19 @@ export default class GameScene extends Phaser.Scene {
         
         this.cat.setScale(-1, 1); // Face right (running away)
         
+        // Set looking down-left BEFORE moving
+        this.cat.setData('lookingDown', false);
+        this.cat.setData('lookingDownLeft', true);
+        
+        // Redraw with new pupils
+        const redrawNormal = this.cat.getData('drawNormal');
+        if (redrawNormal) redrawNormal();
+        
         this.tweens.add({
           targets: this.cat,
           x: 240, // Right side of screen
           duration: 1200,
-          ease: "Power2",
-          onComplete: () => {
-            // After arriving, look down-left (toward the cards she was playing with)
-            this.cat.setData('lookingDown', false);
-            this.cat.setData('lookingDownLeft', true);
-            const redraw = this.cat.getData('drawNormal');
-            if (redraw) redraw();
-          }
+          ease: "Power2"
         });
         
         // Now examine the ice hockey memory
