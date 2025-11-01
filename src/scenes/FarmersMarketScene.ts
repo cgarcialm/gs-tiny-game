@@ -48,6 +48,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.pauseMenu = setup.pauseMenu;
     this.dialogueManager = setup.dialogueManager;
     
+    // Clear any previous dialogue
+    this.dialogueManager.hide();
+    
     // Disable gravity for top-down view
     this.physics.world.gravity.y = 0;
     
@@ -61,9 +64,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.player = createGraysonTopDownSprite(this, 40, 140);
     this.player.setDepth(10);
     
-    // Create physics body for Grayson
+    // Create physics body for Grayson (smaller for easier navigation)
     this.playerPhysics = this.physics.add.sprite(40, 140, '');
-    this.playerPhysics.setSize(12, 14);
+    this.playerPhysics.setSize(8, 10); // Smaller hitbox
     this.playerPhysics.setAlpha(0);
     this.playerPhysics.setCollideWorldBounds(true);
     
@@ -74,9 +77,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.smush = createSmushSprite(this, 280, 40);
     this.smush.setDepth(10);
     
-    // Physics body for Smush
+    // Physics body for Smush (smaller for easier navigation)
     this.smushPhysics = this.physics.add.sprite(280, 40, '');
-    this.smushPhysics.setSize(14, 16);
+    this.smushPhysics.setSize(10, 12); // Smaller hitbox
     this.smushPhysics.setAlpha(0);
     this.smushPhysics.setCollideWorldBounds(true);
     
@@ -93,40 +96,49 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
 
   private createWalls() {
-    // Create physics wall group (simplified Pac-Man maze)
+    // Use rectangles with physics enabled (they render properly)
     this.walls = this.physics.add.staticGroup();
     
-    const wallThickness = 8;
+    // Helper to create physics rectangle
+    const addWall = (x: number, y: number, width: number, height: number) => {
+      const wall = this.add.rectangle(x, y, width, height, 0x000000, 0);
+      wall.setOrigin(0, 0); // Top-left origin like fillRect
+      this.physics.add.existing(wall, true); // true = static
+      this.walls.add(wall);
+      wall.setAlpha(0); // Invisible
+    };
     
-    // Outer border walls (with gaps for tunnels at center)
-    // Top wall - split for tunnel
-    this.walls.create(80, 15, '').setSize(140, wallThickness).setVisible(false).refreshBody(); // Top left
-    this.walls.create(240, 15, '').setSize(140, wallThickness).setVisible(false).refreshBody(); // Top right
-    // Bottom wall - split for tunnel
-    this.walls.create(80, 165, '').setSize(140, wallThickness).setVisible(false).refreshBody(); // Bottom left
-    this.walls.create(240, 165, '').setSize(140, wallThickness).setVisible(false).refreshBody(); // Bottom right
-    // Side walls
-    this.walls.create(15, 90, '').setSize(wallThickness, 160).setVisible(false).refreshBody(); // Left
-    this.walls.create(305, 90, '').setSize(wallThickness, 160).setVisible(false).refreshBody(); // Right
+    // Outer border walls (with gaps for tunnels)
+    addWall(5, 5, 140, 4); // Top left
+    addWall(175, 5, 140, 4); // Top right
+    addWall(5, 171, 140, 4); // Bottom left
+    addWall(175, 171, 140, 4); // Bottom right
+    addWall(5, 5, 4, 170); // Left
+    addWall(311, 5, 4, 170); // Right
     
-    // Top row blocks
-    this.walls.create(60, 45, '').setSize(50, 30).setVisible(false).refreshBody();
-    this.walls.create(260, 45, '').setSize(50, 30).setVisible(false).refreshBody();
+    // Match visual walls EXACTLY
+    // Pink blocks
+    addWall(30, 23, 115, 30); // Top-left
+    addWall(175, 23, 115, 30); // Top-right
     
-    // Second row - side blocks
-    this.walls.create(45, 85, '').setSize(30, 30).setVisible(false).refreshBody();
-    this.walls.create(275, 85, '').setSize(30, 30).setVisible(false).refreshBody();
+    // Peach side blocks
+    addWall(30, 70, 30, 30); // Left
+    addWall(260, 70, 30, 30); // Right
     
-    // Center block
-    this.walls.create(160, 90, '').setSize(60, 35).setVisible(false).refreshBody();
+    // Center mint block
+    addWall(115, 70, 90, 41);
     
-    // Third row - side blocks
-    this.walls.create(45, 130, '').setSize(30, 30).setVisible(false).refreshBody();
-    this.walls.create(275, 130, '').setSize(30, 30).setVisible(false).refreshBody();
+    // Lavender side blocks
+    addWall(30, 115, 30, 40); // Left
+    addWall(260, 115, 30, 40); // Right
     
-    // Bottom row blocks
-    this.walls.create(120, 145, '').setSize(50, 25).setVisible(false).refreshBody();
-    this.walls.create(200, 145, '').setSize(50, 25).setVisible(false).refreshBody();
+    // Yellow bottom blocks
+    addWall(95, 130, 50, 25); // Left
+    addWall(175, 130, 50, 25); // Right
+    
+    // Yellow vertical extensions
+    addWall(225, 70, 15, 85); // Right
+    addWall(80, 70, 15, 85); // Left
   }
   
   private createMarketMaze() {

@@ -18,7 +18,7 @@ const config: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: {
       gravity: { y: 500, x: 0 },
-      debug: false
+      debug: false // Disabled - physics boxes hidden
     }
   },
   scene: [BootScene, TitleScene, GameScene, NorthgateScene, IceHockeyScene, FarmersMarketScene],
