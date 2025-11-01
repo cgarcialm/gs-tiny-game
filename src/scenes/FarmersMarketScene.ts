@@ -169,8 +169,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     addWall(22, 62, 46, 26); // Left
     addWall(252, 62, 46, 26); // Right
     
-    // Center mint block
-    addWall(112, 62, 98, 56);
+    // Center mint block (perfectly centered)
+    addWall(111, 62, 98, 56);
     
     // Lavender side blocks
     addWall(22, 102, 46, 56); // Left
@@ -232,9 +232,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     walls.fillRect(22, 62, 46, 26); // Left
     walls.fillRect(252, 62, 46, 26); // Right (mirrored)
     
-    // Center block (pastel mint)
+    // Center block (pastel mint - perfectly centered)
     walls.fillStyle(0xa7f3d0, 1);
-    walls.fillRect(112, 62, 98, 56);
+    walls.fillRect(111, 62, 98, 56);
     
     // Third row side blocks (pastel lavender)
     walls.fillStyle(0xddd6fe, 1);
