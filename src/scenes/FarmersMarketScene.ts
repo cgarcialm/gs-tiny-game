@@ -26,6 +26,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private smush!: Phaser.GameObjects.Container; // ONE Smush (competitor)
   private smushPhysics!: Phaser.Physics.Arcade.Sprite;
   
+  private entranceComplete = false; // Don't sync during entrance animation
+  
   private pies: Phaser.GameObjects.Graphics[] = []; // Collectible pies
   private graysonPiesEaten = 0;
   private smushPiesEaten = 0;
@@ -61,27 +63,27 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.createMarketMaze();
     
     // Create Grayson (top-down view)
-    this.player = createGraysonTopDownSprite(this, 40, 140);
+    this.player = createGraysonTopDownSprite(this, 160, 220);
     this.player.setDepth(10);
     
     // Create physics body for Grayson (smaller for easier navigation)
-    this.playerPhysics = this.physics.add.sprite(40, 140, '');
+    this.playerPhysics = this.physics.add.sprite(160, 220, '');
     this.playerPhysics.setSize(8, 10); // Smaller hitbox
     this.playerPhysics.setAlpha(0);
-    this.playerPhysics.setCollideWorldBounds(true);
+    this.playerPhysics.setCollideWorldBounds(false); // Allow off-screen initially
     
     // Add collision with walls
     this.physics.add.collider(this.playerPhysics, this.walls);
     
-    // Create ONE Smush (competitor)
-    this.smush = createSmushSprite(this, 280, 40);
+    // Create ONE Smush (starts ABOVE screen - enters through TOP tunnel)
+    this.smush = createSmushSprite(this, 160, -30);
     this.smush.setDepth(10);
     
     // Physics body for Smush (smaller for easier navigation)
-    this.smushPhysics = this.physics.add.sprite(280, 40, '');
+    this.smushPhysics = this.physics.add.sprite(160, -30, '');
     this.smushPhysics.setSize(10, 12); // Smaller hitbox
     this.smushPhysics.setAlpha(0);
-    this.smushPhysics.setCollideWorldBounds(true);
+    this.smushPhysics.setCollideWorldBounds(false); // Allow off-screen initially
     
     // Smush also collides with walls
     this.physics.add.collider(this.smushPhysics, this.walls);
@@ -89,9 +91,35 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Spawn pies randomly
     this.spawnPies();
     
-    // Show intro dialogue
-    this.time.delayedCall(500, () => {
-      this.dialogueManager.show("Grayson: Smush! These are MY pies!");
+    // Animate entrances through tunnels
+    this.time.delayedCall(300, () => {
+      // Grayson walks UP from bottom (through bottom tunnel)
+      this.tweens.add({
+        targets: [this.player, this.playerPhysics],
+        y: 145, // Final position in bottom area of playfield
+        duration: 2000,
+        ease: "Linear",
+        onComplete: () => {
+          this.playerPhysics.setCollideWorldBounds(true);
+          this.entranceComplete = true; // Enable sprite syncing
+        }
+      });
+      
+      // Smush walks DOWN from top (through top tunnel)
+      this.tweens.add({
+        targets: [this.smush, this.smushPhysics],
+        y: 35, // Final position in top area of playfield
+        duration: 2000,
+        ease: "Linear",
+        onComplete: () => {
+          this.smushPhysics.setCollideWorldBounds(true);
+        }
+      });
+      
+      // Show dialogue as they're entering
+      this.time.delayedCall(800, () => {
+        this.dialogueManager.show("Grayson: Smush! These are MY pies!");
+      });
     });
   }
 
@@ -263,11 +291,13 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Check pie collection for both
     this.checkPieCollection();
     
-    // Sync sprites with physics
-    this.player.x = this.playerPhysics.x;
-    this.player.y = this.playerPhysics.y;
-    this.smush.x = this.smushPhysics.x;
-    this.smush.y = this.smushPhysics.y;
+    // Sync sprites with physics (only after entrance completes)
+    if (this.entranceComplete) {
+      this.player.x = this.playerPhysics.x;
+      this.player.y = this.playerPhysics.y;
+      this.smush.x = this.smushPhysics.x;
+      this.smush.y = this.smushPhysics.y;
+    }
   }
   
   private checkTunnelWrapping() {
