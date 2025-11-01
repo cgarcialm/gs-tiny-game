@@ -254,8 +254,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
 
   private spawnPies() {
-    // Full grid - you adjust boundaries and I'll mirror
-    const dotColor = 0xfef08a;
+    // Full grid - white dots for classic Pac-Man look
+    const dotColor = 0xffffff; // White
     const spacing = 10;
     
     const addDot = (x: number, y: number) => {
