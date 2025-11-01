@@ -74,6 +74,9 @@ export default class GameScene extends Phaser.Scene {
   private cardPieceCollected = false;
   private cardPieceX = 120;
   private cardPieceY = 130;
+  
+  // Dialogue blocking (for auto-dismiss only dialogues)
+  private isDialogueAutoOnly = false;
   private cardPiecesCollected = 0;
   private totalCardPieces = 3;
   
@@ -416,7 +419,8 @@ export default class GameScene extends Phaser.Scene {
       if (shouldCloseDialogue(this.controls)) {
         if (this.dialogState === "open") {
           this.advanceDialog();
-        } else {
+        } else if (!this.isDialogueAutoOnly) {
+          // Only allow manual close if not auto-only dialogue
           this.dialogueManager.hide();
         }
       }
@@ -1114,9 +1118,17 @@ export default class GameScene extends Phaser.Scene {
     // Animate pieces bouncing around
     this.animateCardPiecesMoving(piece1, piece2);
     
-    // Show initial dialogue (after Grayson walks in)
-    this.time.delayedCall(3000, () => {
-      this.dialogueManager.show("Grayson: CAT! I need those to rebuild the anniversary card!");
+    // Show initial dialogue (while Grayson is walking in)
+    // Block ENTER during walk, then allow manual dismissal
+    this.time.delayedCall(500, () => {
+      this.isDialogueAutoOnly = true; // Block ENTER during walk
+      this.dialogueManager.show("Grayson: CAT! I need those!");
+      
+      // After Grayson finishes walking, allow manual close (don't auto-dismiss)
+      this.time.delayedCall(2000, () => {
+        this.isDialogueAutoOnly = false; // Allow ENTER now
+        // Dialogue stays until player presses ENTER
+      });
     });
   }
   
@@ -1353,6 +1365,10 @@ export default class GameScene extends Phaser.Scene {
     const iceHockeyMemory = createCardPieceSprite(this, this.player.x, this.player.y - 10);
     iceHockeyMemory.setDepth(15);
     
+    // Update counter immediately as card appears
+    this.cardPiecesCollected = 3; // Set to 3
+    this.updateMemoryCounter();
+    
     // Animate it floating up to center for examination
     this.tweens.add({
       targets: iceHockeyMemory,
@@ -1367,41 +1383,50 @@ export default class GameScene extends Phaser.Scene {
         // Memory projection appears from card bottom (strawberry icon)
         this.time.delayedCall(800, () => {
           this.showMemoryProjection(160, 74); // Start from card's bottom edge
+          
+          // Combined dialogue when projection appears
+          this.time.delayedCall(600, () => {
+            this.isDialogueAutoOnly = true; // Auto-dismiss, no ENTER
+            this.dialogueManager.show("Grayson: And the memory I just got...\nIt's from the farmers market!");
+            
+            // Auto-dismiss after longer time for full message
+            this.time.delayedCall(5000, () => {
+              if (this.dialogueManager.isVisible()) {
+                this.dialogueManager.hide();
+                this.isDialogueAutoOnly = false;
+              }
+              // Trigger meows after dialogue closes
+              this.time.delayedCall(500, () => {
+                this.triggerSmushMeowsAndFinalDialogue();
+              });
+            });
+          });
         });
       }
     });
     
     // Counter already at 3 from ice hockey - don't increment again!
+  }
+  
+  private triggerSmushMeowsAndFinalDialogue() {
+    // Smush meows 3 times
+    this.spawnMeowText(this.cat.x, this.cat.y - 15);
+    this.time.delayedCall(400, () => {
+      this.spawnMeowText(this.cat.x, this.cat.y - 15);
+    });
+    this.time.delayedCall(800, () => {
+      this.spawnMeowText(this.cat.x, this.cat.y - 15);
+    });
     
-    // Show examination dialogue (after projection appears)
-    this.time.delayedCall(2500, () => {
-      this.dialogueManager.show("Grayson: And the one from the game...\nIt's from the farmers market!");
+    // After meows, Grayson responds
+    this.time.delayedCall(1500, () => {
+      this.dialogueManager.show("Grayson: I'll get some pie and you'll get some goodies.");
       
-      // After first dialogue
+      // Transition to farmers market level
       this.time.delayedCall(4000, () => {
-        // Smush reacts with meows
-        this.time.delayedCall(2000, () => {
-          // Smush meows 3 times
-          this.spawnMeowText(this.cat.x, this.cat.y - 15);
-          this.time.delayedCall(400, () => {
-            this.spawnMeowText(this.cat.x, this.cat.y - 15);
-          });
-          this.time.delayedCall(800, () => {
-            this.spawnMeowText(this.cat.x, this.cat.y - 15);
-          });
-          
-          // After meows, Grayson responds
-          this.time.delayedCall(1500, () => {
-            this.dialogueManager.show("Grayson: I'll get some pie and you'll get some goodies.");
-            
-            // Transition to farmers market level
-            this.time.delayedCall(4000, () => {
-              this.dialogueManager.hide();
-              fadeToScene(this, "Game", 1000); // Will be farmers market scene later
-              // TODO: Create FarmersMarketScene and transition there
-            });
-          });
-        });
+        this.dialogueManager.hide();
+        fadeToScene(this, "Game", 1000); // Will be farmers market scene later
+        // TODO: Create FarmersMarketScene and transition there
       });
     });
   }
