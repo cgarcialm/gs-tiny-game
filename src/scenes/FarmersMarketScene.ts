@@ -186,6 +186,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
   
   private createMarketMaze() {
+
+    // -------------------------- Maze --------------------------
     // Outer background (soft sky blue - covers full screen)
     const outerBg = this.add.rectangle(160, 90, 320, 180, 0xbfdbfe, 1);
     outerBg.setOrigin(0.5).setDepth(0);
@@ -235,6 +237,71 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Center block (pastel mint - perfectly centered)
     walls.fillStyle(0xa7f3d0, 1);
     walls.fillRect(111, 62, 98, 56);
+    
+    // -------------------------- Water tower --------------------------
+
+    const tower = this.add.graphics();
+    const towerX = 160; // Screen center
+    const towerY = 82; // Moved up a bit
+    
+    // 4 Diagonal legs (dark, opening downward)
+    tower.lineStyle(2, 0x333333, 1);
+    const legLength = 15;
+    
+    // Front-left leg
+    tower.lineBetween(towerX - 6, towerY, towerX - 12, towerY + legLength);
+    // Front-right leg
+    tower.lineBetween(towerX + 6, towerY, towerX + 12, towerY + legLength);
+    // Back-left leg (slightly inward for depth)
+    tower.lineBetween(towerX - 2, towerY, towerX - 8, towerY + legLength);
+    // Back-right leg (slightly inward for depth)
+    tower.lineBetween(towerX + 2, towerY, towerX + 8, towerY + legLength);
+    
+    // Tank (darker gray sphere)
+    tower.fillStyle(0xb0b0b0, 1); // Darker gray
+    tower.fillCircle(towerX, towerY, 8);
+    
+    // Cylinder body
+    tower.fillRect(towerX - 8, towerY - 8, 16, 8);
+    
+    // Text on tank (simplified "CAMP")
+    const towerText = this.add.text(towerX, towerY - 2, "CAMP", {
+      fontFamily: "monospace",
+      fontSize: "5px",
+      color: "#333333",
+      fontStyle: "bold",
+      resolution: 2,
+    }).setOrigin(0.5).setDepth(7);
+    
+    // Dark horizontal line at bottom of tank (cylinder edge)
+    tower.lineStyle(1.5, 0x444444, 1); // Darker
+    tower.beginPath();
+    tower.arc(towerX, towerY - 23, 27, Phaser.Math.DegToRad(70), Phaser.Math.DegToRad(110), false);
+    tower.strokePath();
+    
+    // Top cone/roof
+    tower.fillStyle(0x808080, 1); // Darker gray
+    tower.beginPath();
+    tower.moveTo(towerX - 9, towerY - 8);
+    tower.lineTo(towerX + 9, towerY - 8);
+    tower.lineTo(towerX, towerY - 13);
+    tower.closePath();
+    tower.fill();
+    
+    // Small antenna on top
+    tower.fillStyle(0x555555, 1); // Darker
+    tower.fillCircle(towerX, towerY - 13, 1);
+    
+    tower.setDepth(6); // Above mint block
+    
+    // "Farmers Market" text below tower
+    const marketText = this.add.text(towerX, towerY + 26, "FARMERS MARKET", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#7c3aed", // Darker purple for visibility
+      fontStyle: "bold",
+      resolution: 2,
+    }).setOrigin(0.5).setDepth(7);
     
     // Third row side blocks (pastel lavender)
     walls.fillStyle(0xddd6fe, 1);
@@ -305,36 +372,6 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.dotsNeeded = Math.ceil(this.totalDots * 0.6);
     console.log(`Total dots: ${this.totalDots}, Need ${this.dotsNeeded} to win`);
   }
-  
-  private isInWall(x: number, y: number): boolean {
-    // Check if position overlaps with any wall rectangles
-    // Pink blocks
-    if ((x >= 30 && x <= 145 && y >= 23 && y <= 53) ||
-        (x >= 175 && x <= 290 && y >= 23 && y <= 53)) return true;
-    
-    // Peach blocks
-    if ((x >= 30 && x <= 60 && y >= 70 && y <= 100) ||
-        (x >= 260 && x <= 290 && y >= 70 && y <= 100)) return true;
-    
-    // Center mint block
-    if (x >= 115 && x <= 205 && y >= 70 && y <= 111) return true;
-    
-    // Lavender blocks
-    if ((x >= 30 && x <= 60 && y >= 115 && y <= 155) ||
-        (x >= 260 && x <= 290 && y >= 115 && y <= 155)) return true;
-    
-    // Yellow blocks
-    if ((x >= 95 && x <= 145 && y >= 130 && y <= 155) ||
-        (x >= 175 && x <= 225 && y >= 130 && y <= 155)) return true;
-    
-    // Yellow extensions
-    if ((x >= 80 && x <= 95 && y >= 70 && y <= 155) ||
-        (x >= 225 && x <= 240 && y >= 70 && y <= 155)) return true;
-    
-    return false;
-  }
-
-
   update() {
     // Handle menus
     if (this.pauseMenu.isVisible() || this.helpMenu.isVisible()) {
