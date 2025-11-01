@@ -23,13 +23,18 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Container;
   private playerPhysics!: Phaser.Physics.Arcade.Sprite;
   
-  private smushs: Phaser.GameObjects.Container[] = []; // The "ghosts"
-  private pies: Phaser.GameObjects.Graphics[] = []; // Collectible pies (dots)
-  private piesCollected = 0;
-  private totalPies = 0;
+  private smush!: Phaser.GameObjects.Container; // ONE Smush (competitor)
+  private smushPhysics!: Phaser.Physics.Arcade.Sprite;
+  
+  private pies: Phaser.GameObjects.Graphics[] = []; // Collectible pies
+  private graysonPiesEaten = 0;
+  private smushPiesEaten = 0;
+  private piesNeeded = 3; // Each needs 3 to win
+  
+  private walls!: Phaser.Physics.Arcade.StaticGroup; // Collision walls
   
   private speed = 100;
-  private smushSpeed = 80; // Slightly slower than player
+  private smushSpeed = 95; // Slightly slower but competitive
   
   constructor() {
     super("FarmersMarket");
@@ -46,106 +51,175 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Disable gravity for top-down view
     this.physics.world.gravity.y = 0;
     
+    // Create walls first (for collision)
+    this.createWalls();
+    
     // Create farmers market maze
     this.createMarketMaze();
     
     // Create Grayson (top-down view)
-    this.player = createGraysonTopDownSprite(this, 160, 140);
+    this.player = createGraysonTopDownSprite(this, 40, 140);
     this.player.setDepth(10);
     
-    // Create physics body
-    this.playerPhysics = this.physics.add.sprite(160, 140, '');
+    // Create physics body for Grayson
+    this.playerPhysics = this.physics.add.sprite(40, 140, '');
     this.playerPhysics.setSize(12, 14);
     this.playerPhysics.setAlpha(0);
+    this.playerPhysics.setCollideWorldBounds(true);
     
-    // Spawn pies to collect
+    // Add collision with walls
+    this.physics.add.collider(this.playerPhysics, this.walls);
+    
+    // Create ONE Smush (competitor)
+    this.smush = createSmushSprite(this, 280, 40);
+    this.smush.setDepth(10);
+    
+    // Physics body for Smush
+    this.smushPhysics = this.physics.add.sprite(280, 40, '');
+    this.smushPhysics.setSize(14, 16);
+    this.smushPhysics.setAlpha(0);
+    this.smushPhysics.setCollideWorldBounds(true);
+    
+    // Smush also collides with walls
+    this.physics.add.collider(this.smushPhysics, this.walls);
+    
+    // Spawn pies randomly
     this.spawnPies();
-    
-    // Spawn 4 Smushs (the "ghosts")
-    this.spawnSmushGhosts();
     
     // Show intro dialogue
     this.time.delayedCall(500, () => {
-      this.dialogueManager.show("Grayson: Smush, I said we'd BOTH get treats!\nStop chasing me! Let me collect these first!");
+      this.dialogueManager.show("Grayson: Smush! These are MY pies!");
     });
   }
 
+  private createWalls() {
+    // Create physics wall group (simplified Pac-Man maze)
+    this.walls = this.physics.add.staticGroup();
+    
+    const wallThickness = 8;
+    
+    // Outer border walls (with gaps for tunnels at center)
+    // Top wall - split for tunnel
+    this.walls.create(80, 15, '').setSize(140, wallThickness).setVisible(false).refreshBody(); // Top left
+    this.walls.create(240, 15, '').setSize(140, wallThickness).setVisible(false).refreshBody(); // Top right
+    // Bottom wall - split for tunnel
+    this.walls.create(80, 165, '').setSize(140, wallThickness).setVisible(false).refreshBody(); // Bottom left
+    this.walls.create(240, 165, '').setSize(140, wallThickness).setVisible(false).refreshBody(); // Bottom right
+    // Side walls
+    this.walls.create(15, 90, '').setSize(wallThickness, 160).setVisible(false).refreshBody(); // Left
+    this.walls.create(305, 90, '').setSize(wallThickness, 160).setVisible(false).refreshBody(); // Right
+    
+    // Top row blocks
+    this.walls.create(60, 45, '').setSize(50, 30).setVisible(false).refreshBody();
+    this.walls.create(260, 45, '').setSize(50, 30).setVisible(false).refreshBody();
+    
+    // Second row - side blocks
+    this.walls.create(45, 85, '').setSize(30, 30).setVisible(false).refreshBody();
+    this.walls.create(275, 85, '').setSize(30, 30).setVisible(false).refreshBody();
+    
+    // Center block
+    this.walls.create(160, 90, '').setSize(60, 35).setVisible(false).refreshBody();
+    
+    // Third row - side blocks
+    this.walls.create(45, 130, '').setSize(30, 30).setVisible(false).refreshBody();
+    this.walls.create(275, 130, '').setSize(30, 30).setVisible(false).refreshBody();
+    
+    // Bottom row blocks
+    this.walls.create(120, 145, '').setSize(50, 25).setVisible(false).refreshBody();
+    this.walls.create(200, 145, '').setSize(50, 25).setVisible(false).refreshBody();
+  }
+  
   private createMarketMaze() {
-    // Pastel gradient background (inspired by dreamy soap colors)
-    const bg = this.add.graphics();
+    // Outer background (soft sky blue - covers full screen)
+    const outerBg = this.add.rectangle(160, 90, 320, 180, 0xbfdbfe, 1);
+    outerBg.setOrigin(0.5).setDepth(0);
     
-    // Create vertical gradient stripes (pastel rainbow)
-    const colors = [
-      0xc4b5fd, // Soft purple
-      0xf0abfc, // Pink
-      0xfda4af, // Rose
-      0xfed7aa, // Peach
-      0xfef08a, // Soft yellow
-      0xbef264, // Lime
-      0xa7f3d0, // Mint
-      0x99f6e4, // Aqua
-      0xbfdbfe, // Sky blue
-      0xc4b5fd, // Back to purple
-    ];
+    // Inner playfield (black - much bigger)
+    const innerBg = this.add.rectangle(160, 90, 310, 170, 0x000000, 1);
+    innerBg.setOrigin(0.5).setDepth(1);
     
-    const stripeWidth = 320 / colors.length;
-    colors.forEach((color, i) => {
-      bg.fillStyle(color, 1);
-      bg.fillRect(i * stripeWidth, 0, stripeWidth, 180);
-    });
-    bg.setDepth(0);
+    // Top entrance tunnel (black extends all the way to screen top)
+    const topTunnel = this.add.rectangle(160, 0, 30, 15, 0x000000, 1);
+    topTunnel.setOrigin(0.5, 0).setDepth(2);
     
-    // Market stall "walls" (soft white/cream with pastel borders)
+    // Bottom entrance tunnel (black extends all the way to screen bottom)
+    const bottomTunnel = this.add.rectangle(160, 180, 30, 15, 0x000000, 1);
+    bottomTunnel.setOrigin(0.5, 1).setDepth(2);
+    
+    // Visual walls matching physics (pastel colored blocks)
     const walls = this.add.graphics();
     
-    // Walls with pastel pink borders
-    walls.fillStyle(0xffffff, 0.8); // Semi-transparent white
-    walls.lineStyle(2, 0xfda4af, 1); // Pastel pink border
+    // Outer border (pastel purple - with gaps for tunnels)
+    walls.fillStyle(0xc4b5fd, 1);
+    // Top border - split for tunnel
+    walls.fillRect(5, 5, 140, 4); // Top left
+    walls.fillRect(175, 5, 140, 4); // Top right
+    // Bottom border - split for tunnel
+    walls.fillRect(5, 171, 140, 4); // Bottom left
+    walls.fillRect(175, 171, 140, 4); // Bottom right
+    // Side borders
+    walls.fillRect(5, 5, 4, 170); // Left
+    walls.fillRect(311, 5, 4, 170); // Right
     
-    // Outer border
-    walls.strokeRect(10, 10, 300, 160);
+    // Top row blocks (pastel pink)
+    walls.fillStyle(0xfda4af, 1);
+    walls.fillRect(35, 30, 50, 30); // Top-left
+    walls.fillRect(235, 30, 50, 30); // Top-right
+    
+    // Second row side blocks (pastel peach)
+    walls.fillStyle(0xfed7aa, 1);
+    walls.fillRect(30, 70, 30, 30); // Left
+    walls.fillRect(260, 70, 30, 30); // Right
+    
+    // Center block (pastel mint)
+    walls.fillStyle(0xa7f3d0, 1);
+    walls.fillRect(130, 72, 60, 35);
+    
+    // Third row side blocks (pastel lavender)
+    walls.fillStyle(0xddd6fe, 1);
+    walls.fillRect(30, 115, 30, 30); // Left
+    walls.fillRect(260, 115, 30, 30); // Right
+    
+    // Bottom row blocks (pastel yellow)
+    walls.fillStyle(0xfef08a, 1);
+    walls.fillRect(95, 132, 50, 25);
+    walls.fillRect(175, 132, 50, 25);
     
     walls.setDepth(5);
   }
 
   private spawnPies() {
-    // Spawn small pies in grid pattern (like Pac-Man dots)
-    const pieColor = 0xff8a80; // Pink/red (strawberry rhubarb)
-    
-    // Simple grid for now
-    for (let x = 40; x < 280; x += 30) {
-      for (let y = 40; y < 150; y += 30) {
-        const pie = this.add.graphics();
-        pie.fillStyle(pieColor, 1);
-        pie.fillCircle(x, y, 3); // Small pie dot
-        pie.setDepth(3);
-        pie.setData('isPie', true);
-        this.pies.push(pie);
-      }
-    }
-    
-    this.totalPies = this.pies.length;
-  }
-
-  private spawnSmushGhosts() {
-    // 4 Smushs with different behaviors (like Pac-Man ghosts)
-    const spawnPositions = [
-      { x: 40, y: 40, behavior: 'chase' },    // Red ghost equivalent
-      { x: 280, y: 40, behavior: 'ambush' },  // Pink ghost equivalent  
-      { x: 40, y: 140, behavior: 'patrol' },  // Blue ghost equivalent
-      { x: 280, y: 140, behavior: 'random' }, // Orange ghost equivalent
+    // Spawn pies at random positions (avoiding walls)
+    const pieColors = [
+      0xfda4af, // Rose
+      0xfed7aa, // Peach  
+      0xfbbf24, // Soft gold
     ];
     
-    spawnPositions.forEach((spawn, index) => {
-      const smush = createSmushSprite(this, spawn.x, spawn.y);
-      smush.setDepth(8);
-      smush.setData('behavior', spawn.behavior);
-      smush.setData('startX', spawn.x);
-      smush.setData('startY', spawn.y);
+    const numPies = 10; // Start with 10 pies
+    
+    for (let i = 0; i < numPies; i++) {
+      // Random position in playable area
+      const x = 40 + Math.random() * 240;
+      const y = 40 + Math.random() * 120;
       
-      this.smushs.push(smush);
-    });
+      const pie = this.add.graphics();
+      const color = pieColors[i % pieColors.length];
+      
+      // Pie with subtle glow
+      pie.fillStyle(color, 0.5);
+      pie.fillCircle(0, 0, 6); // Glow
+      pie.fillStyle(color, 1);
+      pie.fillCircle(0, 0, 4); // Pie (larger than Pac-Man dots)
+      
+      pie.setPosition(x, y);
+      pie.setDepth(3);
+      pie.setData('isPie', true);
+      pie.setData('collected', false);
+      this.pies.push(pie);
+    }
   }
+
 
   update() {
     // Handle menus
@@ -161,14 +235,52 @@ export default class FarmersMarketScene extends Phaser.Scene {
       return;
     }
     
-    // Player movement (Pac-Man style - 4 directions)
+    // Player movement
     this.handlePlayerMovement();
     
-    // Update Smush ghosts
-    this.updateSmushGhosts();
+    // Smush AI (competitive - also tries to get pies)
+    this.updateSmushAI();
     
-    // Check pie collection
+    // Check tunnel wrapping (Pac-Man teleport)
+    this.checkTunnelWrapping();
+    
+    // Check pie collection for both
     this.checkPieCollection();
+    
+    // Sync sprites with physics
+    this.player.x = this.playerPhysics.x;
+    this.player.y = this.playerPhysics.y;
+    this.smush.x = this.smushPhysics.x;
+    this.smush.y = this.smushPhysics.y;
+  }
+  
+  private checkTunnelWrapping() {
+    const tunnelCenterX = 160;
+    const tunnelWidth = 15; // Half of 30px tunnel
+    
+    // Check if in tunnel horizontally
+    const inTunnel = Math.abs(this.playerPhysics.x - tunnelCenterX) < tunnelWidth;
+    const smushInTunnel = Math.abs(this.smushPhysics.x - tunnelCenterX) < tunnelWidth;
+    
+    // Grayson: Top tunnel → bottom
+    if (inTunnel && this.playerPhysics.y < 10) {
+      this.playerPhysics.setPosition(this.playerPhysics.x, 170);
+    }
+    
+    // Grayson: Bottom tunnel → top
+    if (inTunnel && this.playerPhysics.y > 170) {
+      this.playerPhysics.setPosition(this.playerPhysics.x, 10);
+    }
+    
+    // Smush: Top tunnel → bottom
+    if (smushInTunnel && this.smushPhysics.y < 10) {
+      this.smushPhysics.setPosition(this.smushPhysics.x, 170);
+    }
+    
+    // Smush: Bottom tunnel → top
+    if (smushInTunnel && this.smushPhysics.y > 170) {
+      this.smushPhysics.setPosition(this.smushPhysics.x, 10);
+    }
   }
 
   private handlePlayerMovement() {
@@ -189,95 +301,95 @@ export default class FarmersMarketScene extends Phaser.Scene {
       this.playerPhysics.setVelocity(0, 0);
     }
     
-    // Sync sprite
-    this.player.x = this.playerPhysics.x;
-    this.player.y = this.playerPhysics.y;
   }
 
-  private updateSmushGhosts() {
-    // TODO: Implement different AI behaviors for each Smush
-    this.smushs.forEach(smush => {
-      const behavior = smush.getData('behavior');
+  private updateSmushAI() {
+    // Smush goes after nearest pie
+    let nearestPie: Phaser.GameObjects.Graphics | null = null;
+    let nearestDist = Infinity;
+    
+    this.pies.forEach(pie => {
+      if (pie.getData('collected')) return;
       
-      switch (behavior) {
-        case 'chase':
-          // Chase player directly
-          this.chasePlayer(smush);
-          break;
-        case 'ambush':
-          // Try to get ahead of player
-          this.ambushPlayer(smush);
-          break;
-        case 'patrol':
-          // Patrol area
-          this.patrolArea(smush);
-          break;
-        case 'random':
-          // Random movement
-          this.randomMovement(smush);
-          break;
+      const dist = Phaser.Math.Distance.Between(
+        this.smushPhysics.x, this.smushPhysics.y,
+        pie.x, pie.y
+      );
+      
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestPie = pie;
       }
     });
-  }
-
-  private chasePlayer(smush: Phaser.GameObjects.Container) {
-    // Simple chase AI
-    const dx = this.playerPhysics.x - smush.x;
-    const dy = this.playerPhysics.y - smush.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
     
-    if (dist > 0) {
-      smush.x += (dx / dist) * this.smushSpeed * (this.game.loop.delta / 1000);
-      smush.y += (dy / dist) * this.smushSpeed * (this.game.loop.delta / 1000);
+    // Move toward nearest pie
+    if (nearestPie) {
+      const angle = Phaser.Math.Angle.Between(
+        this.smushPhysics.x, this.smushPhysics.y,
+        nearestPie.x, nearestPie.y
+      );
+      
+      this.smushPhysics.setVelocity(
+        Math.cos(angle) * this.smushSpeed,
+        Math.sin(angle) * this.smushSpeed
+      );
+    } else {
+      this.smushPhysics.setVelocity(0, 0);
     }
   }
 
-  private ambushPlayer(smush: Phaser.GameObjects.Container) {
-    // TODO: Try to get ahead of player
-    this.chasePlayer(smush); // For now, just chase
-  }
-
-  private patrolArea(smush: Phaser.GameObjects.Container) {
-    // TODO: Patrol in pattern
-    this.chasePlayer(smush); // For now, just chase
-  }
-
-  private randomMovement(smush: Phaser.GameObjects.Container) {
-    // TODO: Random direction changes
-    this.chasePlayer(smush); // For now, just chase
-  }
-
   private checkPieCollection() {
-    // Check if player is near any pie
-    this.pies.forEach((pie, index) => {
-      if (!pie.active) return;
+    // Check both Grayson and Smush for pie collection
+    this.pies.forEach((pie) => {
+      if (pie.getData('collected')) return;
       
-      const dist = Phaser.Math.Distance.Between(
-        this.playerPhysics.x,
-        this.playerPhysics.y,
-        pie.x,
-        pie.y
+      // Check Grayson
+      const distGrayson = Phaser.Math.Distance.Between(
+        this.playerPhysics.x, this.playerPhysics.y,
+        pie.x, pie.y
       );
       
-      if (dist < 10) {
-        // Collect pie!
-        pie.destroy();
-        this.piesCollected++;
+      if (distGrayson < 12) {
+        pie.setData('collected', true);
+        pie.setAlpha(0.3); // Fade but don't destroy yet
+        this.graysonPiesEaten++;
         
-        // Check if all collected
-        if (this.piesCollected >= this.totalPies) {
-          this.levelComplete();
+        console.log(`Grayson: ${this.graysonPiesEaten}/${this.piesNeeded}`);
+        
+        if (this.graysonPiesEaten >= this.piesNeeded) {
+          this.graysonWins();
         }
+        return;
+      }
+      
+      // Check Smush
+      const distSmush = Phaser.Math.Distance.Between(
+        this.smushPhysics.x, this.smushPhysics.y,
+        pie.x, pie.y
+      );
+      
+      if (distSmush < 12) {
+        pie.setData('collected', true);
+        pie.setAlpha(0.3); // Fade
+        this.smushPiesEaten++;
+        
+        console.log(`Smush: ${this.smushPiesEaten}/${this.piesNeeded}`);
+        
+        if (this.smushPiesEaten >= this.piesNeeded) {
+          this.smushWins();
+        }
+        return;
       }
     });
   }
 
-  private levelComplete() {
-    this.dialogueManager.show("All pies collected! The memory is complete!");
+  private graysonWins() {
+    this.dialogueManager.show("Grayson: Got my pies! The memory is coming back...");
     
     // Spawn memory fragment
     this.time.delayedCall(2000, () => {
       const memory = createCardPieceSprite(this, 160, 90);
+      memory.setDepth(20);
       spawnCardPieceSparkles(this, 160, 90);
       
       // Transition back
@@ -285,6 +397,14 @@ export default class FarmersMarketScene extends Phaser.Scene {
         this.registry.set('completedLevels', 3);
         fadeToScene(this, "Game", 1000);
       });
+    });
+  }
+  
+  private smushWins() {
+    this.dialogueManager.show("Smush: *Meow meow!* (I win!)\nGrayson: Okay okay, let's try again...");
+    
+    this.time.delayedCall(3000, () => {
+      this.scene.restart();
     });
   }
 }
