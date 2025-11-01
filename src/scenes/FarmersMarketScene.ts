@@ -161,33 +161,33 @@ export default class FarmersMarketScene extends Phaser.Scene {
     walls.fillRect(5, 5, 4, 170); // Left
     walls.fillRect(311, 5, 4, 170); // Right
     
-    // Top row blocks (pastel pink)
+    // Top row blocks (pastel pink) - moved up 2px
     walls.fillStyle(0xfda4af, 1);
-    walls.fillRect(30, 25, 115, 30); // Top-left (mirrored to match right)
-    walls.fillRect(175, 25, 115, 30); // Top-right
+    walls.fillRect(30, 23, 115, 30); // Top-left
+    walls.fillRect(175, 23, 115, 30); // Top-right
     
-    // Second row side blocks (pastel peach)
+    // Second row side blocks (pastel peach) - moved up 2px
     walls.fillStyle(0xfed7aa, 1);
-    walls.fillRect(30, 72, 30, 30); // Left
-    walls.fillRect(260, 72, 30, 30); // Right
+    walls.fillRect(30, 70, 30, 30); // Left
+    walls.fillRect(260, 70, 30, 30); // Right
     
-    // Center block (pastel mint)
+    // Center block (pastel mint) - moved up 2px
     walls.fillStyle(0xa7f3d0, 1);
-    walls.fillRect(115, 72, 90, 41);
+    walls.fillRect(115, 70, 90, 41);
     
-    // Third row side blocks (pastel lavender)
+    // Third row side blocks (pastel lavender) - moved up 2px
     walls.fillStyle(0xddd6fe, 1);
-    walls.fillRect(30, 117, 30, 40); // Left (mirrored)
-    walls.fillRect(260, 117, 30, 40); // Right
+    walls.fillRect(30, 115, 30, 40); // Left
+    walls.fillRect(260, 115, 30, 40); // Right
     
-    // Bottom row blocks (pastel yellow)
+    // Bottom row blocks (pastel yellow) - moved up 2px
     walls.fillStyle(0xfef08a, 1);
-    walls.fillRect(95, 132, 50, 25); // Bottom-left
-    walls.fillRect(175, 132, 50, 25); // Bottom-right
+    walls.fillRect(95, 130, 50, 25); // Bottom-left
+    walls.fillRect(175, 130, 50, 25); // Bottom-right
     
-    // Vertical extensions from bottom yellow blocks going up
-    walls.fillRect(225, 72, 15, 85); // Right side: narrow vertical
-    walls.fillRect(80, 72, 15, 85); // Left side: mirrored
+    // Vertical extensions from bottom yellow blocks going up - moved up 2px
+    walls.fillRect(225, 70, 15, 85); // Right side: narrow vertical
+    walls.fillRect(80, 70, 15, 85); // Left side: mirrored
     
     walls.setDepth(5);
   }
