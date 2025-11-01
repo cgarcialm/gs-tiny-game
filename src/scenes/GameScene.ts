@@ -1422,12 +1422,11 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(1500, () => {
       this.dialogueManager.show("Grayson: I'll get some pie and you'll get some goodies.");
       
-      // Transition to farmers market level
-      this.time.delayedCall(4000, () => {
-        this.dialogueManager.hide();
-        fadeToScene(this, "Game", 1000); // Will be farmers market scene later
-        // TODO: Create FarmersMarketScene and transition there
-      });
+        // Transition to farmers market level
+        this.time.delayedCall(4000, () => {
+          this.dialogueManager.hide();
+          fadeToScene(this, "FarmersMarket", 1000);
+        });
     });
   }
 }
