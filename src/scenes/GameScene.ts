@@ -1266,23 +1266,23 @@ export default class GameScene extends Phaser.Scene {
     const beam = this.add.graphics();
     beam.setDepth(19);
     
-    // Outer glow (wider cone - extends to bottom of strawberry)
+    // Outer glow (wider cone - extends below strawberry but not to dialogue)
     beam.fillStyle(0xff8888, 0.15);
     beam.beginPath();
     beam.moveTo(x - 5, y); // Top left (from card)
     beam.lineTo(x + 5, y); // Top right (from card)
-    beam.lineTo(x + 28, y + 60); // Bottom right (past strawberry)
-    beam.lineTo(x - 28, y + 60); // Bottom left (past strawberry)
+    beam.lineTo(x + 30, y + 60); // Bottom right (shorter)
+    beam.lineTo(x - 30, y + 60); // Bottom left (shorter)
     beam.closePath();
     beam.fill();
     
-    // Main beam (solid filled triangle - reaches strawberry bottom)
+    // Main beam (solid filled triangle)
     beam.fillStyle(0xffcccc, 0.35); // Soft red glow
     beam.beginPath();
     beam.moveTo(x - 4, y); // Top from card
     beam.lineTo(x + 4, y);
-    beam.lineTo(x + 23, y + 55); // Bottom right (touches strawberry)
-    beam.lineTo(x - 23, y + 55); // Bottom left (touches strawberry)
+    beam.lineTo(x + 25, y + 55); // Bottom right (shorter)
+    beam.lineTo(x - 25, y + 55); // Bottom left (shorter)
     beam.closePath();
     beam.fill();
     
@@ -1290,14 +1290,24 @@ export default class GameScene extends Phaser.Scene {
     const strawberry = this.add.graphics();
     strawberry.setPosition(x, y + 45);
     
-    // Red strawberry body
+    // Red strawberry body (wider at top, tapered to point at bottom, taller)
     strawberry.fillStyle(0xff4444, 1);
-    strawberry.fillCircle(0, 0, 8);
-    strawberry.fillTriangle(-6, -2, 0, -10, 6, -2);
+    // Draw as polygon for strawberry shape
+    strawberry.beginPath();
+    strawberry.moveTo(-10, -7); // Top left (wider opening)
+    strawberry.lineTo(10, -7);  // Top right (wider opening)
+    strawberry.lineTo(2, 8);    // Bottom right (narrow point)
+    strawberry.lineTo(-2, 8);   // Bottom left (narrow point)
+    strawberry.closePath();
+    strawberry.fill();
+    
+    // Round top slightly (narrower curve)
+    strawberry.fillCircle(-7, -5, 2.5);
+    strawberry.fillCircle(7, -5, 2.5);
     
     // Green leafy top
     strawberry.fillStyle(0x4caf50, 1);
-    strawberry.fillRect(-4, -10, 8, 3);
+    strawberry.fillRect(-6, -9, 12, 3);
     
     // Yellow seeds
     strawberry.fillStyle(0xffeb3b, 1);
@@ -1305,7 +1315,7 @@ export default class GameScene extends Phaser.Scene {
     strawberry.fillCircle(3, 0, 1);
     strawberry.fillCircle(0, 3, 1);
     
-    strawberry.setDepth(20);
+    strawberry.setDepth(30);
     strawberry.setAlpha(0);
     beam.setAlpha(0);
     
@@ -1327,7 +1337,7 @@ export default class GameScene extends Phaser.Scene {
     // Gentle pulse animation (stays visible - doesn't leave)
     this.tweens.add({
       targets: strawberry,
-      scale: 1.1,
+      scale: 1.05, // Smaller pulse so it doesn't look too pointy
       duration: 1000,
       yoyo: true,
       repeat: -1,
