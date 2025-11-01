@@ -1,6 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonTopDownSprite } from "../utils/sprites/GraysonTopDownSprite";
-import { createSmushSprite } from "../utils/sprites/SmushSprite";
+import { createGraysonPacManSprite, animateGraysonChomp, createSmushPacManSprite, animateSmushChomp } from "../utils/sprites";
 import { createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
@@ -62,9 +61,10 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Create farmers market maze
     this.createMarketMaze();
     
-    // Create Grayson (top-down view)
-    this.player = createGraysonTopDownSprite(this, 160, 220);
+    // Create Grayson (Pac-Man side view with mouth)
+    this.player = createGraysonPacManSprite(this, 160, 220);
     this.player.setDepth(10);
+    animateGraysonChomp(this.player, this); // Chomping animation
     
     // Create physics body for Grayson (smaller for easier navigation)
     this.playerPhysics = this.physics.add.sprite(160, 220, '');
@@ -75,9 +75,10 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Add collision with walls
     this.physics.add.collider(this.playerPhysics, this.walls);
     
-    // Create ONE Smush (starts ABOVE screen - enters through TOP tunnel)
-    this.smush = createSmushSprite(this, 160, -30);
+    // Create ONE Smush (Pac-Man side view with mouth)
+    this.smush = createSmushPacManSprite(this, 160, -30);
     this.smush.setDepth(10);
+    animateSmushChomp(this.smush, this); // Chomping animation
     
     // Physics body for Smush (smaller for easier navigation)
     this.smushPhysics = this.physics.add.sprite(160, -30, '');
@@ -370,9 +371,12 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Move toward nearest pie
     if (nearestPie) {
+      const pieX = (nearestPie as Phaser.GameObjects.Graphics).x;
+      const pieY = (nearestPie as Phaser.GameObjects.Graphics).y;
+      
       const angle = Phaser.Math.Angle.Between(
         this.smushPhysics.x, this.smushPhysics.y,
-        nearestPie.x, nearestPie.y
+        pieX, pieY
       );
       
       this.smushPhysics.setVelocity(

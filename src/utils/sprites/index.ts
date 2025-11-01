@@ -10,4 +10,6 @@ export { createSecurityGuardSprite } from "./SecurityGuardSprite";
 export { createFurrySprite } from "./FurrySprite";
 export { createCardPieceSprite, spawnCardPieceSparkles } from "./CardPieceSprite";
 export { createCrowdPersonSprite, getRandomCrowdColors } from "./CrowdPersonSprite";
+export { createGraysonPacManSprite, animateGraysonChomp } from "./GraysonPacManSprite";
+export { createSmushPacManSprite, animateSmushChomp } from "./SmushPacManSprite";
 
