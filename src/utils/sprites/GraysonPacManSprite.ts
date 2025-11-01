@@ -32,6 +32,11 @@ export function createGraysonPacManSprite(
   const drawSprite = (mouthOpen: boolean) => {
     graphics.clear();
     
+    // Glow effect (behind sprite)
+    const glowSize = container.getData('glowSize') || 12;
+    graphics.fillStyle(0x81c784, 0.3); // Green glow (soft)
+    graphics.fillCircle(0, 0, glowSize);
+    
     // Hair (top)
     drawPixel(3, 1, HAIR_BROWN);
     drawPixel(4, 1, HAIR_BROWN);

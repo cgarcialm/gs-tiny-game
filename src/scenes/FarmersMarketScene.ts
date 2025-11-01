@@ -344,6 +344,13 @@ export default class FarmersMarketScene extends Phaser.Scene {
         (vx / len) * this.speed,
         (vy / len) * this.speed
       );
+      
+      // Flip sprite based on horizontal movement
+      if (vx < 0) {
+        this.player.setScale(-1, 1); // Moving left - flip
+      } else if (vx > 0) {
+        this.player.setScale(1, 1); // Moving right - normal
+      }
     } else {
       this.playerPhysics.setVelocity(0, 0);
     }
@@ -379,10 +386,17 @@ export default class FarmersMarketScene extends Phaser.Scene {
         pieX, pieY
       );
       
-      this.smushPhysics.setVelocity(
-        Math.cos(angle) * this.smushSpeed,
-        Math.sin(angle) * this.smushSpeed
-      );
+      const vx = Math.cos(angle) * this.smushSpeed;
+      const vy = Math.sin(angle) * this.smushSpeed;
+      
+      this.smushPhysics.setVelocity(vx, vy);
+      
+      // Flip Smush sprite based on horizontal movement
+      if (vx < 0) {
+        this.smush.setScale(-1, 1); // Moving left - flip
+      } else if (vx > 0) {
+        this.smush.setScale(1, 1); // Moving right - normal
+      }
     } else {
       this.smushPhysics.setVelocity(0, 0);
     }
