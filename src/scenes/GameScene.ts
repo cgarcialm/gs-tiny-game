@@ -1261,9 +1261,83 @@ export default class GameScene extends Phaser.Scene {
     }
   }
   
+  private showMemoryProjection(x: number, y: number) {
+    // Create solid projection beam from card downward (UFO-style)
+    const beam = this.add.graphics();
+    beam.setDepth(19);
+    
+    // Outer glow (wider cone - extends to bottom of strawberry)
+    beam.fillStyle(0xff8888, 0.15);
+    beam.beginPath();
+    beam.moveTo(x - 5, y); // Top left (from card)
+    beam.lineTo(x + 5, y); // Top right (from card)
+    beam.lineTo(x + 28, y + 60); // Bottom right (past strawberry)
+    beam.lineTo(x - 28, y + 60); // Bottom left (past strawberry)
+    beam.closePath();
+    beam.fill();
+    
+    // Main beam (solid filled triangle - reaches strawberry bottom)
+    beam.fillStyle(0xffcccc, 0.35); // Soft red glow
+    beam.beginPath();
+    beam.moveTo(x - 4, y); // Top from card
+    beam.lineTo(x + 4, y);
+    beam.lineTo(x + 23, y + 55); // Bottom right (touches strawberry)
+    beam.lineTo(x - 23, y + 55); // Bottom left (touches strawberry)
+    beam.closePath();
+    beam.fill();
+    
+    // Strawberry icon appears BELOW the card (in the beam)
+    const strawberry = this.add.graphics();
+    strawberry.setPosition(x, y + 45);
+    
+    // Red strawberry body
+    strawberry.fillStyle(0xff4444, 1);
+    strawberry.fillCircle(0, 0, 8);
+    strawberry.fillTriangle(-6, -2, 0, -10, 6, -2);
+    
+    // Green leafy top
+    strawberry.fillStyle(0x4caf50, 1);
+    strawberry.fillRect(-4, -10, 8, 3);
+    
+    // Yellow seeds
+    strawberry.fillStyle(0xffeb3b, 1);
+    strawberry.fillCircle(-3, -2, 1);
+    strawberry.fillCircle(3, 0, 1);
+    strawberry.fillCircle(0, 3, 1);
+    
+    strawberry.setDepth(20);
+    strawberry.setAlpha(0);
+    beam.setAlpha(0);
+    
+    // Fade in projection beam and strawberry together
+    this.tweens.add({
+      targets: strawberry,
+      alpha: 1,
+      duration: 600,
+      ease: "Power2"
+    });
+    
+    this.tweens.add({
+      targets: beam,
+      alpha: 1,
+      duration: 600,
+      ease: "Power2"
+    });
+    
+    // Gentle pulse animation (stays visible - doesn't leave)
+    this.tweens.add({
+      targets: strawberry,
+      scale: 1.1,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut"
+    });
+  }
+  
   private examineIceHockeyMemory() {
-    // Stop Smush animation
-    this.tweens.killTweensOf(this.cat);
+    // Stop Smush animation (but don't kill her run tween - it's already done)
+    // this.tweens.killTweensOf(this.cat); // Removed - was killing her movement
     
     // Grayson pulls the ice hockey memory from his pocket
     const iceHockeyMemory = createCardPieceSprite(this, this.player.x, this.player.y - 10);
@@ -1279,14 +1353,19 @@ export default class GameScene extends Phaser.Scene {
       onComplete: () => {
         // Sparkles after it arrives
         spawnCardPieceSparkles(this, 160, 70);
+        
+        // Memory projection appears from card bottom (strawberry icon)
+        this.time.delayedCall(800, () => {
+          this.showMemoryProjection(160, 74); // Start from card's bottom edge
+        });
       }
     });
     
     // Counter already at 3 from ice hockey - don't increment again!
     
-    // Show examination dialogue
-    this.time.delayedCall(1000, () => {
-      this.dialogueManager.show("Grayson: Ant the oce from the game...\nIt's from the farmers market!");
+    // Show examination dialogue (after projection appears)
+    this.time.delayedCall(2500, () => {
+      this.dialogueManager.show("Grayson: And the one from the game...\nIt's from the farmers market!");
       
       // After first dialogue
       this.time.delayedCall(4000, () => {
