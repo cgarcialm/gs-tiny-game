@@ -226,7 +226,7 @@ export default class GameScene extends Phaser.Scene {
             delay: 150,
             repeat: 12, // ~2 seconds of walking
             callback: () => {
-              updateGraysonWalk(this.player);
+              updateGraysonWalk(this.player, true);
             }
           });
           
@@ -1128,7 +1128,7 @@ export default class GameScene extends Phaser.Scene {
     let pawExtended = false;
     
     // Swap sprites periodically (paw in/out)
-    this.time.addEvent({
+    const pawTimer = this.time.addEvent({
       delay: 700, // Every 0.7 seconds
       loop: true,
       callback: () => {
@@ -1140,6 +1140,9 @@ export default class GameScene extends Phaser.Scene {
         }
       }
     });
+    
+    // Store timer so we can stop it later
+    this.cat.setData('pawTimer', pawTimer);
   }
   
   private animateCardPiecesMoving(piece1: Phaser.GameObjects.Graphics, piece2: Phaser.GameObjects.Graphics) {
@@ -1237,6 +1240,33 @@ export default class GameScene extends Phaser.Scene {
       if (!piece1.getData('examinationStarted')) {
         piece1.setData('examinationStarted', true);
         
+        // Smush knows she's in trouble - runs to the right side!
+        this.tweens.killTweensOf(this.cat);
+        
+        // Stop paw animation
+        const pawTimer = this.cat.getData('pawTimer');
+        if (pawTimer) pawTimer.destroy();
+        
+        // Draw normal sprite (no extended paw)
+        const drawNormal = this.cat.getData('drawNormal');
+        if (drawNormal) drawNormal();
+        
+        this.cat.setScale(-1, 1); // Face right (running away)
+        
+        this.tweens.add({
+          targets: this.cat,
+          x: 240, // Right side of screen
+          duration: 1200,
+          ease: "Power2",
+          onComplete: () => {
+            // After arriving, look down-left (toward the cards she was playing with)
+            this.cat.setData('lookingDown', false);
+            this.cat.setData('lookingDownLeft', true);
+            const redraw = this.cat.getData('drawNormal');
+            if (redraw) redraw();
+          }
+        });
+        
         // Now examine the ice hockey memory
         this.time.delayedCall(800, () => {
           this.examineIceHockeyMemory();
@@ -1270,21 +1300,31 @@ export default class GameScene extends Phaser.Scene {
     
     // Show examination dialogue
     this.time.delayedCall(1000, () => {
-      this.dialogueManager.show("Grayson: This memory... it's from the farmers market!\nThat strawberry rhubarb pie... our favorite...");
+      this.dialogueManager.show("Grayson: Ant the oce from the game...\nIt's from the farmers market!");
       
       // After first dialogue
       this.time.delayedCall(4000, () => {
-        this.dialogueManager.show("Grayson: This is the last piece. Once I find this memory,\nI can finally put the anniversary card back together!");
-        
-        // Smush reacts
-        this.time.delayedCall(4000, () => {
-          this.dialogueManager.show("Smush: *Meow meow!*\nGrayson: I know you want pie. Let's go find that memory.");
+        // Smush reacts with meows
+        this.time.delayedCall(2000, () => {
+          // Smush meows 3 times
+          this.spawnMeowText(this.cat.x, this.cat.y - 15);
+          this.time.delayedCall(400, () => {
+            this.spawnMeowText(this.cat.x, this.cat.y - 15);
+          });
+          this.time.delayedCall(800, () => {
+            this.spawnMeowText(this.cat.x, this.cat.y - 15);
+          });
           
-          // Transition to farmers market level
-          this.time.delayedCall(4000, () => {
-            this.dialogueManager.hide();
-            fadeToScene(this, "Game", 1000); // Will be farmers market scene later
-            // TODO: Create FarmersMarketScene and transition there
+          // After meows, Grayson responds
+          this.time.delayedCall(1500, () => {
+            this.dialogueManager.show("Grayson: I'll get some pie and you'll get some goodies.");
+            
+            // Transition to farmers market level
+            this.time.delayedCall(4000, () => {
+              this.dialogueManager.hide();
+              fadeToScene(this, "Game", 1000); // Will be farmers market scene later
+              // TODO: Create FarmersMarketScene and transition there
+            });
           });
         });
       });

@@ -103,10 +103,17 @@ export function createSmushSprite(
     drawPixel(11, 6, BLACK);
     drawPixel(12, 6, BLACK);
     
-    // Pupils (small dark dots in eyes) - positioned for looking down or center
+    // Pupils (small dark dots in eyes) - positioned based on direction
     const lookingDown = container.getData('lookingDown') || false;
-    if (lookingDown) {
-      drawSmallDot(6, 4.5, EYE_PUPIL, 1.2); // Lower in eye
+    const lookingDownLeft = container.getData('lookingDownLeft') || false;
+    
+    if (lookingDownLeft) {
+      // When sprite is flipped, right side of eyes becomes left side
+      // So put pupils on RIGHT to appear LEFT when flipped
+      drawSmallDot(6.5, 4.5, EYE_PUPIL, 1.2); // Right side of left eye
+      drawSmallDot(10.5, 4.5, EYE_PUPIL, 1.2); // Right side of right eye
+    } else if (lookingDown) {
+      drawSmallDot(6, 4.5, EYE_PUPIL, 1.2); // Down center
       drawSmallDot(10, 4.5, EYE_PUPIL, 1.2);
     } else {
       drawSmallDot(6, 4, EYE_PUPIL, 1.2); // Center
