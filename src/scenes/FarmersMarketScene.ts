@@ -67,9 +67,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.player.setDepth(10);
     animateGraysonChomp(this.player, this); // Chomping animation
     
-    // Create physics body for Grayson (smaller for easier navigation)
+    // Create physics body for Grayson (very small for easier navigation)
     this.playerPhysics = this.physics.add.sprite(160, 220, '');
-    this.playerPhysics.setSize(8, 10); // Smaller hitbox
+    this.playerPhysics.setSize(6, 6); // Small hitbox (auto-centered)
     this.playerPhysics.setAlpha(0);
     this.playerPhysics.setCollideWorldBounds(false); // Allow off-screen initially
     
@@ -81,9 +81,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.smush.setDepth(10);
     animateSmushChomp(this.smush, this); // Chomping animation
     
-    // Physics body for Smush (smaller for easier navigation)
+    // Physics body for Smush (very small for easier navigation)
     this.smushPhysics = this.physics.add.sprite(160, -30, '');
-    this.smushPhysics.setSize(10, 12); // Smaller hitbox
+    this.smushPhysics.setSize(6, 6); // Small hitbox (auto-centered)
     this.smushPhysics.setAlpha(0);
     this.smushPhysics.setCollideWorldBounds(false); // Allow off-screen initially
     this.smushPhysics.setGravityY(0); // Explicitly disable gravity
