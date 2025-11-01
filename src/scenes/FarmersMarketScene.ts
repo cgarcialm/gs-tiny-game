@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonPacManSprite, animateGraysonChomp, createSmushPacManSprite, animateSmushChomp } from "../utils/sprites";
+import { createGraysonPacManSprite, animateGraysonChomp, createSmushPacManSprite, animateSmushChomp, createPieSliceSprite } from "../utils/sprites";
 import { createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
@@ -271,12 +271,35 @@ export default class FarmersMarketScene extends Phaser.Scene {
       this.pies.push(dot);
     };
     
-    // Dense grid covering entire playfield
+    // Pie corner positions (skip dots here)
+    const piePositions = [
+      { x: 15, y: 15 },   // Top-left corner
+      { x: 305, y: 15 },  // Top-right corner
+      { x: 15, y: 165 },  // Bottom-left corner
+      { x: 305, y: 165 }, // Bottom-right corner
+    ];
+    
+    // Dense grid covering entire playfield (skip pie positions)
     for (let x = 15; x < 310; x += spacing) {
       for (let y = 15; y < 170; y += spacing) {
+        // Skip if this is a pie position
+        const isPiePos = piePositions.some(p => p.x === x && p.y === y);
+        if (isPiePos) continue;
+        
         addDot(x, y);
       }
     }
+    
+    // Add actual pie slices in the 4 corners
+    
+    piePositions.forEach(pos => {
+      const pie = createPieSliceSprite(this, pos.x, pos.y);
+      pie.setDepth(3);
+      pie.setData('isPie', true);
+      pie.setData('isPieSlice', true); // Mark as actual pie (worth more?)
+      pie.setData('collected', false);
+      this.pies.push(pie);
+    });
     
     this.totalDots = this.pies.length;
     this.dotsNeeded = Math.ceil(this.totalDots * 0.6);
