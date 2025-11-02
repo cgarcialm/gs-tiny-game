@@ -36,6 +36,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private graysonDotsEaten = 0;
   private smushDotsEaten = 0;
   private graysonPiesEaten = 0; // Track pie slices separately
+  private smushPiesEaten = 0; // Track Smush's pies too
   private totalDots = 0;
   private dotsNeeded = 0;
   private piesNeeded = 3; // Grayson must eat 3 pie slices to win
@@ -81,6 +82,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.graysonDotsEaten = 0;
     this.smushDotsEaten = 0;
     this.graysonPiesEaten = 0;
+    this.smushPiesEaten = 0;
     this.totalPiesSpawned = 0;
     this.fruitSpawnTimer = 0;
     this.smushTargetChangeTimer = 0;
@@ -100,6 +102,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Create farmers market maze
     this.createMarketMaze();
+    
+    // Create scoreboard
+    this.createScoreboard();
     
     // Create Grayson (Pac-Man side view with mouth)
     this.player = createGraysonPacManSprite(this, 160, 220);
@@ -194,53 +199,89 @@ export default class FarmersMarketScene extends Phaser.Scene {
       wall.setAlpha(0); // Invisible
     };
     
-    // Outer border walls (with gaps for tunnels)
-    addWall(5, 5, 140, 4); // Top left
-    addWall(175, 5, 140, 4); // Top right
+    // Outer border walls (with gaps for tunnels) - moved down
+    addWall(5, 24, 140, 4); // Top left
+    addWall(175, 24, 140, 4); // Top right
     addWall(5, 171, 140, 4); // Bottom left
     addWall(175, 171, 140, 4); // Bottom right
-    addWall(5, 5, 4, 170); // Left
-    addWall(311, 5, 4, 170); // Right
+    addWall(5, 25, 4, 150); // Left (shorter)
+    addWall(311, 25, 4, 150); // Right (shorter)
     
-    // Pink blocks (4 total)
-    addWall(22, 22, 56, 26); // Top-left 1
-    addWall(242, 22, 56, 26); // Top-right 1
-    addWall(92, 22, 56, 26); // Top-left 2
-    addWall(172, 22, 56, 26); // Top-right 2
+    // Pink/Blue blocks - moved down and shorter
+    addWall(22, 42, 56, 16); // Top-left 1 (pink)
+    addWall(242, 42, 56, 16); // Top-right 1 (pink)
+    addWall(92, 42, 56, 16); // Top-left 2 (blue)
+    addWall(172, 42, 56, 16); // Top-right 2 (blue)
     
-    // Peach side blocks
-    addWall(22, 62, 46, 26); // Left
-    addWall(252, 62, 46, 26); // Right
+    // Peach side blocks - moved down
+    addWall(22, 72, 46, 26); // Left
+    addWall(252, 72, 46, 26); // Right
     
-    // Center mint block (perfectly centered)
-    addWall(111, 62, 98, 56);
+    // Center mint block - moved down
+    addWall(111, 72, 98, 56);
     
-    // Lavender side blocks
-    addWall(22, 102, 46, 56); // Left
-    addWall(252, 102, 46, 56); // Right
+    // Lavender side blocks - moved down and shorter
+    addWall(22, 111, 46, 47); // Left
+    addWall(252, 111, 46, 47); // Right
     
-    // Yellow bottom blocks
-    addWall(82, 132, 66, 26); // Left
-    addWall(172, 132, 66, 26); // Right
+    // Yellow bottom blocks - moved down and shorter
+    addWall(82, 142, 66, 16); // Left
+    addWall(172, 142, 66, 16); // Right
     
-    // Yellow vertical extensions
-    addWall(82, 62, 17, 96); // Left
-    addWall(221, 62, 17, 96); // Right
+    // Yellow vertical extensions - moved down and shorter
+    addWall(82, 72, 17, 86); // Left
+    addWall(221, 72, 17, 86); // Right
   }
   
+  private createScoreboard() {
+    // Black bar across top (20px tall)
+    const bg = this.add.rectangle(160, 10, 320, 20, 0x000000, 1);
+    bg.setOrigin(0.5).setDepth(100);
+    
+    // Grayson's score (left side - green color)
+    const graysonText = this.add.text(10, 10, "", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#81c784", // Green (matches his shirt)
+    });
+    graysonText.setOrigin(0, 0.5).setDepth(101).setName('graysonScore');
+    
+    // Smush's score (right side - orange color)
+    const smushText = this.add.text(310, 10, "", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#d97c3c", // Orange (tortie color)
+    });
+    smushText.setOrigin(1, 0.5).setDepth(101).setName('smushScore');
+    
+    this.updateScoreboard();
+  }
+  
+  private updateScoreboard() {
+    const graysonText = this.children.getByName('graysonScore') as Phaser.GameObjects.Text;
+    const smushText = this.children.getByName('smushScore') as Phaser.GameObjects.Text;
+    
+    if (graysonText) {
+      graysonText.setText(`G: ${this.graysonPiesEaten}/3🥧 ${this.graysonDotsEaten}•`);
+    }
+    if (smushText) {
+      smushText.setText(`S: ${this.smushPiesEaten}/5🥧 ${this.smushDotsEaten}•`);
+    }
+  }
+
   private createMarketMaze() {
 
     // -------------------------- Maze --------------------------
-    // Outer background (soft sky blue - covers full screen)
-    const outerBg = this.add.rectangle(160, 90, 320, 180, 0xbfdbfe, 1);
+    // Outer background (soft sky blue - starts below scoreboard, above lavender border)
+    const outerBg = this.add.rectangle(160, 100, 320, 160, 0xbfdbfe, 1);
     outerBg.setOrigin(0.5).setDepth(0);
     
     // Inner playfield (black - much bigger)
-    const innerBg = this.add.rectangle(160, 90, 310, 170, 0x000000, 1);
+    const innerBg = this.add.rectangle(160, 100, 310, 150, 0x000000, 1);
     innerBg.setOrigin(0.5).setDepth(1);
     
-    // Top entrance tunnel (black extends all the way to screen top)
-    const topTunnel = this.add.rectangle(160, 0, 30, 15, 0x000000, 1);
+    // Top entrance tunnel (black extends from scoreboard to playfield)
+    const topTunnel = this.add.rectangle(160, 20, 30, 10, 0x000000, 1);
     topTunnel.setOrigin(0.5, 0).setDepth(2);
     
     // Bottom entrance tunnel (black extends all the way to screen bottom)
@@ -253,39 +294,53 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Outer border (pastel purple - with gaps for tunnels)
     walls.fillStyle(0xc4b5fd, 1);
     // Top border - split for tunnel
-    walls.fillRect(5, 5, 140, 4); // Top left
-    walls.fillRect(175, 5, 140, 4); // Top right
+    walls.fillRect(5, 24, 140, 4); // Top left
+    walls.fillRect(175, 24, 140, 4); // Top right
     // Bottom border - split for tunnel
     walls.fillRect(5, 171, 140, 4); // Bottom left
     walls.fillRect(175, 171, 140, 4); // Bottom right
     // Side borders
-    walls.fillRect(5, 5, 4, 170); // Left
-    walls.fillRect(311, 5, 4, 170); // Right
+    walls.fillRect(5, 25, 4, 150); // Left
+    walls.fillRect(311, 25, 4, 150); // Right
     
-    // Top row blocks (pastel pink)
+    // Top row blocks (pastel pink) - shorter
     walls.fillStyle(0xfda4af, 1);
-    walls.fillRect(22, 22, 56, 26); // Top-left
-    walls.fillRect(242, 22, 56, 26); // Top-right 1 (mirrored)
+    walls.fillRect(22, 42, 56, 16); // Top-left (shorter)
+    walls.fillRect(242, 42, 56, 16); // Top-right 1 (mirrored)
 
-    // Top row blocks (pastel pink)
+    // Top row blocks (pastel blue) - shorter
     walls.fillStyle(0xbfdbfe, 1);
-    walls.fillRect(92, 22, 56, 26); // Top-left
-    walls.fillRect(172, 22, 56, 26); // Top-right 2 (mirrored)
+    walls.fillRect(92, 42, 56, 16); // Top-left (shorter)
+    walls.fillRect(172, 42, 56, 16); // Top-right 2 (mirrored)
     
     // Second row side blocks (pastel peach)
     walls.fillStyle(0xfed7aa, 1);
-    walls.fillRect(22, 62, 46, 26); // Left
-    walls.fillRect(252, 62, 46, 26); // Right (mirrored)
+    walls.fillRect(22, 72, 46, 26); // Left
+    walls.fillRect(252, 72, 46, 26); // Right (mirrored)
     
     // Center block (pastel mint - perfectly centered)
     walls.fillStyle(0xa7f3d0, 1);
-    walls.fillRect(111, 62, 98, 56);
+    walls.fillRect(111, 72, 98, 56);
+
+    // Third row side blocks (pastel lavender) - shorter
+    walls.fillStyle(0xddd6fe, 1);
+    walls.fillRect(22, 111, 46, 47); // Left (shorter)
+    walls.fillRect(252, 111, 46, 47); // Right (mirrored)
+
+    // Bottom row blocks (pastel yellow) - shorter
+    walls.fillStyle(0xfef08a, 1);
+    walls.fillRect(82, 142, 66, 16); // Left (shorter)
+    walls.fillRect(172, 142, 66, 16); // Right (mirrored)
+
+    // Vertical extensions from bottom yellow blocks
+    walls.fillRect(82, 72, 17, 86); // Left
+    walls.fillRect(221, 72, 17, 86); // Right (mirrored)
     
     // -------------------------- Water tower --------------------------
 
     const tower = this.add.graphics();
     const towerX = 160; // Screen center
-    const towerY = 82; // Moved up a bit
+    const towerY = 90; // Center of moved mint block (72 + 56/2)
     
     // 4 Diagonal legs (dark, opening downward)
     tower.lineStyle(2, 0x333333, 1);
@@ -346,20 +401,6 @@ export default class FarmersMarketScene extends Phaser.Scene {
       resolution: 2,
     }).setOrigin(0.5).setDepth(7);
     
-    // Third row side blocks (pastel lavender)
-    walls.fillStyle(0xddd6fe, 1);
-    walls.fillRect(22, 102, 46, 56); // Left
-    walls.fillRect(252, 102, 46, 56); // Right (mirrored)
-
-    // Bottom row blocks (pastel yellow)
-    walls.fillStyle(0xfef08a, 1);
-    walls.fillRect(82, 132, 66, 26); // Left
-    walls.fillRect(172, 132, 66, 26); // Right (mirrored)
-
-    // Vertical extensions from bottom yellow blocks
-    walls.fillRect(82, 62, 17, 96); // Left
-    walls.fillRect(221, 62, 17, 96); // Right (mirrored)
-    
     walls.setDepth(5);
   }
 
@@ -387,26 +428,26 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Helper to check if position is under a wall block
     const isUnderWall = (x: number, y: number): boolean => {
-      // Check all wall rectangles
-      if ((x >= 22 && x <= 78 && y >= 22 && y <= 48) ||  // Pink 1 left
-          (x >= 242 && x <= 298 && y >= 22 && y <= 48)) return true; // Pink 1 right
-      if ((x >= 92 && x <= 148 && y >= 22 && y <= 48) ||  // Pink 2 left
-          (x >= 172 && x <= 228 && y >= 22 && y <= 48)) return true; // Pink 2 right
-      if ((x >= 22 && x <= 68 && y >= 62 && y <= 88) ||   // Peach left
-          (x >= 252 && x <= 298 && y >= 62 && y <= 88)) return true; // Peach right
-      if (x >= 111 && x <= 209 && y >= 62 && y <= 118) return true; // Center mint
-      if ((x >= 22 && x <= 68 && y >= 102 && y <= 158) || // Lavender left
-          (x >= 252 && x <= 298 && y >= 102 && y <= 158)) return true; // Lavender right
-      if ((x >= 82 && x <= 148 && y >= 132 && y <= 158) || // Yellow left
-          (x >= 172 && x <= 238 && y >= 132 && y <= 158)) return true; // Yellow right
-      if ((x >= 82 && x <= 99 && y >= 62 && y <= 158) ||  // Yellow ext left
-          (x >= 221 && x <= 238 && y >= 62 && y <= 158)) return true; // Yellow ext right
+      // Check all wall rectangles (updated for moved/shorter blocks)
+      if ((x >= 22 && x <= 78 && y >= 42 && y <= 58) ||  // Pink 1 left
+          (x >= 242 && x <= 298 && y >= 42 && y <= 58)) return true; // Pink 1 right
+      if ((x >= 92 && x <= 148 && y >= 42 && y <= 58) ||  // Blue left
+          (x >= 172 && x <= 228 && y >= 42 && y <= 58)) return true; // Blue right
+      if ((x >= 22 && x <= 68 && y >= 72 && y <= 98) ||   // Peach left
+          (x >= 252 && x <= 298 && y >= 72 && y <= 98)) return true; // Peach right
+      if (x >= 111 && x <= 209 && y >= 72 && y <= 128) return true; // Center mint
+      if ((x >= 22 && x <= 68 && y >= 111 && y <= 158) || // Lavender left
+          (x >= 252 && x <= 298 && y >= 111 && y <= 158)) return true; // Lavender right
+      if ((x >= 82 && x <= 148 && y >= 142 && y <= 158) || // Yellow left
+          (x >= 172 && x <= 238 && y >= 142 && y <= 158)) return true; // Yellow right
+      if ((x >= 82 && x <= 99 && y >= 72 && y <= 158) ||  // Yellow ext left
+          (x >= 221 && x <= 238 && y >= 72 && y <= 158)) return true; // Yellow ext right
       return false;
     };
     
-    // Dense grid covering entire playfield (skip pie positions and walls)
+    // Dense grid covering playfield below scoreboard (skip pie positions and walls)
     for (let x = 15; x < 310; x += spacing) {
-      for (let y = 15; y < 170; y += spacing) {
+      for (let y = 35; y < 170; y += spacing) { // Start below scoreboard/tunnel
         // Skip if this is a pie position
         const isPiePos = piePositions.some(p => p.x === x && p.y === y);
         if (isPiePos) continue;
@@ -651,6 +692,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
           this.graysonDotsEaten++;
         }
         
+        // Update scoreboard
+        this.updateScoreboard();
+        
         // Win condition: enough dots AND 3 pies
         if (this.graysonDotsEaten >= this.dotsNeeded && this.graysonPiesEaten >= this.piesNeeded) {
           this.graysonWins();
@@ -673,11 +717,15 @@ export default class FarmersMarketScene extends Phaser.Scene {
         pie.destroy();
         
         if (isPieSlice) {
-          // Smush ate a pie - spawn new one
+          // Smush ate a pie - track and spawn new one
+          this.smushPiesEaten++;
           this.spawnNewPieSlice();
         } else {
           this.smushDotsEaten++;
         }
+        
+        // Update scoreboard
+        this.updateScoreboard();
         
         // Smush can still win by eating enough dots
         if (this.smushDotsEaten >= this.dotsNeeded) {
@@ -861,9 +909,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
   
   private spawnShopper() {
-    // Predefined walking lanes in clear corridors (verified safe paths)
+    // Predefined walking lanes in clear corridors (verified safe paths - adjusted for new layout)
     const lanes = [
-      { y: 56, xStart: 80, xEnd: 240 },  // Between pink and peach/mint
+      { y: 65, xStart: 80, xEnd: 240 },  // Between pink/blue and peach/mint
       { y: 165, xStart: 80, xEnd: 240 }, // Bottom corridor
     ];
     
