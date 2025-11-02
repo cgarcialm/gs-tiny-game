@@ -795,6 +795,12 @@ export default class FarmersMarketScene extends Phaser.Scene {
           // Smush ate a pie - track and spawn new one
           this.smushPiesEaten++;
           this.spawnNewPieSlice();
+          
+          // If Smush ate 3 pies, Grayson can't win anymore!
+          if (this.smushPiesEaten >= 3) {
+            this.smushWins();
+            return;
+          }
         } else {
           this.smushDotsEaten++;
         }
@@ -802,7 +808,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
         // Update scoreboard
         this.updateScoreboard();
         
-        // Smush can still win by eating enough dots
+        // Smush can also win by eating enough dots
         if (this.smushDotsEaten >= this.dotsNeeded) {
           this.smushWins();
         }
