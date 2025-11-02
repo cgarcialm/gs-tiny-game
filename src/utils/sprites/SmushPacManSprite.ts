@@ -35,8 +35,9 @@ export function createSmushPacManSprite(
     graphics.clear();
     
     // Glow effect (behind sprite)
-    const glowSize = container.getData('glowSize') || 12;
-    graphics.fillStyle(0xd97c3c, 0.3); // Orange glow (tortie color)
+    const glowSize = container.getData('glowSize') || 8; // Default
+    const glowOpacity = container.getData('glowOpacity') || 0.6; // Default opacity
+    graphics.fillStyle(0xd97c3c, glowOpacity); // Orange glow
     graphics.fillCircle(0, 0, glowSize);
     
     // Ear (top-left)

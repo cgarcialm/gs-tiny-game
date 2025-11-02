@@ -88,6 +88,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Create Grayson (Pac-Man side view with mouth)
     this.player = createGraysonPacManSprite(this, 160, 220);
     this.player.setDepth(10);
+    this.player.setData('glowSize', 8); // Start with default glow
+    this.player.setData('glowOpacity', 0.6); // Default opacity
     animateGraysonChomp(this.player, this); // Chomping animation
     
     // Create physics body for Grayson (very small for easier navigation)
@@ -102,6 +104,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Create ONE Smush (Pac-Man side view with mouth)
     this.smush = createSmushPacManSprite(this, 160, -30);
     this.smush.setDepth(10);
+    this.smush.setData('glowSize', 8); // Start with default glow
+    this.smush.setData('glowOpacity', 0.6); // Default opacity
     animateSmushChomp(this.smush, this); // Chomping animation
     
     // Physics body for Smush (very small for easier navigation)
@@ -740,12 +744,32 @@ export default class FarmersMarketScene extends Phaser.Scene {
         
         // Speed boost
         this.speed = 150; // Much faster!
-        this.player.setData('glowSize', 18); // Bigger glow
+        
+        // Store glow values for pulsing
+        const glowData = { size: 8, opacity: 0.8 };
+        
+        // Set initial boosted opacity
+        this.player.setData('glowOpacity', 0.8);
+        
+        // Pulsing glow animation
+        const glowTween = this.tweens.add({
+          targets: glowData,
+          size: 12,
+          duration: 400,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+          onUpdate: () => {
+            this.player.setData('glowSize', glowData.size);
+          }
+        });
         
         // Reset after 5 seconds
         this.time.delayedCall(5000, () => {
+          glowTween.stop();
           this.speed = this.baseSpeed;
-          this.player.setData('glowSize', 12);
+          this.player.setData('glowSize', 8); // Back to default
+          this.player.setData('glowOpacity', 0.6); // Back to normal opacity
         });
       }
     });

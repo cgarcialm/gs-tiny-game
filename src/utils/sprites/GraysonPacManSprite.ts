@@ -20,7 +20,6 @@ export function createGraysonPacManSprite(
   const SHIRT_GREEN = 0x81c784;
   const PANTS_BLUE = 0x64b5f6;
   const EYE_BLACK = 0x000000;
-  const MOUTH_PINK = 0xffb6c1;
   
   const spriteWidth = 10;
   const spriteHeight = 12;
@@ -33,8 +32,9 @@ export function createGraysonPacManSprite(
     graphics.clear();
     
     // Glow effect (behind sprite)
-    const glowSize = container.getData('glowSize') || 12;
-    graphics.fillStyle(0x81c784, 0.3); // Green glow (soft)
+    const glowSize = container.getData('glowSize') || 8; // Default
+    const glowOpacity = container.getData('glowOpacity') || 0.6; // Default opacity
+    graphics.fillStyle(0x81c784, glowOpacity); // Green glow
     graphics.fillCircle(0, 0, glowSize);
     
     // Hair (top)
