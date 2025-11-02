@@ -78,7 +78,7 @@ export default class GameScene extends Phaser.Scene {
   // Dialogue blocking (for auto-dismiss only dialogues)
   private isDialogueAutoOnly = false;
   private cardPiecesCollected = 0;
-  private totalCardPieces = 3;
+  private totalCardPieces = 4;
   
   // Interaction tracking
   private hasInteractedWithEboshi = false;
@@ -241,6 +241,53 @@ export default class GameScene extends Phaser.Scene {
             onComplete: () => {
               walkTimer.destroy();
               // Arrived - dialogue triggers from setupSmushPlayingScene at 3s mark
+            }
+          });
+        });
+        break;
+        
+      case 3:
+        // Level 3: After Farmers Market - Grayson returns with memory
+        // Grayson starts off-screen left
+        this.player = createGraysonSprite(this, -30, 90);
+        this.player.setScale(-1, 1); // Face right
+        
+        // Grayson walks in from left to center
+        this.time.delayedCall(500, () => {
+          // Animate walking
+          const walkTimer = this.time.addEvent({
+            delay: 150,
+            repeat: 12, // ~2 seconds of walking
+            callback: () => {
+              updateGraysonWalk(this.player, true);
+            }
+          });
+          
+          this.tweens.add({
+            targets: this.player,
+            x: 160, // Stop at center
+            duration: 2000,
+            ease: "Linear",
+            onComplete: () => {
+              walkTimer.destroy();
+              
+              // After walking in, memory appears and counter updates
+              this.time.delayedCall(500, () => {
+                // Update counter to 4/4
+                this.cardPiecesCollected++;
+                this.updateMemoryCounter();
+                
+                // Grayson reflects on the memory
+                this.time.delayedCall(800, () => {
+                  this.dialogueManager.show("Grayson: That farmers market memory... it's so vivid now.\nAll four memories... I can almost feel the whole picture.");
+                  
+                  // Add more dialogue or next steps here
+                  this.time.delayedCall(4000, () => {
+                    this.dialogueManager.hide();
+                    // TODO: Next level or ending - merge memories?
+                  });
+                });
+              });
             }
           });
         });

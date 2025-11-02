@@ -32,6 +32,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private showingTutorial = false;
   private tutorialShown = false; // Track if tutorial was already shown
   
+  private cardPiece: Phaser.GameObjects.Graphics | null = null;
+  private hasWonConditions = false; // Met win conditions, waiting for card
+  
   private pies: Phaser.GameObjects.Graphics[] = []; // Collectible dots and pies
   private graysonDotsEaten = 0;
   private smushDotsEaten = 0;
@@ -79,6 +82,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.showingTutorial = false;
     this.tutorialOverlay = null;
     this.tutorialShown = false;
+    this.cardPiece = null;
+    this.hasWonConditions = false;
     this.graysonDotsEaten = 0;
     this.smushDotsEaten = 0;
     this.graysonPiesEaten = 0;
@@ -596,6 +601,11 @@ export default class FarmersMarketScene extends Phaser.Scene {
       // Check fruit collection
       this.checkFruitCollection();
       
+      // Check card piece collection
+      if (this.cardPiece) {
+        this.checkCardCollection();
+      }
+      
       // Shopper spawning timer
       this.shopperSpawnTimer += this.game.loop.delta;
       if (this.shopperSpawnTimer >= this.shopperSpawnInterval && this.shoppers.length < 2) {
@@ -771,9 +781,10 @@ export default class FarmersMarketScene extends Phaser.Scene {
         // Update scoreboard
         this.updateScoreboard();
         
-        // Win condition: enough dots AND 3 pies
-        if (this.graysonDotsEaten >= this.dotsNeeded && this.graysonPiesEaten >= this.piesNeeded) {
-          this.graysonWins();
+        // Win condition: enough dots AND 3 pies (spawn card piece)
+        if (this.graysonDotsEaten >= this.dotsNeeded && this.graysonPiesEaten >= this.piesNeeded && !this.hasWonConditions) {
+          this.hasWonConditions = true;
+          this.spawnCardPiece();
         }
         return;
       }
@@ -818,21 +829,91 @@ export default class FarmersMarketScene extends Phaser.Scene {
     });
   }
 
-  private graysonWins() {
-    this.dialogueManager.show("Grayson: Got my pies! The memory is coming back...");
+  private spawnCardPiece() {
+    // Pick random valid corridor position
+    if (this.validDotPositions.length === 0) return;
+    const pos = this.validDotPositions[Math.floor(Math.random() * this.validDotPositions.length)];
     
-    // Spawn memory fragment
-    this.time.delayedCall(2000, () => {
-      const memory = createCardPieceSprite(this, 160, 90);
-      memory.setDepth(20);
-      spawnCardPieceSparkles(this, 160, 90);
+    // Dramatic entrance - flash the screen
+    const flash = this.add.rectangle(160, 90, 320, 180, 0xffffff, 0);
+    flash.setDepth(50);
+    
+    this.tweens.add({
+      targets: flash,
+      alpha: 0.7,
+      duration: 200,
+      yoyo: true,
+      onComplete: () => flash.destroy()
+    });
+    
+    // Create glowing card piece
+    this.cardPiece = createCardPieceSprite(this, pos.x, pos.y);
+    this.cardPiece.setDepth(20);
+    this.cardPiece.setScale(0); // Start small
+    
+    // Scale up animation (dramatic entrance)
+    this.tweens.add({
+      targets: this.cardPiece,
+      scale: 1.5,
+      duration: 400,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        // Then start pulsing
+        this.tweens.add({
+          targets: this.cardPiece,
+          scale: 1.8,
+          duration: 600,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut"
+        });
+      }
+    });
+    
+    // Massive sparkle burst
+    for (let i = 0; i < 20; i++) {
+      this.time.delayedCall(i * 50, () => {
+        spawnCardPieceSparkles(this, pos.x, pos.y);
+      });
+    }
+    
+    // Glowing ring around card
+    const glow = this.add.graphics();
+    glow.lineStyle(3, 0xffd700, 0.8);
+    glow.strokeCircle(pos.x, pos.y, 20);
+    glow.setDepth(19);
+    
+    this.tweens.add({
+      targets: glow,
+      alpha: 0,
+      duration: 1000,
+      repeat: -1,
+      yoyo: true,
+      ease: "Sine.easeInOut"
+    });
+  }
+  
+  private checkCardCollection() {
+    if (!this.cardPiece) return;
+    
+    const dist = Phaser.Math.Distance.Between(
+      this.playerPhysics.x, this.playerPhysics.y,
+      this.cardPiece.x, this.cardPiece.y
+    );
+    
+    if (dist < 15) {
+      // Collected the card!
+      this.cardPiece.destroy();
+      this.cardPiece = null;
       
-      // Transition back
-      this.time.delayedCall(3000, () => {
+      this.dialogueManager.show("Grayson: Got it! The last one...");
+      
+      // Transition back to GameScene
+      this.time.delayedCall(2000, () => {
         this.registry.set('completedLevels', 3);
         fadeToScene(this, "Game", 1000);
       });
-    });
+    }
   }
   
   private smushWins() {
