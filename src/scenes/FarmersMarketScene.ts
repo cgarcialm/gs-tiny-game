@@ -156,7 +156,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
       // Grayson walks UP from bottom (through bottom tunnel)
       this.tweens.add({
         targets: [this.player, this.playerPhysics],
-        y: 145, // Final position in bottom area of playfield
+        y: 162, // Final position in bottom area of playfield
         duration: 2000,
         ease: "Linear",
         onComplete: () => {
