@@ -24,9 +24,6 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private smush!: Phaser.GameObjects.Container; // ONE Smush (competitor)
   private smushPhysics!: Phaser.Physics.Arcade.Sprite;
-  private smushStuckTimer = 0;
-  private smushLastX = 0;
-  private smushLastY = 0;
   private smushTargetChangeTimer = 0;
   private smushCurrentTarget: Phaser.GameObjects.Graphics | null = null;
   
@@ -291,7 +288,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     tower.fillRect(towerX - 8, towerY - 8, 16, 8);
     
     // Text on tank (simplified "CAMP")
-    const towerText = this.add.text(towerX, towerY - 2, "CAMP", {
+    this.add.text(towerX, towerY - 2, "CAMP", {
       fontFamily: "monospace",
       fontSize: "5px",
       color: "#333333",
@@ -321,7 +318,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     tower.setDepth(6); // Above mint block
     
     // "Farmers Market" text below tower
-    const marketText = this.add.text(towerX, towerY + 26, "FARMERS MARKET", {
+    this.add.text(towerX, towerY + 26, "FARMERS MARKET", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#7c3aed", // Darker purple for visibility
@@ -610,7 +607,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
       
       if (distGrayson < 12) {
         pie.setData('collected', true);
-        pie.setAlpha(0.3);
+        pie.destroy(); // Disappear like Smush's
         
         // Check if it's a pie slice or just a dot
         if (pie.getData('isPieSlice')) {
