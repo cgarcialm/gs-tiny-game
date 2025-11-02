@@ -199,13 +199,14 @@ export default class FarmersMarketScene extends Phaser.Scene {
       wall.setAlpha(0); // Invisible
     };
     
-    // Outer border walls (with gaps for tunnels) - moved down
-    addWall(5, 24, 140, 4); // Top left
-    addWall(175, 24, 140, 4); // Top right
-    addWall(5, 171, 140, 4); // Bottom left
-    addWall(175, 171, 140, 4); // Bottom right
-    addWall(5, 25, 4, 150); // Left (shorter)
-    addWall(311, 25, 4, 150); // Right (shorter)
+    // Outer border walls (with gaps only for top/bottom tunnels)
+    addWall(5, 24, 143, 4); // Top left
+    addWall(172, 24, 143, 4); // Top right
+    addWall(5, 171, 143, 4); // Bottom left
+    addWall(172, 171, 143, 4); // Bottom right
+    // Side walls (solid)
+    addWall(5, 25, 4, 150); // Left
+    addWall(311, 25, 4, 150); // Right
     
     // Pink/Blue blocks - moved down and shorter
     addWall(22, 42, 56, 16); // Top-left 1 (pink)
@@ -355,12 +356,12 @@ export default class FarmersMarketScene extends Phaser.Scene {
     const innerBg = this.add.rectangle(160, 100, 310, 150, 0x000000, 1);
     innerBg.setOrigin(0.5).setDepth(1);
     
-    // Top entrance tunnel (black extends from scoreboard to playfield)
-    const topTunnel = this.add.rectangle(160, 20, 30, 10, 0x000000, 1);
+    // Top entrance tunnel (width matches gap between blocks: 148 to 172 = 24px)
+    const topTunnel = this.add.rectangle(160, 20, 24, 10, 0x000000, 1);
     topTunnel.setOrigin(0.5, 0).setDepth(2);
     
-    // Bottom entrance tunnel (black extends all the way to screen bottom)
-    const bottomTunnel = this.add.rectangle(160, 180, 30, 15, 0x000000, 1);
+    // Bottom entrance tunnel (width matches gap between blocks)
+    const bottomTunnel = this.add.rectangle(160, 180, 24, 15, 0x000000, 1);
     bottomTunnel.setOrigin(0.5, 1).setDepth(2);
     
     // Visual walls matching physics (pastel colored blocks)
@@ -368,13 +369,13 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Outer border (pastel purple - with gaps for tunnels)
     walls.fillStyle(0xc4b5fd, 1);
-    // Top border - split for tunnel
-    walls.fillRect(5, 24, 140, 4); // Top left
-    walls.fillRect(175, 24, 140, 4); // Top right
-    // Bottom border - split for tunnel
-    walls.fillRect(5, 171, 140, 4); // Bottom left
-    walls.fillRect(175, 171, 140, 4); // Bottom right
-    // Side borders
+    // Top border - split for tunnel (24px gap: 148 to 172)
+    walls.fillRect(5, 24, 143, 4); // Top left
+    walls.fillRect(172, 24, 143, 4); // Top right
+    // Bottom border - split for tunnel (24px gap: 148 to 172)
+    walls.fillRect(5, 171, 143, 4); // Bottom left
+    walls.fillRect(172, 171, 143, 4); // Bottom right
+    // Side borders (solid - no gaps)
     walls.fillRect(5, 25, 4, 150); // Left
     walls.fillRect(311, 25, 4, 150); // Right
     
@@ -617,30 +618,30 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private checkTunnelWrapping() {
     const tunnelCenterX = 160;
-    const tunnelWidth = 15; // Half of 30px tunnel
+    const tunnelHalfWidth = 12; // Half of 24px tunnel
     
-    // Check if in tunnel horizontally
-    const inTunnel = Math.abs(this.playerPhysics.x - tunnelCenterX) < tunnelWidth;
-    const smushInTunnel = Math.abs(this.smushPhysics.x - tunnelCenterX) < tunnelWidth;
+    // Check if in vertical tunnels (top/bottom)
+    const inVerticalTunnel = Math.abs(this.playerPhysics.x - tunnelCenterX) < tunnelHalfWidth;
+    const smushInVerticalTunnel = Math.abs(this.smushPhysics.x - tunnelCenterX) < tunnelHalfWidth;
     
     // Grayson: Top tunnel → bottom
-    if (inTunnel && this.playerPhysics.y < 10) {
+    if (inVerticalTunnel && this.playerPhysics.y < 10) {
       this.playerPhysics.setPosition(this.playerPhysics.x, 170);
     }
     
     // Grayson: Bottom tunnel → top
-    if (inTunnel && this.playerPhysics.y > 170) {
-      this.playerPhysics.setPosition(this.playerPhysics.x, 10);
+    if (inVerticalTunnel && this.playerPhysics.y > 170) {
+      this.playerPhysics.setPosition(this.playerPhysics.x, 30);
     }
     
     // Smush: Top tunnel → bottom
-    if (smushInTunnel && this.smushPhysics.y < 10) {
+    if (smushInVerticalTunnel && this.smushPhysics.y < 10) {
       this.smushPhysics.setPosition(this.smushPhysics.x, 170);
     }
     
     // Smush: Bottom tunnel → top
-    if (smushInTunnel && this.smushPhysics.y > 170) {
-      this.smushPhysics.setPosition(this.smushPhysics.x, 10);
+    if (smushInVerticalTunnel && this.smushPhysics.y > 170) {
+      this.smushPhysics.setPosition(this.smushPhysics.x, 30);
     }
   }
 
