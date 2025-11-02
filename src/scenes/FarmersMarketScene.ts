@@ -39,6 +39,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private totalDots = 0;
   private dotsNeeded = 0;
   private piesNeeded = 3; // Grayson must eat 3 pie slices to win
+  private totalPiesSpawned = 0; // Track total pies spawned (max 5)
+  private maxPiesToSpawn = 5;
   
   private fruits: Phaser.GameObjects.Graphics[] = []; // Power-up fruits
   private fruitSpawnTimer = 0;
@@ -48,7 +50,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   // Shoppers that block aisles
   private shoppers: { sprite: Phaser.GameObjects.Container, physics: Phaser.Physics.Arcade.Sprite, targetX: number, targetY: number, returning: boolean }[] = [];
   private shopperSpawnTimer = 0;
-  private shopperSpawnInterval = 5000; // Spawn shoppers every 5 seconds
+  private shopperSpawnInterval = 3000; // Spawn shoppers every 3 seconds
   
   private walls!: Phaser.Physics.Arcade.StaticGroup;
   
@@ -79,6 +81,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.graysonDotsEaten = 0;
     this.smushDotsEaten = 0;
     this.graysonPiesEaten = 0;
+    this.totalPiesSpawned = 0;
     this.fruitSpawnTimer = 0;
     this.smushTargetChangeTimer = 0;
     this.smushCurrentTarget = null;
@@ -379,12 +382,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     };
     
     // Pie corner positions (skip dots here)
-    const piePositions = [
-      { x: 15, y: 15 },   // Top-left corner
-      { x: 305, y: 15 },  // Top-right corner
-      { x: 15, y: 165 },  // Bottom-left corner
-      { x: 305, y: 165 }, // Bottom-right corner
-    ];
+    // Temporary pie positions (will be replaced with random later)
+    const piePositions: { x: number, y: number }[] = [];
     
     // Helper to check if position is under a wall block
     const isUnderWall = (x: number, y: number): boolean => {
@@ -424,20 +423,12 @@ export default class FarmersMarketScene extends Phaser.Scene {
       }
     }
     
-    // Add actual pie slices in the 4 corners
-    
-    piePositions.forEach(pos => {
-      const pie = createPieSliceSprite(this, pos.x, pos.y);
-      pie.setDepth(3);
-      pie.setData('isPie', true);
-      pie.setData('isPieSlice', true); // Mark as actual pie (worth more?)
-      pie.setData('collected', false);
-      this.pies.push(pie);
-    });
+    // Start with only 2 pie slices
+    this.spawnNewPieSlice();
+    this.spawnNewPieSlice();
     
     this.totalDots = this.pies.length;
     this.dotsNeeded = Math.ceil(this.totalDots * 0.6);
-    console.log(`Total dots: ${this.totalDots}, Need ${this.dotsNeeded} to win`);
   }
   update() {
     // Handle menus
@@ -645,13 +636,17 @@ export default class FarmersMarketScene extends Phaser.Scene {
       );
       
       if (distGrayson < 12) {
+        const isPieSlice = pie.getData('isPieSlice');
+        
         pie.setData('collected', true);
-        pie.destroy(); // Disappear like Smush's
+        pie.destroy();
         
         // Check if it's a pie slice or just a dot
-        if (pie.getData('isPieSlice')) {
+        if (isPieSlice) {
           this.graysonPiesEaten++;
-          console.log(`Grayson pies: ${this.graysonPiesEaten}/${this.piesNeeded}`);
+          
+          // Spawn new pie slice (if haven't reached max)
+          this.spawnNewPieSlice();
         } else {
           this.graysonDotsEaten++;
         }
@@ -671,8 +666,18 @@ export default class FarmersMarketScene extends Phaser.Scene {
       
       if (distSmush < 12) {
         pie.setData('collected', true);
+        
+        // Check if it's a pie slice or just a dot BEFORE destroying
+        const isPieSlice = pie.getData('isPieSlice');
+        
         pie.destroy();
-        this.smushDotsEaten++;
+        
+        if (isPieSlice) {
+          // Smush ate a pie - spawn new one
+          this.spawnNewPieSlice();
+        } else {
+          this.smushDotsEaten++;
+        }
         
         // Smush can still win by eating enough dots
         if (this.smushDotsEaten >= this.dotsNeeded) {
@@ -810,6 +815,51 @@ export default class FarmersMarketScene extends Phaser.Scene {
     });
   }
   
+  private spawnNewPieSlice() {
+    // Check if we've reached max pies
+    if (this.totalPiesSpawned >= this.maxPiesToSpawn) return;
+    if (this.validDotPositions.length === 0) return;
+    
+    // Find positions that don't have existing ACTIVE pies
+    const availablePositions = this.validDotPositions.filter(vPos => {
+      // Check if there's already an active pie at this position
+      const hasPie = this.pies.some(p => 
+        p.active && // Only check active (not destroyed) pies
+        p.getData('isPieSlice') && 
+        !p.getData('collected') && 
+        Math.abs(p.x - vPos.x) < 3 && 
+        Math.abs(p.y - vPos.y) < 3
+      );
+      return !hasPie;
+    });
+    
+    if (availablePositions.length === 0) {
+      // If no positions available, just pick a random one
+      const pos = this.validDotPositions[Math.floor(Math.random() * this.validDotPositions.length)];
+      const pie = createPieSliceSprite(this, pos.x, pos.y);
+      pie.setDepth(8);
+      pie.setData('isPie', true);
+      pie.setData('isPieSlice', true);
+      pie.setData('collected', false);
+      this.pies.push(pie);
+      this.totalPiesSpawned++;
+      return;
+    }
+    
+    // Pick random available corridor position
+    const pos = availablePositions[Math.floor(Math.random() * availablePositions.length)];
+    
+    // Create pie slice
+    const pie = createPieSliceSprite(this, pos.x, pos.y);
+    pie.setDepth(8); // Higher depth to be visible above everything
+    pie.setData('isPie', true);
+    pie.setData('isPieSlice', true);
+    pie.setData('collected', false);
+    this.pies.push(pie);
+    
+    this.totalPiesSpawned++;
+  }
+  
   private spawnShopper() {
     // Predefined walking lanes in clear corridors (verified safe paths)
     const lanes = [
@@ -918,7 +968,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
       "",
       "Smush is faster than you!",
       "Grab FRUITS for speed boost",
-      "Avoid SHOPPERS blocking paths",
+      "Avoid SHOPPERS in aisles",
       "",
       "Press ENTER to start!"
     ].join("\n");
@@ -940,6 +990,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     }
     this.showingTutorial = false;
     // entranceComplete already true from entrance animations
+    
+    // Spawn first shopper immediately when game starts
+    this.spawnShopper();
   }
 }
 

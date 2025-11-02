@@ -34,7 +34,7 @@ export function createGraysonPacManSprite(
     
     // Glow effect (behind sprite)
     const glowSize = container.getData('glowSize') || 8; // Default
-    const glowOpacity = container.getData('glowOpacity') || 0.6; // Default opacity
+    const glowOpacity = container.getData('glowOpacity') || 0.5; // Default opacity
     graphics.fillStyle(0x81c784, glowOpacity); // Green glow
     graphics.fillCircle(0, 0, glowSize);
     
