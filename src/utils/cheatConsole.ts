@@ -146,16 +146,14 @@ export class CheatConsole {
     if (klapauciusMatch) {
       const level = parseInt(klapauciusMatch[1], 10);
       
-      if (level >= 1 && level <= 2) {
+      if (level >= 1 && level <= 3) {
         console.log(`Cheat activated: Jumping to level ${level}`);
         this.jumpToLevel(level);
-      } else if (level === 3) {
-        console.log('Level 3 not available yet!');
       } else {
-        console.log('Invalid level. Use: klapaucius 1 or klapaucius 2');
+        console.log('Invalid level. Use: klapaucius 1, 2, or 3');
       }
     } else if (trimmedCommand === 'klapaucius') {
-      console.log('Usage: klapaucius <level> (1 or 2)');
+      console.log('Usage: klapaucius <level> (1, 2, or 3)');
     } else if (trimmedCommand !== '') {
       console.log('Unknown cheat code');
     }
@@ -172,7 +170,10 @@ export class CheatConsole {
         // Jump to level 2 - Ice Hockey scene
         this.scene.scene.start('IceHockey');
         break;
-      // case 3: Level 3 not implemented yet
+      case 3:
+        // Jump to level 3 - Farmers Market scene
+        this.scene.scene.start('FarmersMarket');
+        break;
     }
   }
 
