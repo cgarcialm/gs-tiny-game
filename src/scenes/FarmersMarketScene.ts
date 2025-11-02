@@ -547,8 +547,22 @@ export default class FarmersMarketScene extends Phaser.Scene {
       const pieSlices = availableDots.filter(p => p.getData('isPieSlice'));
       
       if (pieSlices.length > 0 && Math.random() < 0.8) {
-        // Go for a pie slice!
-        this.smushCurrentTarget = pieSlices[Math.floor(Math.random() * pieSlices.length)];
+        // Find closest pie slice
+        let closestPie: Phaser.GameObjects.Graphics | null = null;
+        let closestDist = Infinity;
+        
+        pieSlices.forEach(pie => {
+          const dist = Phaser.Math.Distance.Between(
+            this.smushPhysics.x, this.smushPhysics.y,
+            pie.x, pie.y
+          );
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestPie = pie;
+          }
+        });
+        
+        this.smushCurrentTarget = closestPie;
       } else if (availableDots.length > 0) {
         // Pick random regular dot
         this.smushCurrentTarget = availableDots[Math.floor(Math.random() * availableDots.length)];
