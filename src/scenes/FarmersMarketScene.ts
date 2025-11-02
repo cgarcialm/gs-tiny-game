@@ -27,16 +27,24 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private entranceComplete = false; // Don't sync during entrance animation
   
-  private pies: Phaser.GameObjects.Graphics[] = []; // Collectible pies
-  private graysonPiesEaten = 0;
-  private smushPiesEaten = 0;
-  private totalDots = 0; // Set after spawning
-  private dotsNeeded = 0; // Calculated as percentage
+  private pies: Phaser.GameObjects.Graphics[] = []; // Collectible dots and pies
+  private graysonDotsEaten = 0;
+  private smushDotsEaten = 0;
+  private graysonPiesEaten = 0; // Track pie slices separately
+  private totalDots = 0;
+  private dotsNeeded = 0;
+  private piesNeeded = 3; // Grayson must eat 3 pie slices to win
   
-  private walls!: Phaser.Physics.Arcade.StaticGroup; // Collision walls
+  private fruits: Phaser.GameObjects.Graphics[] = []; // Power-up fruits
+  private fruitSpawnTimer = 0;
+  private fruitSpawnInterval = 10000; // Spawn fruit every 10 seconds
+  private validDotPositions: {x: number, y: number}[] = []; // Track corridor positions
   
-  private speed = 100;
-  private smushSpeed = 95; // Slightly slower but competitive
+  private walls!: Phaser.Physics.Arcade.StaticGroup;
+  
+  private baseSpeed = 100;
+  private speed = 100; // Can be boosted by fruits
+  private smushSpeed = 110; // Faster than Grayson!
   
   constructor() {
     super("FarmersMarket");
@@ -346,14 +354,41 @@ export default class FarmersMarketScene extends Phaser.Scene {
       { x: 305, y: 165 }, // Bottom-right corner
     ];
     
-    // Dense grid covering entire playfield (skip pie positions)
+    // Helper to check if position is under a wall block
+    const isUnderWall = (x: number, y: number): boolean => {
+      // Check all wall rectangles
+      if ((x >= 22 && x <= 78 && y >= 22 && y <= 48) ||  // Pink 1 left
+          (x >= 242 && x <= 298 && y >= 22 && y <= 48)) return true; // Pink 1 right
+      if ((x >= 92 && x <= 148 && y >= 22 && y <= 48) ||  // Pink 2 left
+          (x >= 172 && x <= 228 && y >= 22 && y <= 48)) return true; // Pink 2 right
+      if ((x >= 22 && x <= 68 && y >= 62 && y <= 88) ||   // Peach left
+          (x >= 252 && x <= 298 && y >= 62 && y <= 88)) return true; // Peach right
+      if (x >= 111 && x <= 209 && y >= 62 && y <= 118) return true; // Center mint
+      if ((x >= 22 && x <= 68 && y >= 102 && y <= 158) || // Lavender left
+          (x >= 252 && x <= 298 && y >= 102 && y <= 158)) return true; // Lavender right
+      if ((x >= 82 && x <= 148 && y >= 132 && y <= 158) || // Yellow left
+          (x >= 172 && x <= 238 && y >= 132 && y <= 158)) return true; // Yellow right
+      if ((x >= 82 && x <= 99 && y >= 62 && y <= 158) ||  // Yellow ext left
+          (x >= 221 && x <= 238 && y >= 62 && y <= 158)) return true; // Yellow ext right
+      return false;
+    };
+    
+    // Dense grid covering entire playfield (skip pie positions and walls)
     for (let x = 15; x < 310; x += spacing) {
       for (let y = 15; y < 170; y += spacing) {
         // Skip if this is a pie position
         const isPiePos = piePositions.some(p => p.x === x && p.y === y);
         if (isPiePos) continue;
         
+        // Skip if under wall
+        if (isUnderWall(x, y)) {
+          addDot(x, y); // Still draw dot (will be hidden by wall)
+          continue; // But don't save as valid position
+        }
+        
         addDot(x, y);
+        // Save position as valid corridor location (not under walls!)
+        this.validDotPositions.push({ x, y });
       }
     }
     
@@ -398,6 +433,16 @@ export default class FarmersMarketScene extends Phaser.Scene {
       
       // Check pie collection for both
       this.checkPieCollection();
+      
+      // Fruit spawning timer
+      this.fruitSpawnTimer += this.game.loop.delta;
+      if (this.fruitSpawnTimer >= this.fruitSpawnInterval) {
+        this.fruitSpawnTimer = 0;
+        this.spawnFruit();
+      }
+      
+      // Check fruit collection
+      this.checkFruitCollection();
     }
     
     // Sync sprites with physics (only after entrance completes)
@@ -466,7 +511,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
 
   private updateSmushAI() {
-    // Smush goes after nearest pie
+    // Smush goes after nearest uncollected dot/pie
     let nearestPie: Phaser.GameObjects.Graphics | null = null;
     let nearestDist = Infinity;
     
@@ -523,12 +568,18 @@ export default class FarmersMarketScene extends Phaser.Scene {
       
       if (distGrayson < 12) {
         pie.setData('collected', true);
-        pie.setAlpha(0.3); // Fade but don't destroy yet
-        this.graysonPiesEaten++;
+        pie.setAlpha(0.3);
         
-        console.log(`Grayson: ${this.graysonPiesEaten}/${this.dotsNeeded}`);
+        // Check if it's a pie slice or just a dot
+        if (pie.getData('isPieSlice')) {
+          this.graysonPiesEaten++;
+          console.log(`Grayson pies: ${this.graysonPiesEaten}/${this.piesNeeded}`);
+        } else {
+          this.graysonDotsEaten++;
+        }
         
-        if (this.graysonPiesEaten >= this.dotsNeeded) {
+        // Win condition: enough dots AND 3 pies
+        if (this.graysonDotsEaten >= this.dotsNeeded && this.graysonPiesEaten >= this.piesNeeded) {
           this.graysonWins();
         }
         return;
@@ -542,13 +593,11 @@ export default class FarmersMarketScene extends Phaser.Scene {
       
       if (distSmush < 12) {
         pie.setData('collected', true);
-        pie.setAlpha(0); // Invisible when collected
-        pie.destroy(); // Remove completely
-        this.smushPiesEaten++;
+        pie.destroy();
+        this.smushDotsEaten++;
         
-        console.log(`Smush: ${this.smushPiesEaten}/${this.dotsNeeded}`);
-        
-        if (this.smushPiesEaten >= this.dotsNeeded) {
+        // Smush can still win by eating enough dots
+        if (this.smushDotsEaten >= this.dotsNeeded) {
           this.smushWins();
         }
         return;
@@ -582,5 +631,86 @@ export default class FarmersMarketScene extends Phaser.Scene {
       this.scene.start("FarmersMarket");
     });
   }
+  
+  private spawnFruit() {
+    // Random fruit type
+    const fruitTypes = [
+      { name: 'plum', color: 0x8b4789 },    // Purple
+      { name: 'peach', color: 0xffcba4 },   // Peachy orange
+      { name: 'apple', color: 0xff0000 },   // Red
+      { name: 'banana', color: 0xffeb3b }   // Yellow
+    ];
+    
+    const fruitType = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
+    
+    // Pick random valid corridor position (from dot grid)
+    if (this.validDotPositions.length === 0) return; // No valid positions
+    const randomPos = this.validDotPositions[Math.floor(Math.random() * this.validDotPositions.length)];
+    const x = randomPos.x;
+    const y = randomPos.y;
+    
+    const fruit = this.add.graphics();
+    
+    // Simple circle fruit (color-coded)
+    fruit.fillStyle(fruitType.color, 1);
+    fruit.fillCircle(0, 0, 4);
+    
+    // Small shine/highlight
+    fruit.fillStyle(0xffffff, 0.5);
+    fruit.fillCircle(-1, -1, 2);
+    
+    fruit.setPosition(x, y);
+    fruit.setDepth(4);
+    fruit.setData('isFruit', true);
+    fruit.setData('fruitType', fruitType.name);
+    
+    // Pulse animation
+    this.tweens.add({
+      targets: fruit,
+      scale: 1.2,
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut"
+    });
+    
+    this.fruits.push(fruit);
+    
+    // Auto-despawn after 10 seconds
+    this.time.delayedCall(10000, () => {
+      if (fruit.active) {
+        fruit.destroy();
+        const index = this.fruits.indexOf(fruit);
+        if (index > -1) this.fruits.splice(index, 1);
+      }
+    });
+  }
+  
+  private checkFruitCollection() {
+    this.fruits.forEach(fruit => {
+      const dist = Phaser.Math.Distance.Between(
+        this.playerPhysics.x, this.playerPhysics.y,
+        fruit.x, fruit.y
+      );
+      
+      if (dist < 12) {
+        // Collect fruit - speed boost!
+        fruit.destroy();
+        const index = this.fruits.indexOf(fruit);
+        if (index > -1) this.fruits.splice(index, 1);
+        
+        // Speed boost
+        this.speed = 150; // Much faster!
+        this.player.setData('glowSize', 18); // Bigger glow
+        
+        // Reset after 5 seconds
+        this.time.delayedCall(5000, () => {
+          this.speed = this.baseSpeed;
+          this.player.setData('glowSize', 12);
+        });
+      }
+    });
+  }
 }
+
 
