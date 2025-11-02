@@ -265,31 +265,31 @@ export default class FarmersMarketScene extends Phaser.Scene {
         color: "#81c784",
       }).setOrigin(0, 0.5);
       graysonContainer.add(gLabel);
-      xPos += 20;
+      xPos += 22;
       
-      // Pie count
+      // Pie count (right-aligned so it grows leftward)
       const pieText = this.add.text(xPos, 0, `${this.graysonPiesEaten}`, {
         fontFamily: "monospace",
         fontSize: "10px",
         color: "#81c784",
-      }).setOrigin(0, 0.5);
+      }).setOrigin(1, 0.5);
       graysonContainer.add(pieText);
-      xPos += 15;
+      xPos += 8;
       
       // Pie sprite (bigger)
       const pieIcon = createPieSliceSprite(this, xPos, 0);
       pieIcon.setScale(1.2);
       graysonContainer.add(pieIcon);
-      xPos += 15;
+      xPos += 25;
       
-      // Dots count
+      // Dots count (right-aligned so it grows leftward)
       const dotsText = this.add.text(xPos, 0, `${this.graysonDotsEaten}`, {
         fontFamily: "monospace",
         fontSize: "10px",
         color: "#81c784",
-      }).setOrigin(0, 0.5);
+      }).setOrigin(1, 0.5);
       graysonContainer.add(dotsText);
-      xPos += 10;
+      xPos += 2;
       
       // Dot sprite (bigger)
       const dotIcon = this.add.graphics();
@@ -310,31 +310,31 @@ export default class FarmersMarketScene extends Phaser.Scene {
         color: "#d97c3c",
       }).setOrigin(0, 0.5);
       smushContainer.add(sLabel);
-      xPos += 20;
+      xPos += 22;
       
-      // Pie count
+      // Pie count (right-aligned so it grows leftward)
       const pieText = this.add.text(xPos, 0, `${this.smushPiesEaten}`, {
         fontFamily: "monospace",
         fontSize: "10px",
         color: "#d97c3c",
-      }).setOrigin(0, 0.5);
+      }).setOrigin(1, 0.5);
       smushContainer.add(pieText);
-      xPos += 15;
+      xPos += 8;
       
       // Pie sprite
       const pieIcon = createPieSliceSprite(this, xPos, 0);
       pieIcon.setScale(1.2);
       smushContainer.add(pieIcon);
-      xPos += 15;
+      xPos += 28;
       
-      // Dots count
+      // Dots count (right-aligned so it grows leftward)
       const dotsText = this.add.text(xPos, 0, `${this.smushDotsEaten}`, {
         fontFamily: "monospace",
         fontSize: "10px",
         color: "#d97c3c",
-      }).setOrigin(0, 0.5);
+      }).setOrigin(1, 0.5);
       smushContainer.add(dotsText);
-      xPos += 10;
+      xPos += 2;
       
       // Dot sprite
       const dotIcon = this.add.graphics();
