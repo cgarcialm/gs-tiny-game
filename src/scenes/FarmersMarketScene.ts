@@ -196,22 +196,33 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.walls = this.physics.add.staticGroup();
     
     // Helper to create physics rectangle
-    const addWall = (x: number, y: number, width: number, height: number) => {
-      const wall = this.add.rectangle(x, y, width, height, 0x000000, 0);
+    const addWall = (x: number, y: number, width: number, height: number, skipInset: boolean = false) => {
+      // Make physics box 2px smaller on each side for easier navigation (unless skipInset)
+      const inset = skipInset ? 0 : 1;
+      const wall = this.add.rectangle(
+        x + inset, 
+        y + inset, 
+        width - inset * 2, 
+        height - inset * 2, 
+        0x000000, 0 // Invisible
+      );
       wall.setOrigin(0, 0); // Top-left origin like fillRect
       this.physics.add.existing(wall, true); // true = static
       this.walls.add(wall);
       wall.setAlpha(0); // Invisible
     };
     
-    // Outer border walls (with gaps only for top/bottom tunnels)
-    addWall(5, 24, 143, 4); // Top left
-    addWall(172, 24, 143, 4); // Top right
-    addWall(5, 171, 143, 4); // Bottom left
-    addWall(172, 171, 143, 4); // Bottom right
-    // Side walls (solid)
-    addWall(5, 25, 4, 150); // Left
-    addWall(311, 25, 4, 150); // Right
+    // Scoreboard barrier (blocks top area) - no inset to avoid gaps
+    addWall(0, 0, 320, 20, true);
+    
+    // Outer border walls (with gaps only for top/bottom tunnels) - no inset (too thin!)
+    addWall(5, 24, 143, 4, true); // Top left
+    addWall(172, 24, 143, 4, true); // Top right
+    addWall(5, 171, 143, 4, true); // Bottom left
+    addWall(172, 171, 143, 4, true); // Bottom right
+    // Side walls (solid) - no inset (too thin!)
+    addWall(5, 25, 4, 150, true); // Left
+    addWall(311, 25, 4, 150, true); // Right
     
     // Pink/Blue blocks - moved down and shorter
     addWall(22, 42, 56, 16); // Top-left 1 (pink)
@@ -234,9 +245,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     addWall(82, 142, 66, 16); // Left
     addWall(172, 142, 66, 16); // Right
     
-    // Yellow vertical extensions - moved down and shorter
-    addWall(82, 72, 17, 86); // Left
-    addWall(221, 72, 17, 86); // Right
+    // Yellow vertical extensions - narrower for wider paths
+    addWall(82, 72, 16, 86); // Left (narrower)
+    addWall(222, 72, 16, 86); // Right (narrower)
   }
   
   private createScoreboard() {
@@ -401,7 +412,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Center block (pastel mint - perfectly centered)
     walls.fillStyle(0xa7f3d0, 1);
-    walls.fillRect(111, 72, 98, 56);
+    walls.fillRect(112, 72, 96, 56);
 
     // Third row side blocks (pastel lavender) - shorter
     walls.fillStyle(0xddd6fe, 1);
@@ -413,9 +424,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     walls.fillRect(82, 142, 66, 16); // Left (shorter)
     walls.fillRect(172, 142, 66, 16); // Right (mirrored)
 
-    // Vertical extensions from bottom yellow blocks
-    walls.fillRect(82, 72, 17, 86); // Left
-    walls.fillRect(221, 72, 17, 86); // Right (mirrored)
+    // Vertical extensions from bottom yellow blocks (narrower for wider paths)
+    walls.fillRect(82, 72, 16, 86); // Left (narrower: 17 → 13)
+    walls.fillRect(222, 72, 16, 86); // Right (narrower)
     
     // -------------------------- Water tower --------------------------
 
@@ -521,8 +532,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
           (x >= 252 && x <= 298 && y >= 111 && y <= 158)) return true; // Lavender right
       if ((x >= 82 && x <= 148 && y >= 142 && y <= 158) || // Yellow left
           (x >= 172 && x <= 238 && y >= 142 && y <= 158)) return true; // Yellow right
-      if ((x >= 82 && x <= 99 && y >= 72 && y <= 158) ||  // Yellow ext left
-          (x >= 221 && x <= 238 && y >= 72 && y <= 158)) return true; // Yellow ext right
+      if ((x >= 82 && x <= 95 && y >= 72 && y <= 158) ||  // Yellow ext left (narrower)
+          (x >= 225 && x <= 238 && y >= 72 && y <= 158)) return true; // Yellow ext right (narrower)
       return false;
     };
     
@@ -634,24 +645,24 @@ export default class FarmersMarketScene extends Phaser.Scene {
     const inVerticalTunnel = Math.abs(this.playerPhysics.x - tunnelCenterX) < tunnelHalfWidth;
     const smushInVerticalTunnel = Math.abs(this.smushPhysics.x - tunnelCenterX) < tunnelHalfWidth;
     
-    // Grayson: Top tunnel → bottom
-    if (inVerticalTunnel && this.playerPhysics.y < 10) {
+    // Grayson: Top tunnel → bottom (trigger at y < 25 before scoreboard blocks)
+    if (inVerticalTunnel && this.playerPhysics.y < 25) {
       this.playerPhysics.setPosition(this.playerPhysics.x, 170);
     }
     
     // Grayson: Bottom tunnel → top
     if (inVerticalTunnel && this.playerPhysics.y > 170) {
-      this.playerPhysics.setPosition(this.playerPhysics.x, 30);
+      this.playerPhysics.setPosition(this.playerPhysics.x, 35);
     }
     
-    // Smush: Top tunnel → bottom
-    if (smushInVerticalTunnel && this.smushPhysics.y < 10) {
+    // Smush: Top tunnel → bottom (trigger at y < 25 before scoreboard blocks)
+    if (smushInVerticalTunnel && this.smushPhysics.y < 25) {
       this.smushPhysics.setPosition(this.smushPhysics.x, 170);
     }
     
     // Smush: Bottom tunnel → top
     if (smushInVerticalTunnel && this.smushPhysics.y > 170) {
-      this.smushPhysics.setPosition(this.smushPhysics.x, 30);
+      this.smushPhysics.setPosition(this.smushPhysics.x, 35);
     }
   }
 
@@ -807,21 +818,19 @@ export default class FarmersMarketScene extends Phaser.Scene {
           // Smush ate a pie - track and spawn new one
           this.smushPiesEaten++;
           this.spawnNewPieSlice();
-          
-          // If Smush ate 3 pies, Grayson can't win anymore!
-          if (this.smushPiesEaten >= 3) {
-            this.smushWins();
-            return;
-          }
         } else {
           this.smushDotsEaten++;
         }
         
-        // Update scoreboard
+        // Update scoreboard FIRST (before checking win)
         this.updateScoreboard();
         
-        // Smush can also win by eating enough dots
-        if (this.smushDotsEaten >= this.dotsNeeded) {
+        // Check win conditions
+        if (this.smushPiesEaten >= 3) {
+          // Smush ate 3 pies - Grayson can't win anymore!
+          this.smushWins();
+        } else if (this.smushDotsEaten >= this.dotsNeeded) {
+          // Smush ate enough dots
           this.smushWins();
         }
         return;
@@ -858,15 +867,17 @@ export default class FarmersMarketScene extends Phaser.Scene {
       duration: 400,
       ease: "Back.easeOut",
       onComplete: () => {
-        // Then start pulsing
-        this.tweens.add({
-          targets: this.cardPiece,
-          scale: 1.8,
-          duration: 600,
-          yoyo: true,
-          repeat: -1,
-          ease: "Sine.easeInOut"
-        });
+        // Then start pulsing (check if card still exists)
+        if (this.cardPiece && this.cardPiece.active) {
+          this.tweens.add({
+            targets: this.cardPiece,
+            scale: 1.8,
+            duration: 600,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut"
+          });
+        }
       }
     });
     
@@ -877,10 +888,10 @@ export default class FarmersMarketScene extends Phaser.Scene {
       });
     }
     
-    // Glowing ring around card
+    // Glowing filled circle around card
     const glow = this.add.graphics();
-    glow.lineStyle(3, 0xffd700, 0.8);
-    glow.strokeCircle(pos.x, pos.y, 20);
+    glow.fillStyle(0xffd700, 0.4);
+    glow.fillCircle(pos.x, pos.y, 20);
     glow.setDepth(19);
     
     this.tweens.add({
@@ -906,10 +917,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
       this.cardPiece.destroy();
       this.cardPiece = null;
       
-      this.dialogueManager.show("Grayson: Got it! The last one...");
-      
       // Transition back to GameScene
-      this.time.delayedCall(2000, () => {
+      this.time.delayedCall(1500, () => {
         this.registry.set('completedLevels', 3);
         fadeToScene(this, "Game", 1000);
       });

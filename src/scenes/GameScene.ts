@@ -248,9 +248,15 @@ export default class GameScene extends Phaser.Scene {
         
       case 3:
         // Level 3: After Farmers Market - Grayson returns with memory
-        // Grayson starts off-screen left
+        // Clean scene - only Grayson
         this.player = createGraysonSprite(this, -30, 90);
         this.player.setScale(-1, 1); // Face right
+        
+        // No other NPCs or objects in this level
+        this.npc = undefined as any;
+        this.cat = undefined as any;
+        this.ceci = undefined as any;
+        this.cardPiece = undefined as any;
         
         // Grayson walks in from left to center
         this.time.delayedCall(500, () => {
@@ -279,7 +285,7 @@ export default class GameScene extends Phaser.Scene {
                 
                 // Grayson reflects on the memory
                 this.time.delayedCall(800, () => {
-                  this.dialogueManager.show("Grayson: That farmers market memory... it's so vivid now.\nAll four memories... I can almost feel the whole picture.");
+                  this.dialogueManager.show("Grayson: Got the last piece!");
                   
                   // Add more dialogue or next steps here
                   this.time.delayedCall(4000, () => {

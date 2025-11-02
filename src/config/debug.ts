@@ -17,8 +17,9 @@ export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "
  * Set to desired level number to skip ahead in GameScene (only applies if starting in "Game")
  * 0 = start (Eboshi encounter)
  * 1 = after Northgate (Ceci returns)
- * 2 = after level 2
- * etc.
+ * 2 = after Ice Hockey (Smush playing)
+ * 3 = after Farmers Market
+ * Set to 0 to use registry/normal progression
  */
-export const DEBUG_START_LEVEL = 2;
+export const DEBUG_START_LEVEL = 0;
 
