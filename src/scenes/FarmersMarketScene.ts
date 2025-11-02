@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonPacManSprite, animateGraysonChomp, createSmushPacManSprite, animateSmushChomp, createPieSliceSprite } from "../utils/sprites";
+import { createGraysonPacManSprite, animateGraysonChomp, createSmushPacManSprite, animateSmushChomp, createPieSliceSprite, createShopperSprite } from "../utils/sprites";
 import { createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
@@ -42,6 +42,11 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private fruitSpawnInterval = 10000; // Spawn fruit every 10 seconds
   private validDotPositions: {x: number, y: number}[] = []; // Track corridor positions
   
+  // Shoppers that block aisles
+  private shoppers: { sprite: Phaser.GameObjects.Container, physics: Phaser.Physics.Arcade.Sprite, targetX: number, targetY: number, returning: boolean }[] = [];
+  private shopperSpawnTimer = 0;
+  private shopperSpawnInterval = 5000; // Spawn shoppers every 5 seconds
+  
   private walls!: Phaser.Physics.Arcade.StaticGroup;
   
   private baseSpeed = 100;
@@ -74,6 +79,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.pies = [];
     this.fruits = [];
     this.validDotPositions = [];
+    this.shoppers = [];
+    this.shopperSpawnTimer = 0;
     this.speed = this.baseSpeed;
     
     // Disable gravity for top-down view
@@ -462,6 +469,16 @@ export default class FarmersMarketScene extends Phaser.Scene {
       
       // Check fruit collection
       this.checkFruitCollection();
+      
+      // Shopper spawning timer
+      this.shopperSpawnTimer += this.game.loop.delta;
+      if (this.shopperSpawnTimer >= this.shopperSpawnInterval && this.shoppers.length < 2) {
+        this.shopperSpawnTimer = 0;
+        this.spawnShopper();
+      }
+      
+      // Update shoppers
+      this.updateShoppers();
     }
     
     // Sync sprites with physics (only after entrance completes)
@@ -772,6 +789,79 @@ export default class FarmersMarketScene extends Phaser.Scene {
           this.player.setData('glowOpacity', 0.6); // Back to normal opacity
         });
       }
+    });
+  }
+  
+  private spawnShopper() {
+    // Predefined walking lanes in clear corridors (verified safe paths)
+    const lanes = [
+      { y: 56, xStart: 80, xEnd: 240 },  // Between pink and peach/mint
+      { y: 165, xStart: 80, xEnd: 240 }, // Bottom corridor
+    ];
+    
+    const lane = lanes[Math.floor(Math.random() * lanes.length)];
+    const colorIndex = Math.floor(Math.random() * 3);
+    
+    // Random start from left or right
+    const startLeft = Math.random() < 0.5;
+    const startX = startLeft ? lane.xStart : lane.xEnd;
+    
+    // Create shopper sprite
+    const shopper = createShopperSprite(this, startX, lane.y, colorIndex);
+    shopper.setDepth(5);
+    
+    // Create physics body
+    const shopperPhysics = this.physics.add.sprite(startX, lane.y, '');
+    shopperPhysics.setSize(6, 10);
+    shopperPhysics.setAlpha(0);
+    shopperPhysics.setImmovable(true);
+    
+    // Add collision with Grayson (blocks him)
+    this.physics.add.collider(this.playerPhysics, shopperPhysics);
+    
+    this.shoppers.push({
+      sprite: shopper,
+      physics: shopperPhysics,
+      targetX: startLeft ? lane.xEnd : lane.xStart,
+      targetY: lane.y,
+      returning: false
+    });
+  }
+  
+  private updateShoppers() {
+    const shopperSpeed = 30; // Slow walking speed
+    
+    this.shoppers.forEach((shopper, index) => {
+      const distX = Math.abs(shopper.physics.x - shopper.targetX);
+      const distY = Math.abs(shopper.physics.y - shopper.targetY);
+      
+      if (!shopper.returning) {
+        // Walking toward target
+        if (distX > 2 || distY > 2) {
+          // Move in the direction with largest distance
+          if (distX > distY) {
+            const direction = shopper.targetX > shopper.physics.x ? 1 : -1;
+            shopper.physics.setVelocityX(direction * shopperSpeed);
+            shopper.physics.setVelocityY(0);
+            
+            // Flip sprite based on direction
+            shopper.sprite.setScale(direction, 1);
+          } else {
+            const direction = shopper.targetY > shopper.physics.y ? 1 : -1;
+            shopper.physics.setVelocityX(0);
+            shopper.physics.setVelocityY(direction * shopperSpeed);
+          }
+        } else {
+          // Reached target, disappear
+          shopper.sprite.destroy();
+          shopper.physics.destroy();
+          this.shoppers.splice(index, 1);
+        }
+      }
+      
+      // Sync sprite with physics
+      shopper.sprite.x = shopper.physics.x;
+      shopper.sprite.y = shopper.physics.y;
     });
   }
 }

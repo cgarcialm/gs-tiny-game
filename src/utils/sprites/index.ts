@@ -13,4 +13,5 @@ export { createCrowdPersonSprite, getRandomCrowdColors } from "./CrowdPersonSpri
 export { createGraysonPacManSprite, animateGraysonChomp } from "./GraysonPacManSprite";
 export { createSmushPacManSprite, animateSmushChomp } from "./SmushPacManSprite";
 export { createPieSliceSprite } from "./PieSliceSprite";
+export { createShopperSprite } from "./ShopperSprite";
 
