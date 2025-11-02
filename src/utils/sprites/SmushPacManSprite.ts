@@ -53,26 +53,35 @@ export function createSmushPacManSprite(
     
     // Face with eye
     drawPixel(3, 2, BLACK);
-    drawPixel(4, 2, EYE_YELLOW); // Eye
+    drawPixel(4, 2, ORANGE);
     drawPixel(5, 2, TAN);
-    drawPixel(6, 2, ORANGE);
-    drawPixel(7, 2, BLACK);
+    drawPixel(6, 2, EYE_YELLOW); // Eye yellow base
+    
+    // Pupil (small black dot in eye)
+    graphics.fillStyle(BLACK, 1);
+    graphics.fillRect(
+      offsetX + 6 * pixelSize + pixelSize / 2,
+      offsetY + 2 * pixelSize + pixelSize / 2,
+      pixelSize / 2,
+      pixelSize / 2
+    );
     
     // Nose and mouth
     if (mouthOpen) {
       // Open mouth (pink/dark)
-      drawPixel(7, 3, BLACK); // Open mouth showing
-      drawPixel(8, 3, BLACK);
+      drawPixel(6, 4, BLACK); // Open mouth showing
+      drawPixel(7, 4, BLACK);
     } else {
       // Closed mouth
-      drawPixel(7, 3, TAN);
-      drawPixel(8, 3, BLACK_SOFT);
+      drawPixel(6, 4, ORANGE_DARK);
+      drawPixel(7, 4, BLACK_SOFT);
     }
     
     drawPixel(3, 3, BLACK);
     drawPixel(4, 3, TAN);
-    drawPixel(5, 3, NOSE_PINK); // Pink nose
-    drawPixel(6, 3, TAN);
+    drawPixel(5, 3, ORANGE);
+    drawPixel(6, 3, BLACK);
+    drawPixel(7, 3, NOSE_PINK); // Pink nose
     
     // White chin
     drawPixel(4, 4, WHITE);
@@ -81,8 +90,6 @@ export function createSmushPacManSprite(
     // Body (tortie pattern)
     drawPixel(2, 4, BLACK);
     drawPixel(3, 4, BLACK);
-    drawPixel(6, 4, ORANGE);
-    drawPixel(7, 4, BLACK);
     
     drawPixel(2, 5, BLACK);
     drawPixel(3, 5, ORANGE);
