@@ -24,6 +24,11 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private smush!: Phaser.GameObjects.Container; // ONE Smush (competitor)
   private smushPhysics!: Phaser.Physics.Arcade.Sprite;
+  private smushStuckTimer = 0;
+  private smushLastX = 0;
+  private smushLastY = 0;
+  private smushTargetChangeTimer = 0;
+  private smushCurrentTarget: Phaser.GameObjects.Graphics | null = null;
   
   private entranceComplete = false; // Don't sync during entrance animation
   
@@ -60,6 +65,19 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Clear any previous dialogue
     this.dialogueManager.hide();
+    
+    // Reset all game state
+    this.entranceComplete = false;
+    this.graysonDotsEaten = 0;
+    this.smushDotsEaten = 0;
+    this.graysonPiesEaten = 0;
+    this.fruitSpawnTimer = 0;
+    this.smushTargetChangeTimer = 0;
+    this.smushCurrentTarget = null;
+    this.pies = [];
+    this.fruits = [];
+    this.validDotPositions = [];
+    this.speed = this.baseSpeed;
     
     // Disable gravity for top-down view
     this.physics.world.gravity.y = 0;
@@ -511,23 +529,33 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
 
   private updateSmushAI() {
-    // Smush goes after nearest uncollected dot/pie
-    let nearestPie: Phaser.GameObjects.Graphics | null = null;
-    let nearestDist = Infinity;
+    // Change target every 3 seconds or when stuck
+    this.smushTargetChangeTimer += this.game.loop.delta;
     
-    this.pies.forEach(pie => {
-      if (pie.getData('collected')) return;
+    const availableDots = this.pies.filter(p => 
+      !p.getData('collected') && p.alpha > 0.5
+    );
+    
+    // Pick new random target periodically or if current is collected
+    if (!this.smushCurrentTarget || 
+        this.smushCurrentTarget.getData('collected') ||
+        this.smushTargetChangeTimer > 3000) {
       
-      const dist = Phaser.Math.Distance.Between(
-        this.smushPhysics.x, this.smushPhysics.y,
-        pie.x, pie.y
-      );
+      this.smushTargetChangeTimer = 0;
       
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearestPie = pie;
+      // Prioritize pie slices (80% chance if available)
+      const pieSlices = availableDots.filter(p => p.getData('isPieSlice'));
+      
+      if (pieSlices.length > 0 && Math.random() < 0.8) {
+        // Go for a pie slice!
+        this.smushCurrentTarget = pieSlices[Math.floor(Math.random() * pieSlices.length)];
+      } else if (availableDots.length > 0) {
+        // Pick random regular dot
+        this.smushCurrentTarget = availableDots[Math.floor(Math.random() * availableDots.length)];
       }
-    });
+    }
+    
+    const nearestPie = this.smushCurrentTarget;
     
     // Move toward nearest pie
     if (nearestPie) {
