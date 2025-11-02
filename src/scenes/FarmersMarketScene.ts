@@ -238,34 +238,109 @@ export default class FarmersMarketScene extends Phaser.Scene {
     const bg = this.add.rectangle(160, 10, 320, 20, 0x000000, 1);
     bg.setOrigin(0.5).setDepth(100);
     
-    // Grayson's score (left side - green color)
-    const graysonText = this.add.text(10, 10, "", {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#81c784", // Green (matches his shirt)
-    });
-    graysonText.setOrigin(0, 0.5).setDepth(101).setName('graysonScore');
+    // Grayson's section (left side)
+    const graysonContainer = this.add.container(10, 10);
+    graysonContainer.setDepth(101).setName('graysonScoreContainer');
     
-    // Smush's score (right side - orange color)
-    const smushText = this.add.text(310, 10, "", {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#d97c3c", // Orange (tortie color)
-    });
-    smushText.setOrigin(1, 0.5).setDepth(101).setName('smushScore');
+    // Smush's section (right side - start from further left)
+    const smushContainer = this.add.container(245, 10);
+    smushContainer.setDepth(101).setName('smushScoreContainer');
     
     this.updateScoreboard();
   }
   
   private updateScoreboard() {
-    const graysonText = this.children.getByName('graysonScore') as Phaser.GameObjects.Text;
-    const smushText = this.children.getByName('smushScore') as Phaser.GameObjects.Text;
+    const graysonContainer = this.children.getByName('graysonScoreContainer') as Phaser.GameObjects.Container;
+    const smushContainer = this.children.getByName('smushScoreContainer') as Phaser.GameObjects.Container;
     
-    if (graysonText) {
-      graysonText.setText(`G: ${this.graysonPiesEaten}/3🥧 ${this.graysonDotsEaten}•`);
+    if (graysonContainer) {
+      graysonContainer.removeAll(true);
+      
+      let xPos = 0;
+      
+      // "G:" label
+      const gLabel = this.add.text(xPos, 0, "G:", {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#81c784",
+      }).setOrigin(0, 0.5);
+      graysonContainer.add(gLabel);
+      xPos += 20;
+      
+      // Pie count
+      const pieText = this.add.text(xPos, 0, `${this.graysonPiesEaten}`, {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#81c784",
+      }).setOrigin(0, 0.5);
+      graysonContainer.add(pieText);
+      xPos += 15;
+      
+      // Pie sprite (bigger)
+      const pieIcon = createPieSliceSprite(this, xPos, 0);
+      pieIcon.setScale(1.2);
+      graysonContainer.add(pieIcon);
+      xPos += 15;
+      
+      // Dots count
+      const dotsText = this.add.text(xPos, 0, `${this.graysonDotsEaten}`, {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#81c784",
+      }).setOrigin(0, 0.5);
+      graysonContainer.add(dotsText);
+      xPos += 10;
+      
+      // Dot sprite (bigger)
+      const dotIcon = this.add.graphics();
+      dotIcon.fillStyle(0xffffff, 1);
+      dotIcon.fillCircle(xPos + 3, 0, 3);
+      graysonContainer.add(dotIcon);
     }
-    if (smushText) {
-      smushText.setText(`S: ${this.smushPiesEaten}/5🥧 ${this.smushDotsEaten}•`);
+    
+    if (smushContainer) {
+      smushContainer.removeAll(true);
+      
+      let xPos = 0;
+      
+      // "S:" label
+      const sLabel = this.add.text(xPos, 0, "S:", {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#d97c3c",
+      }).setOrigin(0, 0.5);
+      smushContainer.add(sLabel);
+      xPos += 20;
+      
+      // Pie count
+      const pieText = this.add.text(xPos, 0, `${this.smushPiesEaten}`, {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#d97c3c",
+      }).setOrigin(0, 0.5);
+      smushContainer.add(pieText);
+      xPos += 15;
+      
+      // Pie sprite
+      const pieIcon = createPieSliceSprite(this, xPos, 0);
+      pieIcon.setScale(1.2);
+      smushContainer.add(pieIcon);
+      xPos += 15;
+      
+      // Dots count
+      const dotsText = this.add.text(xPos, 0, `${this.smushDotsEaten}`, {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#d97c3c",
+      }).setOrigin(0, 0.5);
+      smushContainer.add(dotsText);
+      xPos += 10;
+      
+      // Dot sprite
+      const dotIcon = this.add.graphics();
+      dotIcon.fillStyle(0xffffff, 1);
+      dotIcon.fillCircle(xPos + 3, 0, 3);
+      smushContainer.add(dotIcon);
     }
   }
 
@@ -340,7 +415,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
 
     const tower = this.add.graphics();
     const towerX = 160; // Screen center
-    const towerY = 90; // Center of moved mint block (72 + 56/2)
+    const towerY = 92; // Center of moved mint block (72 + 56/2)
     
     // 4 Diagonal legs (dark, opening downward)
     tower.lineStyle(2, 0x333333, 1);
