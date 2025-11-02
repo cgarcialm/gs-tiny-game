@@ -28,6 +28,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private smushCurrentTarget: Phaser.GameObjects.Graphics | null = null;
   
   private entranceComplete = false; // Don't sync during entrance animation
+  private tutorialOverlay: Phaser.GameObjects.Container | null = null;
+  private showingTutorial = false;
+  private tutorialShown = false; // Track if tutorial was already shown
   
   private pies: Phaser.GameObjects.Graphics[] = []; // Collectible dots and pies
   private graysonDotsEaten = 0;
@@ -70,6 +73,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Reset all game state
     this.entranceComplete = false;
+    this.showingTutorial = false;
+    this.tutorialOverlay = null;
+    this.tutorialShown = false;
     this.graysonDotsEaten = 0;
     this.smushDotsEaten = 0;
     this.graysonPiesEaten = 0;
@@ -439,10 +445,22 @@ export default class FarmersMarketScene extends Phaser.Scene {
       return;
     }
     
-    // Handle dialogue
+    // Tutorial overlay handling
+    if (this.showingTutorial) {
+      if (shouldCloseDialogue(this.controls)) {
+        this.hideTutorialOverlay();
+      }
+      return;
+    }
+    
+    // Handle dialogue - show tutorial after first close
     if (this.dialogueManager.isVisible()) {
       if (shouldCloseDialogue(this.controls)) {
         this.dialogueManager.hide();
+        if (!this.tutorialShown) {
+          // First dialogue closed - show tutorial
+          this.showTutorialOverlay();
+        }
       }
       return;
     }
@@ -863,6 +881,65 @@ export default class FarmersMarketScene extends Phaser.Scene {
       shopper.sprite.x = shopper.physics.x;
       shopper.sprite.y = shopper.physics.y;
     });
+  }
+  
+  private showTutorialOverlay() {
+    this.showingTutorial = true;
+    this.tutorialShown = true;
+    
+    // Create container for overlay
+    this.tutorialOverlay = this.add.container(160, 90);
+    this.tutorialOverlay.setDepth(1000);
+    
+    // Semi-transparent background covering whole screen
+    const background = this.add.rectangle(0, 0, 320, 180, 0x000000, 0.7);
+    this.tutorialOverlay.add(background);
+    
+    // Tutorial box
+    const boxWidth = 260;
+    const boxHeight = 140;
+    const box = this.add.rectangle(0, 0, boxWidth, boxHeight, 0x1e293b, 1);
+    box.setStrokeStyle(4, 0x7c3aed);
+    this.tutorialOverlay.add(box);
+    
+    // Title
+    const title = this.add.text(0, -55, "HOW TO WIN", {
+      fontFamily: "monospace",
+      fontSize: "16px",
+      color: "#fbbf24",
+      fontStyle: "bold",
+      align: "center"
+    }).setOrigin(0.5);
+    this.tutorialOverlay.add(title);
+    
+    // Instructions (more compact)
+    const instructions = [
+      `• Eat 3 PIE SLICES + ${this.dotsNeeded} dots`,
+      "",
+      "Smush is faster than you!",
+      "Grab FRUITS for speed boost",
+      "Avoid SHOPPERS blocking paths",
+      "",
+      "Press ENTER to start!"
+    ].join("\n");
+    
+    const text = this.add.text(0, 13, instructions, {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+      align: "center",
+      lineSpacing: 3
+    }).setOrigin(0.5);
+    this.tutorialOverlay.add(text);
+  }
+  
+  private hideTutorialOverlay() {
+    if (this.tutorialOverlay) {
+      this.tutorialOverlay.destroy();
+      this.tutorialOverlay = null;
+    }
+    this.showingTutorial = false;
+    // entranceComplete already true from entrance animations
   }
 }
 
