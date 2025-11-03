@@ -37,7 +37,16 @@ export default class BootScene extends Phaser.Scene {
       this.registry.set('completedLevels', 0);
     }
     
-    // Debug: Override start scene if configured (see src/config/debug.ts)
+    // In production, ALWAYS start with Title (ignore debug config)
+    const isProduction = import.meta.env.PROD;
+    
+    if (isProduction) {
+      console.log("[PRODUCTION] Starting from Title scene");
+      this.scene.start("Title");
+      return;
+    }
+    
+    // Debug: Override start scene if configured (DEVELOPMENT ONLY)
     if (DEBUG_START_SCENE !== "Title") {
       console.log(`[DEBUG] Starting from scene: ${DEBUG_START_SCENE}`);
       this.scene.start(DEBUG_START_SCENE);

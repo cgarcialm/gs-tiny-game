@@ -116,9 +116,12 @@ export default class GameScene extends Phaser.Scene {
     
     // Get completed levels (registry takes priority over debug setting)
     const registryLevel = this.registry.get('completedLevels');
+    const isProduction = import.meta.env.PROD;
+    
+    // In production, ignore DEBUG_START_LEVEL (always use registry or 0)
     this.completedLevels = registryLevel !== undefined && registryLevel !== null 
       ? registryLevel 
-      : (DEBUG_START_LEVEL || 0);
+      : (isProduction ? 0 : (DEBUG_START_LEVEL || 0));
 
     // Setup scene based on completed levels
     this.setupSceneForLevel(this.completedLevels);

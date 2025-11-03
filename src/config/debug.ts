@@ -1,6 +1,9 @@
 /**
  * Debug configuration for testing
  * Change these values to skip to different parts of the game
+ * 
+ * NOTE: These are ONLY for development/debugging.
+ * Production builds ignore these and always start at "Title" scene.
  */
 
 /**
@@ -15,7 +18,7 @@ export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "
 
 /**
  * Set to desired level number to skip ahead in GameScene (only applies if starting in "Game")
- * 0 = start (Eboshi encounter) - RECOMMENDED for normal play
+ * 0 = start (Eboshi encounter)
  * 1 = after Northgate (Ceci returns)
  * 2 = after Ice Hockey (Smush playing)
  * 3 = after Farmers Market
