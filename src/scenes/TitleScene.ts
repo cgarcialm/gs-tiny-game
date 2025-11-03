@@ -7,6 +7,7 @@ import { DialogueManager } from "../utils/dialogueManager";
 import { handleMenuInput } from "../utils/menuHandler";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
+import { createGraysonSprite } from "../utils/sprites";
 
 const PLAYER_ASCII = String.raw`
    _---
@@ -427,17 +428,14 @@ export default class TitleScene extends Phaser.Scene {
     this.sceneState = "transforming";
     this.transformationTime = 0;
     
-    // Import pixel sprite function dynamically
-    import("../utils/sprites").then(({ createGraysonSprite }) => {
-      // Create pixel version at Grayson's position
-      this.pixelGrayson = createGraysonSprite(this, this.grayson.x, this.grayson.y);
-      this.pixelGrayson.setAlpha(0);
-      this.pixelGrayson.setScale(0.5);
-      
-      // Create glitch effect graphics
-      this.glitchGraphics = this.add.graphics();
-      this.glitchGraphics.setDepth(10);
-    });
+    // Create pixel version at Grayson's position (now using static import)
+    this.pixelGrayson = createGraysonSprite(this, this.grayson.x, this.grayson.y);
+    this.pixelGrayson.setAlpha(0);
+    this.pixelGrayson.setScale(0.5);
+    
+    // Create glitch effect graphics
+    this.glitchGraphics = this.add.graphics();
+    this.glitchGraphics.setDepth(10);
   }
   
   private animateTransformation(dt: number) {

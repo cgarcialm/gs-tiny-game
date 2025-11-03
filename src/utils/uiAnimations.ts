@@ -374,15 +374,19 @@ export function createFadeOut(
  * @param textObject - The text object to animate
  * @param fullText - The full text to display
  * @param config - Configuration for typewriter effect
+ * @returns The timer event (can be stopped with timer.remove())
  * 
  * @example
  * ```typescript
  * createTypewriterEffect(this, this.dialogueText, "Hello, world!");
  * 
  * // Faster typing
- * createTypewriterEffect(this, this.text, message, {
+ * const timer = createTypewriterEffect(this, this.text, message, {
  *   speed: 30
  * });
+ * 
+ * // Cancel if needed
+ * timer.remove();
  * ```
  */
 export function createTypewriterEffect(
@@ -393,7 +397,7 @@ export function createTypewriterEffect(
     speed?: number;
     onComplete?: () => void;
   } = {}
-): void {
+): Phaser.Time.TimerEvent {
   const {
     speed = 50,
     onComplete,
@@ -402,7 +406,7 @@ export function createTypewriterEffect(
   let currentIndex = 0;
   textObject.setText("");
   
-  const timer = scene.time.addEvent({
+  return scene.time.addEvent({
     delay: speed,
     repeat: fullText.length - 1,
     callback: () => {

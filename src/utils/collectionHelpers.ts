@@ -228,7 +228,6 @@ export function checkMultipleProximity<T extends Positioned>(
 /**
  * Create a simple interaction prompt that shows/hides based on proximity
  * 
- * @param scene - The Phaser scene
  * @param promptText - The text object to show/hide
  * @param player - Player object
  * @param target - Target object to check proximity to
@@ -238,11 +237,10 @@ export function checkMultipleProximity<T extends Positioned>(
  * @example
  * ```typescript
  * // In update loop
- * updateInteractionPrompt(this, this.promptText, this.player, this.npc, 50);
+ * updateInteractionPrompt(this.promptText, this.player, this.npc, 50);
  * ```
  */
 export function updateInteractionPrompt(
-  scene: Phaser.Scene,
   promptText: Phaser.GameObjects.Text,
   player: Positioned,
   target: Positioned,
