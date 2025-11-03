@@ -5,6 +5,7 @@ import GameScene from "./scenes/GameScene";
 import TitleScene from "./scenes/TitleScene";
 import NorthgateScene from "./scenes/NorthgateScene";
 import IceHockeyScene from "./scenes/IceHockeyScene";
+import SeattleTrafficScene from "./scenes/SeattleTrafficScene";
 import FarmersMarketScene from "./scenes/FarmersMarketScene";
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -21,7 +22,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false // Disabled - clean view
     }
   },
-  scene: [BootScene, TitleScene, GameScene, NorthgateScene, IceHockeyScene, FarmersMarketScene],
+  scene: [BootScene, TitleScene, GameScene, NorthgateScene, IceHockeyScene, SeattleTrafficScene, FarmersMarketScene],
 };
 
 new Phaser.Game(config);

@@ -73,6 +73,9 @@ export default class GameScene extends Phaser.Scene {
   private chaseTime = 0;
   private meowTexts: Phaser.GameObjects.Text[] = [];
   
+  // Level 2 transition flag
+  private waitingForSeattleTrafficTransition = false;
+  
   // Card piece tracking
   private cardPieceCollected = false;
   private cardPieceX = 120;
@@ -109,19 +112,34 @@ export default class GameScene extends Phaser.Scene {
     // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
     this._cheatConsole = setup.cheatConsole;
     this.dialogueManager = setup.dialogueManager;
+    
+    // Reset transition flags
+    this.waitingForSeattleTrafficTransition = false;
 
     // Pixel grid background (procedural)
     // More intense blue background with bright green thin grid lines
     this.createCustomGrid();
     
-    // Get completed levels (registry takes priority over debug setting)
+    // Get completed levels
     const registryLevel = this.registry.get('completedLevels');
     const isProduction = import.meta.env.PROD;
     
-    // In production, ignore DEBUG_START_LEVEL (always use registry or 0)
-    this.completedLevels = registryLevel !== undefined && registryLevel !== null 
-      ? registryLevel 
-      : (isProduction ? 0 : (DEBUG_START_LEVEL || 0));
+    if (isProduction) {
+      // Production: Always use registry or 0
+      this.completedLevels = registryLevel !== undefined && registryLevel !== null ? registryLevel : 0;
+    } else {
+      // Development: DEBUG_START_LEVEL only applies if registry is empty/0
+      // Once you start progressing, registry takes over
+      if ((registryLevel === undefined || registryLevel === null || registryLevel === 0) && DEBUG_START_LEVEL) {
+        this.completedLevels = DEBUG_START_LEVEL;
+        console.log(`[DEBUG] Starting at level ${DEBUG_START_LEVEL} (initial load)`);
+      } else {
+        this.completedLevels = registryLevel || 0;
+        if (registryLevel) {
+          console.log(`[DEBUG] Using registry level ${registryLevel} (progression)`);
+        }
+      }
+    }
 
     // Setup scene based on completed levels
     this.setupSceneForLevel(this.completedLevels);
@@ -214,54 +232,12 @@ export default class GameScene extends Phaser.Scene {
         break;
         
       case 2:
-        // Level 2: After Ice Hockey - Smush playing with memories!
-        // Grayson starts off-screen right
-        this.player = createGraysonSprite(this, 340, 90);
-        this.player.setScale(1, 1); // Face left (positive scale = left for Grayson)
-        
-        // Smush on left side, vertically centered, looking down at card pieces
-        this.cat = createSmushSprite(this, 80, 90);
-        this.cat.setData('lookingDown', true);
-        this.cat.setData('playingWithPieces', true);
-        
-        // Redraw sprite with looking down pupils
-        const redraw = this.cat.getData('redraw');
-        if (redraw) redraw();
-        
-        // Two card pieces sliding around (Smush batting them)
-        this.setupSmushPlayingScene();
-        
-        // Grayson walks in from right to center
-        this.time.delayedCall(500, () => {
-          // Animate walking
-          const walkTimer = this.time.addEvent({
-            delay: 150,
-            repeat: 12, // ~2 seconds of walking
-            callback: () => {
-              updateGraysonWalk(this.player, true);
-            }
-          });
-          
-          this.tweens.add({
-            targets: this.player,
-            x: 160, // Stop at center
-            duration: 2000,
-            ease: "Linear",
-            onComplete: () => {
-              walkTimer.destroy();
-              // Arrived - dialogue triggers from setupSmushPlayingScene at 3s mark
-            }
-          });
-        });
-        break;
-        
-      case 3:
-        // Level 3: After Farmers Market - Grayson returns with memory
+        // Level 2: After Ice Hockey - Intro to Seattle Traffic memory
         // Clean scene - only Grayson
         this.player = createGraysonSprite(this, -30, 90);
         this.player.setScale(-1, 1); // Face right
         
-        // No other NPCs or objects in this level
+        // No other NPCs or objects
         this.npc = undefined as any;
         this.cat = undefined as any;
         this.ceci = undefined as any;
@@ -272,7 +248,7 @@ export default class GameScene extends Phaser.Scene {
           // Animate walking
           const walkTimer = this.time.addEvent({
             delay: 150,
-            repeat: 12, // ~2 seconds of walking
+            repeat: 12,
             callback: () => {
               updateGraysonWalk(this.player, true);
             }
@@ -280,26 +256,111 @@ export default class GameScene extends Phaser.Scene {
           
           this.tweens.add({
             targets: this.player,
-            x: 160, // Stop at center
+            x: 160,
             duration: 2000,
             ease: "Linear",
             onComplete: () => {
               walkTimer.destroy();
               
-              // After walking in, memory appears and counter updates
+              // Dialogue about Seattle traffic memory
+              this.time.delayedCall(500, () => {
+                this.dialogueManager.show("Grayson: That hiking trip...");
+                
+                // Set flag to transition when dialogue closes
+                this.waitingForSeattleTrafficTransition = true;
+              });
+            }
+          });
+        });
+        break;
+        
+      case 3:
+        // Level 3: After Seattle Traffic - Smush playing with memories!
+        // Grayson starts off-screen right
+        this.player = createGraysonSprite(this, 340, 90);
+        this.player.setScale(1, 1); // Face left
+        
+        // Smush on left side, looking down at card pieces
+        this.cat = createSmushSprite(this, 80, 90);
+        this.cat.setData('lookingDown', true);
+        this.cat.setData('playingWithPieces', true);
+        
+        // Redraw sprite with looking down pupils
+        const redraw3 = this.cat.getData('redraw');
+        if (redraw3) redraw3();
+        
+        // Two card pieces sliding around (Smush batting them)
+        this.setupSmushPlayingScene();
+        
+        // Grayson walks in from right to center
+        this.time.delayedCall(500, () => {
+          // Animate walking
+          const walkTimer = this.time.addEvent({
+            delay: 150,
+            repeat: 12,
+            callback: () => {
+              updateGraysonWalk(this.player, true);
+            }
+          });
+          
+          this.tweens.add({
+            targets: this.player,
+            x: 160,
+            duration: 2000,
+            ease: "Linear",
+            onComplete: () => {
+              walkTimer.destroy();
+              // Arrived - dialogue triggers from setupSmushPlayingScene at 3s mark
+            }
+          });
+        });
+        break;
+        
+      case 4:
+        // Level 4: After Farmers Market - Final memory complete!
+        // Clean scene - only Grayson
+        this.player = createGraysonSprite(this, -30, 90);
+        this.player.setScale(-1, 1); // Face right
+        
+        // No other NPCs or objects
+        this.npc = undefined as any;
+        this.cat = undefined as any;
+        this.ceci = undefined as any;
+        this.cardPiece = undefined as any;
+        
+        // Grayson walks in from left to center
+        this.time.delayedCall(500, () => {
+          // Animate walking
+          const walkTimer = this.time.addEvent({
+            delay: 150,
+            repeat: 12,
+            callback: () => {
+              updateGraysonWalk(this.player, true);
+            }
+          });
+          
+          this.tweens.add({
+            targets: this.player,
+            x: 160,
+            duration: 2000,
+            ease: "Linear",
+            onComplete: () => {
+              walkTimer.destroy();
+              
+              // After walking in, final memory appears
               this.time.delayedCall(500, () => {
                 // Update counter to 4/4
                 this.cardPiecesCollected++;
                 this.updateMemoryCounter();
                 
-                // Grayson reflects on the memory
+                // Grayson reflects on all memories
                 this.time.delayedCall(800, () => {
-                  this.dialogueManager.show("Grayson: Got the last piece!");
+                  this.dialogueManager.show("Grayson: That farmers market memory... it's so vivid now.\nAll four memories... I can see the whole picture now.");
                   
-                  // Add more dialogue or next steps here
+                  // TODO: Final scene/ending
                   this.time.delayedCall(4000, () => {
                     this.dialogueManager.hide();
-                    // TODO: Next level or ending - merge memories?
+                    console.log("TODO: Final scene - all memories complete!");
                   });
                 });
               });
@@ -476,13 +537,19 @@ export default class GameScene extends Phaser.Scene {
         } else if (!this.isDialogueAutoOnly) {
           // Only allow manual close if not auto-only dialogue
           this.dialogueManager.hide();
+          
+          // Check if we should transition to Seattle Traffic (level 2)
+          if (this.waitingForSeattleTrafficTransition) {
+            this.waitingForSeattleTrafficTransition = false;
+            fadeToScene(this, "SeattleTraffic", 1000);
+          }
         }
       }
       return;
     }
     
-    // Level 2: Check for collecting moving pieces from Smush
-    if (this.completedLevels === 2 && this.cardPiece && this.cardPiece.getData('isMovingPiece')) {
+    // Level 3: Check for collecting moving pieces from Smush
+    if (this.completedLevels === 3 && this.cardPiece && this.cardPiece.getData('isMovingPiece')) {
       this.checkSmushPieceCollection();
     }
 
@@ -1403,7 +1470,7 @@ export default class GameScene extends Phaser.Scene {
       }
     });
     
-    // Counter already at 3 from ice hockey - don't increment again!
+    // Counter already at 3 from Seattle Traffic - don't increment again!
   }
   
   private triggerSmushMeowsAndFinalDialogue() {

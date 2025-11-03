@@ -929,7 +929,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
       
       // Transition back to GameScene
       this.time.delayedCall(1500, () => {
-        this.registry.set('completedLevels', 3);
+        this.registry.set('completedLevels', 4);
         fadeToScene(this, "Game", 1000);
       });
     }

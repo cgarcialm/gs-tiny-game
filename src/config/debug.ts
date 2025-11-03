@@ -12,19 +12,21 @@
  * "Game" = Skip directly to void/GameScene
  * "Northgate" = Skip to Northgate Station
  * "IceHockey" = Skip to Ice Hockey scene
+ * "SeattleTraffic" = Skip to Seattle Traffic scene
  * "FarmersMarket" = Skip to Farmers Market Pac-Man scene
  */
-export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "FarmersMarket" = "FarmersMarket";
+export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "SeattleTraffic" | "FarmersMarket" = "Game";
 
 /**
  * Set to desired level number to skip ahead in GameScene (only applies if starting in "Game")
  * 0 = start (Eboshi encounter)
  * 1 = after Northgate (Ceci returns)
- * 2 = after Ice Hockey (Smush playing)
- * 3 = after Farmers Market
+ * 2 = after Ice Hockey (Seattle Traffic intro)
+ * 3 = after Seattle Traffic (Smush playing)
+ * 4 = after Farmers Market (final memory complete)
  * 
  * NOTE: This only applies when there's NO registry value (fresh start).
  * Registry values from completed levels always take priority.
  */
-export const DEBUG_START_LEVEL = 0;
+export const DEBUG_START_LEVEL = 2;
 
