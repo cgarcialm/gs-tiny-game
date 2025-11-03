@@ -8,7 +8,7 @@ import type { GameControls } from "../utils/controls";
 import type { DialogueManager } from "../utils/dialogueManager";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
-import { checkProximity, findNearestTarget } from "../utils/collectionHelpers";
+import { checkProximity } from "../utils/collectionHelpers";
 
 /**
  * Farmers Market Scene - Pac-Man Style
@@ -519,22 +519,25 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Temporary pie positions (will be replaced with random later)
     const piePositions: { x: number, y: number }[] = [];
     
-    // Helper to check if position is under a wall block
+    // Helper to check if position is under or too close to a wall block
     const isUnderWall = (x: number, y: number): boolean => {
-      // Check all wall rectangles (updated for moved/shorter blocks)
-      if ((x >= 22 && x <= 78 && y >= 42 && y <= 58) ||  // Pink 1 left
-          (x >= 242 && x <= 298 && y >= 42 && y <= 58)) return true; // Pink 1 right
-      if ((x >= 92 && x <= 148 && y >= 42 && y <= 58) ||  // Blue left
-          (x >= 172 && x <= 228 && y >= 42 && y <= 58)) return true; // Blue right
-      if ((x >= 22 && x <= 68 && y >= 72 && y <= 98) ||   // Peach left
-          (x >= 252 && x <= 298 && y >= 72 && y <= 98)) return true; // Peach right
-      if (x >= 111 && x <= 209 && y >= 72 && y <= 128) return true; // Center mint
-      if ((x >= 22 && x <= 68 && y >= 111 && y <= 158) || // Lavender left
-          (x >= 252 && x <= 298 && y >= 111 && y <= 158)) return true; // Lavender right
-      if ((x >= 82 && x <= 148 && y >= 142 && y <= 158) || // Yellow left
-          (x >= 172 && x <= 238 && y >= 142 && y <= 158)) return true; // Yellow right
-      if ((x >= 82 && x <= 95 && y >= 72 && y <= 158) ||  // Yellow ext left (narrower)
-          (x >= 225 && x <= 238 && y >= 72 && y <= 158)) return true; // Yellow ext right (narrower)
+      // Add small buffer zone (6px) to prevent collecting through walls
+      const buffer = 6;
+      
+      // Check all wall rectangles with buffer zone
+      if ((x >= 22 - buffer && x <= 78 + buffer && y >= 42 - buffer && y <= 58 + buffer) ||  // Pink 1 left
+          (x >= 242 - buffer && x <= 298 + buffer && y >= 42 - buffer && y <= 58 + buffer)) return true; // Pink 1 right
+      if ((x >= 92 - buffer && x <= 148 + buffer && y >= 42 - buffer && y <= 58 + buffer) ||  // Blue left
+          (x >= 172 - buffer && x <= 228 + buffer && y >= 42 - buffer && y <= 58 + buffer)) return true; // Blue right
+      if ((x >= 22 - buffer && x <= 68 + buffer && y >= 72 - buffer && y <= 98 + buffer) ||   // Peach left
+          (x >= 252 - buffer && x <= 298 + buffer && y >= 72 - buffer && y <= 98 + buffer)) return true; // Peach right
+      if (x >= 111 - buffer && x <= 209 + buffer && y >= 72 - buffer && y <= 128 + buffer) return true; // Center mint
+      if ((x >= 22 - buffer && x <= 68 + buffer && y >= 111 - buffer && y <= 158 + buffer) || // Lavender left
+          (x >= 252 - buffer && x <= 298 + buffer && y >= 111 - buffer && y <= 158 + buffer)) return true; // Lavender right
+      if ((x >= 82 - buffer && x <= 148 + buffer && y >= 142 - buffer && y <= 158 + buffer) || // Yellow left
+          (x >= 172 - buffer && x <= 238 + buffer && y >= 142 - buffer && y <= 158 + buffer)) return true; // Yellow right
+      if ((x >= 82 - buffer && x <= 95 + buffer && y >= 72 - buffer && y <= 158 + buffer) ||  // Yellow ext left
+          (x >= 225 - buffer && x <= 238 + buffer && y >= 72 - buffer && y <= 158 + buffer)) return true; // Yellow ext right
       return false;
     };
     
@@ -545,14 +548,13 @@ export default class FarmersMarketScene extends Phaser.Scene {
         const isPiePos = piePositions.some(p => p.x === x && p.y === y);
         if (isPiePos) continue;
         
-        // Skip if under wall
+        // Skip if under wall (don't add dot at all)
         if (isUnderWall(x, y)) {
-          addDot(x, y); // Still draw dot (will be hidden by wall)
-          continue; // But don't save as valid position
+          continue; // Skip completely - don't add to pies array
         }
         
+        // Only add dots in corridors (visible and collectible)
         addDot(x, y);
-        // Save position as valid corridor location (not under walls!)
         this.validDotPositions.push({ x, y });
       }
     }
@@ -561,7 +563,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.spawnNewPieSlice();
     this.spawnNewPieSlice();
     
-    this.totalDots = this.pies.length;
+    // Only count reachable dots (not pies, not under walls)
+    const reachableDots = this.pies.filter(p => !p.getData('isPieSlice')).length;
+    this.totalDots = reachableDots;
     this.dotsNeeded = Math.ceil(this.totalDots * 0.6);
   }
   update() {
@@ -695,42 +699,69 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
 
   private updateSmushAI() {
-    // Change target every 3 seconds or when stuck
+    // Strategic AI - simple and smooth
     this.smushTargetChangeTimer += this.game.loop.delta;
     
     const availableDots = this.pies.filter(p => 
       !p.getData('collected') && p.alpha > 0.5
     );
     
-    // Pick new random target periodically or if current is collected
+    // Pick new target periodically or when collected
     if (!this.smushCurrentTarget || 
         this.smushCurrentTarget.getData('collected') ||
-        this.smushTargetChangeTimer > 3000) {
+        !this.smushCurrentTarget.active ||
+        this.smushTargetChangeTimer > 3000) { // Slower retargeting - less jittery
       
       this.smushTargetChangeTimer = 0;
       
-      // Prioritize pie slices (80% chance if available)
       const pieSlices = availableDots.filter(p => p.getData('isPieSlice'));
+      const dots = availableDots.filter(p => !p.getData('isPieSlice'));
       
-      if (pieSlices.length > 0 && Math.random() < 0.8) {
-        // Find closest pie slice using utility
-        this.smushCurrentTarget = findNearestTarget(this.smushPhysics, pieSlices);
-      } else if (availableDots.length > 0) {
-        // Pick random regular dot
-        this.smushCurrentTarget = availableDots[Math.floor(Math.random() * availableDots.length)];
+      // Strategy: Only go for pies until Grayson gets 3, then switch to dots
+      if (this.graysonPiesEaten < 3 && pieSlices.length > 0) {
+        // Block Grayson - get pies!
+        this.smushCurrentTarget = this.findClosest(pieSlices);
+      } else if (dots.length > 0) {
+        // Grayson has 3 pies - race for dots!
+        this.smushCurrentTarget = this.findClosest(dots);
+      } else if (pieSlices.length > 0) {
+        // Fallback to pies
+        this.smushCurrentTarget = this.findClosest(pieSlices);
       }
     }
     
-    const nearestPie = this.smushCurrentTarget;
+    // Move Smush to her current target
+    this.moveSmushToTarget();
+  }
+  
+  private findClosest(targets: Phaser.GameObjects.Graphics[]): Phaser.GameObjects.Graphics | null {
+    if (targets.length === 0) return null;
     
-    // Move toward nearest pie
-    if (nearestPie) {
-      const pieX = (nearestPie as Phaser.GameObjects.Graphics).x;
-      const pieY = (nearestPie as Phaser.GameObjects.Graphics).y;
-      
+    let closest: Phaser.GameObjects.Graphics | null = null;
+    let closestDist = Infinity;
+    
+    targets.forEach(target => {
+      const dist = Phaser.Math.Distance.Between(
+        this.smushPhysics.x, this.smushPhysics.y,
+        target.x, target.y
+      );
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = target;
+      }
+    });
+    
+    return closest;
+  }
+  
+  private moveSmushToTarget() {
+    const target = this.smushCurrentTarget;
+    
+    // Move toward target
+    if (target) {
       const angle = Phaser.Math.Angle.Between(
         this.smushPhysics.x, this.smushPhysics.y,
-        pieX, pieY
+        target.x, target.y
       );
       
       const vx = Math.cos(angle) * this.smushSpeed;
@@ -802,12 +833,14 @@ export default class FarmersMarketScene extends Phaser.Scene {
         // Update scoreboard FIRST (before checking win)
         this.updateScoreboard();
         
-        // Check win conditions
+        // Check win conditions (Smush wins if 3 pies OR 41% of dots)
+        const smushDotsNeeded = Math.ceil(this.totalDots * 0.41); // Smush only needs 51%
+        
         if (this.smushPiesEaten >= 3) {
           // Smush ate 3 pies - Grayson can't win anymore!
           this.smushWins();
-        } else if (this.smushDotsEaten >= this.dotsNeeded) {
-          // Smush ate enough dots
+        } else if (this.smushDotsEaten >= smushDotsNeeded) {
+          // Smush ate 20% of dots
           this.smushWins();
         }
         return;
@@ -903,7 +936,16 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
   
   private smushWins() {
-    this.dialogueManager.show("Smush: *Meow meow!* (I win!)\nGrayson: Okay okay, let's try again...");
+    // Determine why she won
+    let reason = "";
+    if (this.smushPiesEaten >= 3) {
+      reason = `(Got 3 pies!)`;
+    } else {
+      const smushDotsNeeded = Math.ceil(this.totalDots * 0.51);
+      reason = `(Got ${this.smushDotsEaten}/${smushDotsNeeded} dots - 51%!)`;
+    }
+    
+    this.dialogueManager.show(`Smush: *Meow meow!* (I win!) ${reason}\nGrayson: Okay okay, let's try again...`);
     
     this.time.delayedCall(3000, () => {
       // Proper restart - stops current scene and starts fresh
@@ -1157,9 +1199,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Instructions (more compact)
     const instructions = [
-      `• Eat 3 PIE SLICES + ${this.dotsNeeded} dots`,
+      `• Eat 3 PIE SLICES + ${this.dotsNeeded} dots (50%)`,
       "",
-      "Smush is faster than you!",
+      "Smush wins with 3 pies OR 51% dots",
       "Grab FRUITS for speed boost",
       "Avoid SHOPPERS in aisles",
       "",
@@ -1188,5 +1230,6 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.spawnShopper();
   }
 }
+
 
 
