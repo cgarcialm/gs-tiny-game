@@ -9,6 +9,8 @@ import type { DialogueManager } from "../utils/dialogueManager";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
 import { fadeToScene } from "../utils/sceneTransitions";
+import { spawnFloatingText, createParticleBurst } from "../utils/visualEffects";
+import { checkProximity, getDistance } from "../utils/collectionHelpers";
 
 /**
  * Ice Hockey Game Scene - Everett Silvertips
@@ -645,38 +647,23 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private spawnCrowdChatter(message: string, fromLeftSide: boolean = true) {
-    // Crowd text appears from the left stands (no background, with black stroke)
-    // Constrained to stay on screen (x: 25-70 for left side)
+    // Crowd text appears from the stands using shared utility
     const x = fromLeftSide ? 35 + Math.random() * 30 : 250 + Math.random() * 30;
     const y = 20 + Math.random() * 140; // Vertical span of stands
     
-    const crowdText = this.add.text(x, y, message, {
-      fontFamily: "monospace",
+    spawnFloatingText(this, x, y, message, {
       fontSize: "9px",
-      color: "#ffeb3b", // Yellow
+      color: "#ffeb3b",
       fontStyle: "bold",
-      stroke: "#000000", // Black outline
-      strokeThickness: 3, // Thick stroke for visibility
-      align: "center", // Center-align multi-line text
-      resolution: 2,
-    }).setOrigin(0.5).setDepth(50);
-    
-    // Float up slowly
-    this.tweens.add({
-      targets: crowdText,
-      y: y - 40,
+      stroke: "#000000",
+      strokeThickness: 3,
+      align: "center",
+      distance: 40,
       duration: 6000,
+      fadeDelay: 4000,
+      fadeDuration: 2000,
+      depth: 50,
       ease: "Power1",
-    });
-    
-    // Fade out after staying visible for a while
-    this.tweens.add({
-      targets: crowdText,
-      alpha: 0,
-      duration: 2000, // 2 second fade
-      delay: 4000, // Stay visible for 4 seconds first
-      ease: "Power1",
-      onComplete: () => crowdText.destroy()
     });
   }
   
@@ -1006,14 +993,9 @@ export default class IceHockeyScene extends Phaser.Scene {
   private checkSkatesCollection() {
     if (!this.skates) return;
     
-    const distance = Phaser.Math.Distance.Between(
-      this.playerPhysics.x,
-      this.playerPhysics.y,
-      this.skates.x,
-      this.skates.y
-    );
-    
-    if (distance < 20 && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+    // Check proximity using utility
+    if (checkProximity(this.playerPhysics, this.skates, 20) && 
+        Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
       // Collect skates!
       this.hasSkates = true;
       this.skates.destroy();
@@ -1039,14 +1021,9 @@ export default class IceHockeyScene extends Phaser.Scene {
   private checkStickCollection() {
     if (!this.hockeyStick) return;
     
-    const distance = Phaser.Math.Distance.Between(
-      this.playerPhysics.x,
-      this.playerPhysics.y,
-      this.hockeyStick.x,
-      this.hockeyStick.y
-    );
-    
-    if (distance < 20 && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+    // Check proximity using utility
+    if (checkProximity(this.playerPhysics, this.hockeyStick, 20) && 
+        Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
       // Collect stick!
       this.hasStick = true;
       this.hockeyStick.destroy();
@@ -1123,17 +1100,11 @@ export default class IceHockeyScene extends Phaser.Scene {
     console.log('Memory fragment exists at:', this.memoryFragment.x, this.memoryFragment.y);
     console.log('Player at:', this.playerPhysics.x, this.playerPhysics.y);
     
-    const distance = Phaser.Math.Distance.Between(
-      this.playerPhysics.x,
-      this.playerPhysics.y,
-      this.memoryFragment.x,
-      this.memoryFragment.y
-    );
-    
+    const distance = getDistance(this.playerPhysics, this.memoryFragment);
     console.log('Distance to memory:', distance);
     
-    // Debug: log distance when near
-    if (distance < 30) {
+    // Debug: log distance when near (using proximity utility)
+    if (checkProximity(this.playerPhysics, this.memoryFragment, 30)) {
       console.log('Near memory! Press E to collect');
       
       if (Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
@@ -1189,16 +1160,14 @@ export default class IceHockeyScene extends Phaser.Scene {
       
       // Check collision with enemies manually (since we need container collision)
       this.enemies.forEach(enemy => {
-        const distance = Phaser.Math.Distance.Between(puck.x, puck.y, enemy.x, enemy.y);
-        if (distance < 10 && puck.active) {
+        if (checkProximity(puck, enemy, 10) && puck.active) {
           this.enemyHitByPuck(enemy, puck);
         }
       });
       
       // Check collision with chasers
       this.chasers.forEach(chaser => {
-        const distance = Phaser.Math.Distance.Between(puck.x, puck.y, chaser.x, chaser.y);
-        if (distance < 10 && puck.active) {
+        if (checkProximity(puck, chaser, 10) && puck.active) {
           this.chaserHitByPuck(chaser, puck);
         }
       });
@@ -1206,9 +1175,8 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private chaserHitByPuck(chaser: Phaser.GameObjects.Container, puck: Phaser.Physics.Arcade.Sprite) {
-    // Check distance
-    const distance = Phaser.Math.Distance.Between(puck.x, puck.y, chaser.x, chaser.y);
-    if (distance > 10) return;
+    // Check proximity using utility
+    if (!checkProximity(puck, chaser, 10)) return;
     
     // Destroy puck
     const graphics = puck.getData('graphics');
@@ -1336,9 +1304,8 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private enemyHitByPuck(enemy: Phaser.GameObjects.Container, puck: Phaser.Physics.Arcade.Sprite) {
-    // Check if puck hits enemy (simple distance check)
-    const distance = Phaser.Math.Distance.Between(puck.x, puck.y, enemy.x, enemy.y);
-    if (distance > 10) return; // Not actually hitting
+    // Check if puck hits enemy using proximity utility
+    if (!checkProximity(puck, enemy, 10)) return; // Not actually hitting
     
     // Destroy puck
     const graphics = puck.getData('graphics');
@@ -1374,25 +1341,17 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private showDamageNumber(x: number, y: number) {
-    // Floating damage number (RotMG white damage text)
-    const damageText = this.add.text(x, y - 10, "1", {
-      fontFamily: "monospace",
+    // Floating damage number using shared utility (RotMG style)
+    spawnFloatingText(this, x, y - 10, "1", {
       fontSize: "10px",
       color: "#ffffff",
       fontStyle: "bold",
       stroke: "#000000",
       strokeThickness: 2,
-      resolution: 2,
-    }).setOrigin(0.5).setDepth(50);
-    
-    // Float up and fade (classic RotMG)
-    this.tweens.add({
-      targets: damageText,
-      y: y - 25,
-      alpha: 0,
+      distance: 15,
       duration: 600,
+      depth: 50,
       ease: "Power2",
-      onComplete: () => damageText.destroy()
     });
   }
   
@@ -1433,32 +1392,18 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private createDeathParticles(x: number, y: number) {
-    // RotMG-style particle burst on death
-    const particleCount = 8;
-    const colors = [0x1a1a1a, 0xff0000, 0xffffff, 0x666666]; // Enemy colors
-    
-    for (let i = 0; i < particleCount; i++) {
-      const angle = (Math.PI * 2 / particleCount) * i;
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      
-      const particle = this.add.rectangle(x, y, 3, 3, color, 1);
-      particle.setDepth(20);
-      
-      // Burst outward
-      const distance = 20 + Math.random() * 10;
-      const targetX = x + Math.cos(angle) * distance;
-      const targetY = y + Math.sin(angle) * distance;
-      
-      this.tweens.add({
-        targets: particle,
-        x: targetX,
-        y: targetY,
-        alpha: 0,
-        duration: 400 + Math.random() * 200,
-        ease: "Power2",
-        onComplete: () => particle.destroy()
-      });
-    }
+    // RotMG-style particle burst using shared utility
+    createParticleBurst(this, x, y, {
+      particleCount: 8,
+      colors: [0x1a1a1a, 0xff0000, 0xffffff, 0x666666],
+      distance: 20,
+      duration: 400,
+      size: 3,
+      sizeVariation: 0,
+      ease: "Power2",
+      shape: 'rectangle',
+      depth: 20,
+    });
   }
   
   private spawnMemoryFragment() {
@@ -1571,12 +1516,7 @@ export default class IceHockeyScene extends Phaser.Scene {
       }
       
       // Check if chaser catches player (contact damage!)
-      const distance = Phaser.Math.Distance.Between(
-        chaser.x, chaser.y,
-        this.playerPhysics.x, this.playerPhysics.y
-      );
-      
-      if (distance < 15) {
+      if (checkProximity(chaser, this.playerPhysics, 15)) {
         this.hitByChaser(chaser);
       }
     });

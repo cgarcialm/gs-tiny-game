@@ -9,6 +9,8 @@ import { handleMenuInput } from "../utils/menuHandler";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene, fadeIn } from "../utils/sceneTransitions";
 import { PROMPT_TEXT_STYLE, HELP_HINT_TEXT_STYLE, STATION_SIGN_STYLE, SMALL_LABEL_STYLE, THOUGHT_BUBBLE_STYLE } from "../config/textStyles";
+import { createDizzyStars } from "../utils/visualEffects";
+import { checkProximity } from "../utils/collectionHelpers";
 
 export default class NorthgateScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -529,7 +531,8 @@ export default class NorthgateScene extends Phaser.Scene {
     const dy = this.player.y - this.ceci.y;
     const distance = Math.hypot(dx, dy);
     
-    if (distance > followDistance) {
+    // Use proximity check for follow distance
+    if (!checkProximity(this.player, this.ceci, followDistance)) {
       const vx = (dx / distance) * followSpeed * dt;
       const vy = (dy / distance) * followSpeed * dt;
       
@@ -601,15 +604,9 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private checkFurryProximity() {
     this.furries.forEach((furry, index) => {
-      const distance = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        furry.x,
-        furry.y
-      );
-      
-      // Show dialogue when player passes nearby (smaller range - must be close)
-      if (distance < 18 && !this.furryDialogueShown[index] && !this.dialogVisible) {
+      // Show dialogue when player passes nearby using proximity utility
+      if (checkProximity(this.player, furry, 18) && 
+          !this.furryDialogueShown[index] && !this.dialogVisible) {
         this.furryDialogueShown[index] = true;
         
         // Stop player movement when dialogue appears
@@ -759,16 +756,9 @@ export default class NorthgateScene extends Phaser.Scene {
     // Ticket gate blocks passage until ticket obtained
     // The invisible barrier physically prevents passage
     
-    // Check if player is near security guard on platform 1
-    const distance = Phaser.Math.Distance.Between(
-      this.player.x,
-      this.player.y,
-      this.securityGuard.x,
-      this.securityGuard.y
-    );
-    
     // If player tries to pass without ticket - show message (with cooldown to prevent spam)
-    if (distance < 20 && !this.hasTicket && !this.dialogVisible && this.guardDialogueCooldown === 0) {
+    if (checkProximity(this.player, this.securityGuard, 20) && 
+        !this.hasTicket && !this.dialogVisible && this.guardDialogueCooldown === 0) {
       // Stop player movement when guard speaks
       this.player.setVelocity(0, 0);
       
@@ -778,13 +768,9 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private checkTicketMachine() {
     // Check if player is near ticket machine (bottom right)
-    const distance = Phaser.Math.Distance.Between(
-      this.player.x,
-      this.player.y,
-      298, 147
-    );
+    const ticketMachinePos = { x: 298, y: 147 };
     
-    if (distance < 20 && !this.hasTicket) {
+    if (checkProximity(this.player, ticketMachinePos, 20) && !this.hasTicket) {
       // Player can interact with machine after being asked for ticket
       // No prompt shown - player should know to press E from previous interactions
       
@@ -810,11 +796,9 @@ export default class NorthgateScene extends Phaser.Scene {
           onComplete: () => flashGraphics.destroy()
         });
       }
-    } else if (distance >= 20 && !this.hasTicket) {
+    } else if (!checkProximity(this.player, ticketMachinePos, 20) && !this.hasTicket) {
       // Don't show prompt when not near machine (unless near Ceci)
-      const nearCeci = this.ceciHasArrived && Phaser.Math.Distance.Between(
-        this.player.x, this.player.y, this.ceci.x, this.ceci.y
-      ) < 25;
+      const nearCeci = this.ceciHasArrived && checkProximity(this.player, this.ceci, 25);
       
       if (!nearCeci) {
         this.promptText.setVisible(false);
@@ -823,18 +807,11 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private checkCeciProximity() {
-    const distance = Phaser.Math.Distance.Between(
-      this.player.x,
-      this.player.y,
-      this.ceci.x,
-      this.ceci.y
-    );
-    
-    const near = distance < 20;
+    const near = checkProximity(this.player, this.ceci, 20);
     
     // Auto-collect when reaching Ceci (no E prompt needed)
     if (near && !this.cardFragmentCollected && this.hasTicket) {
-      console.log('Meeting Ceci! Distance:', distance); // Debug
+      console.log('Meeting Ceci!'); // Debug
       this.collectCardFragment();
     }
   }
@@ -905,31 +882,13 @@ export default class NorthgateScene extends Phaser.Scene {
       });
     });
     
-    // Dizzy stars above Grayson's head
-    const stars = ["✦", "✧", "★"];
-    for (let i = 0; i < 3; i++) {
-      const star = this.add.text(
-        this.player.x + (i - 1) * 12,
-        this.player.y - 20,
-        stars[i],
-        {
-          fontSize: "16px",
-          color: "#ffeb3b",
-          resolution: 1,
-        }
-      ).setOrigin(0.5);
-      
-      // Animate stars spinning and fading (longer duration)
-      this.tweens.add({
-        targets: star,
-        angle: 360,
-        y: this.player.y - 35,
-        alpha: 0,
-        duration: 4000,
-        ease: "Power2",
-        onComplete: () => star.destroy()
-      });
-    }
+    // Dizzy stars above Grayson's head using shared utility
+    createDizzyStars(this, this.player.x, this.player.y - 20, {
+      starCount: 3,
+      spacing: 12,
+      duration: 4000,
+      distance: 15,
+    });
     
     // Warning message
     this.showDialog("Ouch! That wasn't candy!\nI just stepped on a needle...");

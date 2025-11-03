@@ -8,6 +8,7 @@ import type { GameControls } from "../utils/controls";
 import type { DialogueManager } from "../utils/dialogueManager";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
+import { checkProximity, findNearestTarget } from "../utils/collectionHelpers";
 
 /**
  * Farmers Market Scene - Pac-Man Style
@@ -712,22 +713,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
       const pieSlices = availableDots.filter(p => p.getData('isPieSlice'));
       
       if (pieSlices.length > 0 && Math.random() < 0.8) {
-        // Find closest pie slice
-        let closestPie: Phaser.GameObjects.Graphics | null = null;
-        let closestDist = Infinity;
-        
-        pieSlices.forEach(pie => {
-          const dist = Phaser.Math.Distance.Between(
-            this.smushPhysics.x, this.smushPhysics.y,
-            pie.x, pie.y
-          );
-          if (dist < closestDist) {
-            closestDist = dist;
-            closestPie = pie;
-          }
-        });
-        
-        this.smushCurrentTarget = closestPie;
+        // Find closest pie slice using utility
+        this.smushCurrentTarget = findNearestTarget(this.smushPhysics, pieSlices);
       } else if (availableDots.length > 0) {
         // Pick random regular dot
         this.smushCurrentTarget = availableDots[Math.floor(Math.random() * availableDots.length)];
@@ -767,13 +754,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.pies.forEach((pie) => {
       if (pie.getData('collected')) return;
       
-      // Check Grayson
-      const distGrayson = Phaser.Math.Distance.Between(
-        this.playerPhysics.x, this.playerPhysics.y,
-        pie.x, pie.y
-      );
-      
-      if (distGrayson < 12) {
+      // Check Grayson using proximity utility
+      if (checkProximity(this.playerPhysics, pie, 12)) {
         const isPieSlice = pie.getData('isPieSlice');
         
         pie.setData('collected', true);
@@ -800,13 +782,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
         return;
       }
       
-      // Check Smush
-      const distSmush = Phaser.Math.Distance.Between(
-        this.smushPhysics.x, this.smushPhysics.y,
-        pie.x, pie.y
-      );
-      
-      if (distSmush < 12) {
+      // Check Smush using proximity utility
+      if (checkProximity(this.smushPhysics, pie, 12)) {
         pie.setData('collected', true);
         
         // Check if it's a pie slice or just a dot BEFORE destroying
@@ -991,12 +968,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private checkFruitCollection() {
     this.fruits.forEach(fruit => {
-      const dist = Phaser.Math.Distance.Between(
-        this.playerPhysics.x, this.playerPhysics.y,
-        fruit.x, fruit.y
-      );
-      
-      if (dist < 12) {
+      // Check proximity using utility
+      if (checkProximity(this.playerPhysics, fruit, 12)) {
         // Collect fruit - speed boost!
         fruit.destroy();
         const index = this.fruits.indexOf(fruit);

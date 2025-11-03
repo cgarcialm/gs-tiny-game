@@ -11,6 +11,9 @@ import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
 import { DEBUG_START_LEVEL } from "../config/debug";
 import { PROMPT_TEXT_STYLE, HELP_HINT_TEXT_STYLE, COUNTER_TEXT_STYLE, FLOATING_MESSAGE_STYLE } from "../config/textStyles";
+import { spawnFloatingText } from "../utils/visualEffects";
+import { checkProximity } from "../utils/collectionHelpers";
+import { animateCounterUpdate } from "../utils/uiAnimations";
 
 type DialogueState = "idle" | "open";
 type ChaseState = "idle" | "chasing";
@@ -111,8 +114,11 @@ export default class GameScene extends Phaser.Scene {
     // More intense blue background with bright green thin grid lines
     this.createCustomGrid();
     
-    // Get completed levels (use DEBUG_START_LEVEL for testing)
-    this.completedLevels = DEBUG_START_LEVEL || this.registry.get('completedLevels') || 0;
+    // Get completed levels (registry takes priority over debug setting)
+    const registryLevel = this.registry.get('completedLevels');
+    this.completedLevels = registryLevel !== undefined && registryLevel !== null 
+      ? registryLevel 
+      : (DEBUG_START_LEVEL || 0);
 
     // Setup scene based on completed levels
     this.setupSceneForLevel(this.completedLevels);
@@ -400,31 +406,23 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private spawnMeowText(x: number, y: number) {
-    const meowText = this.add
-      .text(x, y, "MEOW!", {
-        fontFamily: "monospace",
-        fontSize: "12px",
-        color: "#ffeb3b",
-        fontStyle: "bold",
-        resolution: 2,
-      })
-      .setOrigin(0.5);
+    // Use shared floating text utility
+    const meowText = spawnFloatingText(this, x, y, "MEOW!", {
+      fontSize: "12px",
+      color: "#ffeb3b",
+      fontStyle: "bold",
+      distance: 30,
+      duration: 1000,
+      ease: "Power2",
+    });
     
     this.meowTexts.push(meowText);
     
-    // Animate text floating up and fading out
-    this.tweens.add({
-      targets: meowText,
-      y: y - 30,
-      alpha: 0,
-      duration: 1000,
-      ease: "Power2",
-      onComplete: () => {
-        meowText.destroy();
-        const index = this.meowTexts.indexOf(meowText);
-        if (index > -1) {
-          this.meowTexts.splice(index, 1);
-        }
+    // Clean up from array when destroyed (handled by setTimeout since tween destroys it)
+    this.time.delayedCall(1100, () => {
+      const index = this.meowTexts.indexOf(meowText);
+      if (index > -1) {
+        this.meowTexts.splice(index, 1);
       }
     });
   }
@@ -538,14 +536,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Level 0: Proximity check to NPC (Eboshi) - only on level 0
     if (this.completedLevels === 0 && this.npc && this.npc.visible) {
-      const d = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        this.npc.x,
-        this.npc.y
-      );
-
-      const near = d < 50; // distance threshold to show prompt
+      const near = checkProximity(this.player, this.npc, 50); // distance threshold to show prompt
       
       // Only show prompt if haven't interacted yet
       if (near && !this.hasInteractedWithEboshi) {
@@ -575,14 +566,11 @@ export default class GameScene extends Phaser.Scene {
     
     // Level 0: Proximity check to card piece (if visible and not collected)
     if (this.completedLevels === 0 && this.cardPiece && this.cardPiece.visible && !this.cardPieceCollected) {
-      const cardDistance = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        this.cardPieceX,
-        this.cardPieceY
-      );
-      
-      const nearCard = cardDistance < 30; // distance threshold for card
+      const nearCard = checkProximity(
+        this.player,
+        { x: this.cardPieceX, y: this.cardPieceY },
+        30
+      ); // distance threshold for card
       
       // Allow picking up card when near (no prompt - player already knows to press E)
       if (nearCard && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
@@ -756,14 +744,9 @@ export default class GameScene extends Phaser.Scene {
     const checkPickup = () => {
       if (hasCollected) return; // Already collected
       
-      const distance = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        cardX,
-        cardY
-      );
-      
-      if (distance < 30 && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+      // Check proximity using utility
+      if (checkProximity(this.player, { x: cardX, y: cardY }, 30) && 
+          Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
         // Mark as collected immediately
         hasCollected = true;
         
@@ -1025,54 +1008,19 @@ export default class GameScene extends Phaser.Scene {
     // Update text
     this.cardCounterText.setText(`Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`);
     
-    // Pulse animation - scale up and down (longer, more dramatic)
-    this.tweens.add({
-      targets: this.cardCounterText,
-      scale: 1.5,
-      duration: 400,
-      yoyo: true,
-      repeat: 0,
-      ease: "Back.easeOut"
+    // Use shared animation utility for consistent polish
+    animateCounterUpdate(this, this.cardCounterText, {
+      scaleTo: 1.5,
+      scaleDuration: 400,
+      flashColor: "#ffffff",
+      flashDuration: 400,
+      addSparkles: true,
+      sparkleCount: 3,
+      addGlow: true,
+      glowScale: 2,
+      glowDuration: 1500,
+      ease: "Back.easeOut",
     });
-    
-    // Color flash - yellow to white and back (longer)
-    this.cardCounterText.setColor("#ffffff");
-    this.time.delayedCall(400, () => {
-      this.cardCounterText.setColor("#ffeb3b");
-    });
-    
-    // Glow effect (longer duration, bigger scale)
-    const glow = this.add.text(310, 8, `Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`, {
-      ...COUNTER_TEXT_STYLE,
-      fontStyle: "bold",
-    }).setOrigin(1, 0).setDepth(9);
-    
-    this.tweens.add({
-      targets: glow,
-      scale: 2,
-      alpha: 0,
-      duration: 1500,
-      ease: "Power2",
-      onComplete: () => glow.destroy()
-    });
-    
-    // Add sparkle particles around counter
-    for (let i = 0; i < 3; i++) {
-      const sparkle = this.add.text(310 + (Math.random() - 0.5) * 20, 8 + (Math.random() - 0.5) * 10, "✨", {
-        fontSize: "12px",
-        resolution: 1,
-      }).setOrigin(0.5).setDepth(11);
-      
-      this.tweens.add({
-        targets: sparkle,
-        y: sparkle.y - 20,
-        alpha: 0,
-        duration: 1000,
-        delay: i * 200,
-        ease: "Power2",
-        onComplete: () => sparkle.destroy()
-      });
-    }
   }
   
   private hideImagePopup() {
@@ -1242,12 +1190,9 @@ export default class GameScene extends Phaser.Scene {
     
     // Check piece 1
     if (!piece1.getData('collected')) {
-      const dist1 = Phaser.Math.Distance.Between(
-        this.player.x, this.player.y,
-        piece1.x, piece1.y
-      );
-      
-      if (dist1 < 20 && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+      // Check proximity using utility
+      if (checkProximity(this.player, piece1, 20) && 
+          Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
         piece1.setData('collected', true);
         this.tweens.killTweensOf(piece1);
         
@@ -1264,12 +1209,9 @@ export default class GameScene extends Phaser.Scene {
     
     // Check piece 2
     if (piece2 && !piece2.getData('collected')) {
-      const dist2 = Phaser.Math.Distance.Between(
-        this.player.x, this.player.y,
-        piece2.x, piece2.y
-      );
-      
-      if (dist2 < 20 && Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+      // Check proximity using utility
+      if (checkProximity(this.player, piece2, 20) && 
+          Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
         piece2.setData('collected', true);
         this.tweens.killTweensOf(piece2);
         

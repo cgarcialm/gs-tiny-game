@@ -11,15 +11,17 @@
  * "IceHockey" = Skip to Ice Hockey scene
  * "FarmersMarket" = Skip to Farmers Market Pac-Man scene
  */
-export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "FarmersMarket" = "FarmersMarket";
+export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "FarmersMarket" = "Title";
 
 /**
  * Set to desired level number to skip ahead in GameScene (only applies if starting in "Game")
- * 0 = start (Eboshi encounter)
+ * 0 = start (Eboshi encounter) - RECOMMENDED for normal play
  * 1 = after Northgate (Ceci returns)
  * 2 = after Ice Hockey (Smush playing)
  * 3 = after Farmers Market
- * Set to 0 to use registry/normal progression
+ * 
+ * NOTE: This only applies when there's NO registry value (fresh start).
+ * Registry values from completed levels always take priority.
  */
 export const DEBUG_START_LEVEL = 0;
 
