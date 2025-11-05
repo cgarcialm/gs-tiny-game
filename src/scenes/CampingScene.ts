@@ -513,6 +513,24 @@ export default class CampingScene extends Phaser.Scene {
     
     hammockGroup.add(hammock);
     
+    // Add red stripe along one edge of hammock
+    const redStripe = curve.clone();
+    const redTubeGeo = new THREE.TubeGeometry(redStripe, 20, 0.05, 4, false);
+    const redMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const redTube = new THREE.Mesh(redTubeGeo, redMaterial);
+    // Offset slightly to side
+    redTube.position.set(0, 0.25, 0);
+    hammockGroup.add(redTube);
+    
+    // Add yellow stripe along other edge
+    const yellowStripe = curve.clone();
+    const yellowTubeGeo = new THREE.TubeGeometry(yellowStripe, 20, 0.05, 4, false);
+    const yellowMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    const yellowTube = new THREE.Mesh(yellowTubeGeo, yellowMaterial);
+    // Offset to opposite side
+    yellowTube.position.set(0, -0.25, 0);
+    hammockGroup.add(yellowTube);
+    
     // Red rope (Tree 1 attachment to hammock end 1)
     const hammockHeight1 = 1.7 - Math.sin(0) * 0.8; // Edge of hammock (less sag)
     const rope1Points = [
