@@ -366,7 +366,7 @@ export default class CampingScene extends Phaser.Scene {
     
     // FIXED TREES for hammock area
     const hammockTree1 = { x: -4, z: 7 }; // Further back
-    const hammockTree2 = { x: -6, z: 3 }; // Closer to origin, next to tent area
+    const hammockTree2 = { x: -7, z: 4 }; // Next to tent area
     
     // Create the two fixed trees first (marked with bright foliage for visibility)
     [hammockTree1, hammockTree2].forEach((pos, idx) => {
@@ -491,37 +491,25 @@ export default class CampingScene extends Phaser.Scene {
       points.push(new THREE.Vector3(x, y, z));
     }
     
-    // Create hammock fabric as a plane stretched between trees
-    const hammockWidth = 0.8; // Width of hammock
-    const hammockGeometry = new THREE.PlaneGeometry(distance, hammockWidth, 16, 4);
+    // Create hammock as a curved tube/cylinder for thickness
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(x1, 1.7, z1), // Start at tree 1
+      new THREE.Vector3(midX, 0.9, midZ), // Sag in middle (0.8 units down - more curved)
+      new THREE.Vector3(x2, 1.7, z2)  // End at tree 2
+    ]);
+    
+    const hammockGeometry = new THREE.TubeGeometry(
+      curve, // Path curve
+      20, // Tubular segments
+      0.2, // Constant radius
+      8, // Radial segments
+      false // Not closed
+    );
     const hammockMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x5cb85c, // Bright green
-      side: THREE.DoubleSide,
       roughness: 0.7
     });
     const hammock = new THREE.Mesh(hammockGeometry, hammockMaterial);
-    
-    // Position at midpoint between trees
-    hammock.position.set(midX, 1.7, midZ);
-    
-    // Rotate to align with trees - plane should stretch between them
-    hammock.rotation.order = 'YXZ';
-    hammock.rotation.y = angle - Math.PI * 0.705; // Align length with tree direction
-    hammock.rotation.x = 0;
-    hammock.rotation.z = 0;
-    
-    // Apply sag to vertices
-    const positionAttribute = hammock.geometry.attributes.position;
-    for (let i = 0; i < positionAttribute.count; i++) {
-      const x = positionAttribute.getX(i);
-      // Progress from -distance/2 to +distance/2
-      const progress = (x + distance / 2) / distance; // 0 to 1
-      const sag = Math.sin(progress * Math.PI) * 0.8; // Sag in middle
-      const currentY = positionAttribute.getY(i);
-      positionAttribute.setY(i, currentY - sag);
-    }
-    positionAttribute.needsUpdate = true;
-    hammock.geometry.computeVertexNormals();
     
     hammockGroup.add(hammock);
     
