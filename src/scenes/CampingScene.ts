@@ -519,23 +519,40 @@ export default class CampingScene extends Phaser.Scene {
       hammockGroup.add(sphere);
     }
     
-    // Add red stripe along one edge of hammock (closer)
-    const redStripe = curve.clone();
-    const redTubeGeo = new THREE.TubeGeometry(redStripe, 20, 0.04, 4, false);
-    const redMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const redTube = new THREE.Mesh(redTubeGeo, redMaterial);
-    // Offset slightly to side (closer to hammock)
-    redTube.position.set(0, 0.12, 0);
-    hammockGroup.add(redTube);
+    // Add red and yellow stripes with same tapering as hammock
+    const numStripeSegments = 40;
     
-    // Add yellow stripe along other edge (closer)
-    const yellowStripe = curve.clone();
-    const yellowTubeGeo = new THREE.TubeGeometry(yellowStripe, 20, 0.04, 4, false);
-    const yellowMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-    const yellowTube = new THREE.Mesh(yellowTubeGeo, yellowMaterial);
-    // Offset to opposite side (closer to hammock)
-    yellowTube.position.set(0, -0.12, 0);
-    hammockGroup.add(yellowTube);
+    // Red stripe (top edge)
+    for (let i = 0; i <= numStripeSegments; i++) {
+      const t = i / numStripeSegments;
+      const point = curve.getPoint(t);
+      
+      const taper = Math.sin(t * Math.PI);
+      const hammockRadius = 0.05 + taper * 0.18;
+      const stripeRadius = 0.03; // Small stripe
+      
+      const redSphereGeo = new THREE.SphereGeometry(stripeRadius, 6, 6);
+      const redSphereMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const redSphere = new THREE.Mesh(redSphereGeo, redSphereMat);
+      redSphere.position.set(point.x, point.y + hammockRadius + 0.02, point.z);
+      hammockGroup.add(redSphere);
+    }
+    
+    // Yellow stripe (bottom edge)
+    for (let i = 0; i <= numStripeSegments; i++) {
+      const t = i / numStripeSegments;
+      const point = curve.getPoint(t);
+      
+      const taper = Math.sin(t * Math.PI);
+      const hammockRadius = 0.05 + taper * 0.18;
+      const stripeRadius = 0.03;
+      
+      const yellowSphereGeo = new THREE.SphereGeometry(stripeRadius, 6, 6);
+      const yellowSphereMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+      const yellowSphere = new THREE.Mesh(yellowSphereGeo, yellowSphereMat);
+      yellowSphere.position.set(point.x, point.y - hammockRadius - 0.02, point.z);
+      hammockGroup.add(yellowSphere);
+    }
     
     // Beige rope (Tree 1 to hammock end) - curved
     const rope1Curve = new THREE.CatmullRomCurve3([
