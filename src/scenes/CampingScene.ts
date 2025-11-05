@@ -72,9 +72,9 @@ export default class CampingScene extends Phaser.Scene {
       strokeThickness: 3
     }).setOrigin(0.5).setDepth(100);
     
-    this.add.text(160, 35, "WASD/Arrows to move | SPACE to jump", {
+    this.add.text(160, 35, "WASD/Arrows to move | Drag mouse to look | SPACE to jump", {
       fontFamily: "monospace",
-      fontSize: "9px",
+      fontSize: "8px",
       color: "#dddddd",
       stroke: "#000000",
       strokeThickness: 2
@@ -317,30 +317,79 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createForestTrees() {
-    // Create tall pine trees around the perimeter
-    const treePositions = [
-      { x: -12, z: -5 }, { x: -10, z: 5 }, { x: -15, z: -2 },
-      { x: 5, z: 8 }, { x: -5, z: 8 }, { x: -8, z: -8 },
-      { x: -15, z: 3 }, { x: 3, z: -8 }, { x: -6, z: -10 }
-    ];
+    // Create MANY pine trees - LEFT side and behind camp ONLY
+    // City/Space Needle is on the RIGHT (+x direction, -z)
+    // Keep that view completely clear!
     
-    treePositions.forEach(pos => {
-      const height = 8 + Math.random() * 6;
+    const treeCount = 50;
+    
+    for (let i = 0; i < treeCount; i++) {
+      // Random position - focus on LEFT and BEHIND
+      let x = -5 - Math.random() * 20; // LEFT side only (negative x)
+      let z = -10 + Math.random() * 25; // Behind and beside
       
-      // Trunk (dark brown)
+      // Also add some trees behind the camp
+      if (Math.random() < 0.3) {
+        x = (Math.random() - 0.5) * 30; // Can be anywhere horizontally
+        z = 5 + Math.random() * 20; // But must be BEHIND (positive z)
+      }
+      
+      // Skip if too close to campfire/tent area
+      const distToFire = Math.sqrt(x * x + (z - 2) * (z - 2));
+      if (distToFire < 6) continue;
+      
+      const height = 8 + Math.random() * 8;
+      
+      // Trunk (very dark brown, almost black)
       const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, height);
-      const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x3d2817 });
+      const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a0f });
       const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-      trunk.position.set(pos.x, height / 2, pos.z);
+      trunk.position.set(x, height / 2, z);
       this.threeScene.add(trunk);
       
       // Pine foliage (dark green cone)
-      const foliageGeometry = new THREE.ConeGeometry(1.5, 5, 8);
+      const foliageGeometry = new THREE.ConeGeometry(1.5 + Math.random() * 0.5, 5, 8);
       const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x1a4d2e });
       const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-      foliage.position.set(pos.x, height - 1, pos.z);
+      foliage.position.set(x, height - 1, z);
       this.threeScene.add(foliage);
+    }
+    
+    // Add mountain backdrop on LEFT and behind
+    this.createMountainBackdrop();
+  }
+  
+  private createMountainBackdrop() {
+    // Create mountains on LEFT side and behind camp
+    // NO mountains on right side (city view must be clear!)
+    const mountainMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x1a4d2e, // Same dark green as trees
+      roughness: 0.9
     });
+    
+    // Left mountain (tall)
+    const mountain1 = new THREE.Mesh(
+      new THREE.ConeGeometry(30, 28, 32),
+      mountainMaterial
+    );
+    mountain1.position.set(-25, 0, -30); // Far LEFT
+    this.threeScene.add(mountain1);
+    
+    // Behind-left mountain
+    const mountain2 = new THREE.Mesh(
+      new THREE.ConeGeometry(25, 22, 32),
+      mountainMaterial
+    );
+    mountain2.position.set(-15, 0, 30); // Behind and left
+    this.threeScene.add(mountain2);
+    
+    // Far behind mountain
+    const mountain3 = new THREE.Mesh(
+      new THREE.ConeGeometry(35, 30, 32),
+      mountainMaterial
+    );
+    mountain3.position.set(0, 0, 40); // Directly behind
+    this.threeScene.add(mountain3);
   }
   
   private createCampChair(x: number, y: number, z: number) {
