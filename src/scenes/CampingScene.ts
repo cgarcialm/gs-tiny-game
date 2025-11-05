@@ -436,6 +436,35 @@ export default class CampingScene extends Phaser.Scene {
     );
     mountain8.position.set(0, 0, 80);
     this.threeScene.add(mountain8);
+    
+    // Extra mountains on LEFT and LEFT-BACK for more coverage
+    const mountain9 = new THREE.Mesh(
+      new THREE.ConeGeometry(42, 36, 32),
+      farMountainMaterial
+    );
+    mountain9.position.set(-45, 0, 0); // Far LEFT
+    this.threeScene.add(mountain9);
+    
+    const mountain10 = new THREE.Mesh(
+      new THREE.ConeGeometry(38, 33, 32),
+      farMountainMaterial
+    );
+    mountain10.position.set(-50, 0, 40); // Far LEFT-BACK
+    this.threeScene.add(mountain10);
+    
+    const mountain11 = new THREE.Mesh(
+      new THREE.ConeGeometry(44, 37, 32),
+      farMountainMaterial
+    );
+    mountain11.position.set(-55, 0, -40); // Very far LEFT
+    this.threeScene.add(mountain11);
+    
+    const mountain12 = new THREE.Mesh(
+      new THREE.ConeGeometry(36, 31, 32),
+      nearMountainMaterial
+    );
+    mountain12.position.set(-30, 0, -15); // Further LEFT (away from tent)
+    this.threeScene.add(mountain12);
   }
   
   private createCampChair(x: number, y: number, z: number) {
