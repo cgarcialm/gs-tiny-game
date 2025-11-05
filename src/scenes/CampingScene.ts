@@ -352,8 +352,8 @@ export default class CampingScene extends Phaser.Scene {
     // Add trees around the camping area
     this.createForestTrees();
     
-    // Camp chair near fire
-    this.createCampChair(-2, 0, 3);
+    // Camp chair facing fire
+    this.createCampChair(-2, 0, 4);
   }
   
   private createForestTrees() {
@@ -711,7 +711,12 @@ export default class CampingScene extends Phaser.Scene {
     }
     
     chairGroup.position.set(x, y, z);
-    chairGroup.rotation.y = Math.PI / 6; // Angled toward fire
+    
+    // Calculate rotation to face the fire (at 0, 0, 2)
+    const fireX = 0, fireZ = 2;
+    const angleToFire = Math.atan2(fireX - x, fireZ - z);
+    chairGroup.rotation.y = angleToFire;
+    
     this.threeScene.add(chairGroup);
   }
   
