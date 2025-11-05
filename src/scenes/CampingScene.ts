@@ -20,6 +20,7 @@ export default class CampingScene extends Phaser.Scene {
   private camera!: THREE.PerspectiveCamera;
   private threeRenderer!: THREE.WebGLRenderer; // Renamed to avoid conflict with Phaser
   private spaceNeedle!: THREE.Group;
+  private water!: THREE.Mesh;
   
   // Player character
   private player!: THREE.Mesh;
@@ -349,11 +350,101 @@ export default class CampingScene extends Phaser.Scene {
     fireGroup.position.set(0, 0, 2);
     this.threeScene.add(fireGroup);
     
+    // Add lake on right side (toward city)
+    this.createLake();
+    
     // Add trees around the camping area
     this.createForestTrees();
     
     // Camp chair facing fire
     this.createCampChair(-2, 0, 4);
+  }
+  
+  private createLake() {
+    // Simplified animated water without normal maps
+    const waterGeometry = new THREE.PlaneGeometry(25, 35, 32, 32);
+    const waterMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x5a8fb4, // Blue water
+      roughness: 0.1,
+      metalness: 0.6,
+      transparent: true,
+      opacity: 0.85
+    });
+    this.water = new THREE.Mesh(waterGeometry, waterMaterial);
+    this.water.rotation.x = -Math.PI / 2;
+    this.water.position.set(10, 0.1, -15);
+    this.threeScene.add(this.water);
+    
+    // Store geometry for wave animation
+    this.water.userData.originalPositions = this.water.geometry.attributes.position.array.slice();
+    
+    // Add gray rocks along the shore (between ground and water)
+    const numRocks = 30;
+    for (let i = 0; i < numRocks; i++) {
+      const rockSize = 0.2 + Math.random() * 0.5;
+      const rockGeo = new THREE.SphereGeometry(rockSize, 6, 6);
+      const rockMat = new THREE.MeshStandardMaterial({ 
+        color: 0x707070 + Math.floor(Math.random() * 0x202020) // Varying grays
+      });
+      const rock = new THREE.Mesh(rockGeo, rockMat);
+      
+      // Position along the shore (transition zone)
+      const shoreX = -2 + Math.random() * 7; // Shore strip
+      const shoreZ = -3 - Math.random() * 25; // Along lake edge
+      
+      rock.position.set(shoreX, rockSize * 0.5, shoreZ);
+      rock.scale.set(1, 0.5 + Math.random() * 0.4, 1); // Flatten
+      this.threeScene.add(rock);
+    }
+  }
+  
+  private createLake() {
+    // Create lake basin (depression below ground level)
+    const basinGeometry = new THREE.PlaneGeometry(25, 35);
+    const basinMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x5a4a3a, // Darker brown (lake bed)
+      roughness: 0.9
+    });
+    const basin = new THREE.Mesh(basinGeometry, basinMaterial);
+    basin.rotation.x = -Math.PI / 2;
+    basin.position.set(10, 0, -15); // Same level as ground
+    this.threeScene.add(basin);
+    
+    // Animated water surface
+    const waterGeometry = new THREE.PlaneGeometry(25, 35, 32, 32);
+    const waterMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x5a8fb4, // Blue water
+      roughness: 0.1,
+      metalness: 0.6,
+      transparent: true,
+      opacity: 0.85
+    });
+    this.water = new THREE.Mesh(waterGeometry, waterMaterial);
+    this.water.rotation.x = -Math.PI / 2;
+    this.water.position.set(10, 0.05, -15); // Slightly above basin
+    this.threeScene.add(this.water);
+    
+    // Store geometry for wave animation
+    this.water.userData.originalPositions = this.water.geometry.attributes.position.array.slice();
+    
+    // Add gray rocks along the shore
+    const numRocks = 30;
+    for (let i = 0; i < numRocks; i++) {
+      const rockSize = 0.2 + Math.random() * 0.5;
+      const rockGeo = new THREE.SphereGeometry(rockSize, 6, 6);
+      const rockMat = new THREE.MeshStandardMaterial({ 
+        color: 0x707070 + Math.floor(Math.random() * 0x202020)
+      });
+      const rock = new THREE.Mesh(rockGeo, rockMat);
+      
+      // Position along shore
+      const shoreX = -2 + Math.random() * 7;
+      const shoreZ = -3 - Math.random() * 25;
+      
+      rock.position.set(shoreX, rockSize * 0.5 - 0.1, shoreZ);
+      rock.scale.set(1, 0.5 + Math.random() * 0.4, 1);
+      this.threeScene.add(rock);
+    }
   }
   
   private createForestTrees() {
@@ -687,28 +778,64 @@ export default class CampingScene extends Phaser.Scene {
   private createCampChair(x: number, y: number, z: number) {
     const chairGroup = new THREE.Group();
     
-    // Seat
-    const seatGeometry = new THREE.BoxGeometry(0.8, 0.1, 0.8);
-    const chairMaterial = new THREE.MeshStandardMaterial({ color: 0x2c2c2c });
-    const seat = new THREE.Mesh(seatGeometry, chairMaterial);
-    seat.position.y = 0.4;
+    // Metal frame material (dark gray/black)
+    const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x2c2c2c });
+    
+    // Fabric material (dark blue/gray)
+    const fabricMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x34495e,
+      roughness: 0.8
+    });
+    
+    // Frame - front legs (X shape when viewed from side)
+    const frontLegLeft = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 0.9),
+      frameMaterial
+    );
+    frontLegLeft.position.set(-0.3, 0.45, 0.2);
+    frontLegLeft.rotation.z = 0.2;
+    chairGroup.add(frontLegLeft);
+    
+    const frontLegRight = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 0.9),
+      frameMaterial
+    );
+    frontLegRight.position.set(0.3, 0.45, 0.2);
+    frontLegRight.rotation.z = -0.2;
+    chairGroup.add(frontLegRight);
+    
+    // Frame - back legs
+    const backLegLeft = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 1.2),
+      frameMaterial
+    );
+    backLegLeft.position.set(-0.3, 0.6, -0.2);
+    backLegLeft.rotation.z = 0.15;
+    backLegLeft.rotation.x = -0.2;
+    chairGroup.add(backLegLeft);
+    
+    const backLegRight = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 1.2),
+      frameMaterial
+    );
+    backLegRight.position.set(0.3, 0.6, -0.2);
+    backLegRight.rotation.z = -0.15;
+    backLegRight.rotation.x = -0.2;
+    chairGroup.add(backLegRight);
+    
+    // Seat fabric (curved slightly)
+    const seatGeometry = new THREE.PlaneGeometry(0.7, 0.6, 8, 4);
+    const seat = new THREE.Mesh(seatGeometry, fabricMaterial);
+    seat.rotation.x = -Math.PI / 2 - 0.2; // Angled back slightly
+    seat.position.set(0, 0.45, 0);
     chairGroup.add(seat);
     
-    // Backrest
-    const backGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.1);
-    const back = new THREE.Mesh(backGeometry, chairMaterial);
-    back.position.set(0, 0.7, -0.35);
+    // Backrest fabric
+    const backGeometry = new THREE.PlaneGeometry(0.7, 0.8);
+    const back = new THREE.Mesh(backGeometry, fabricMaterial);
+    back.position.set(0, 0.8, -0.3);
+    back.rotation.x = -0.15; // Slight recline
     chairGroup.add(back);
-    
-    // Legs (simplified)
-    for (let i = 0; i < 4; i++) {
-      const legGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.4);
-      const leg = new THREE.Mesh(legGeometry, chairMaterial);
-      const xOffset = i % 2 === 0 ? -0.3 : 0.3;
-      const zOffset = i < 2 ? -0.3 : 0.3;
-      leg.position.set(xOffset, 0.2, zOffset);
-      chairGroup.add(leg);
-    }
     
     chairGroup.position.set(x, y, z);
     
@@ -873,6 +1000,28 @@ export default class CampingScene extends Phaser.Scene {
         material.opacity = 0.7 + Math.sin(this.time.now / 100) * 0.2;
       }
     });
+    
+    // Update water animation (simple wave effect)
+    if (this.water && this.water.geometry) {
+      const positions = this.water.geometry.attributes.position;
+      const originalPositions = this.water.userData.originalPositions;
+      const time = this.time.now / 1000;
+      
+      for (let i = 0; i < positions.count; i++) {
+        const x = originalPositions[i * 3];
+        const y = originalPositions[i * 3 + 1];
+        
+        // Create wave pattern
+        const wave1 = Math.sin(x * 0.5 + time) * 0.05;
+        const wave2 = Math.sin(y * 0.3 + time * 1.3) * 0.03;
+        const wave3 = Math.sin((x + y) * 0.4 + time * 0.8) * 0.04;
+        
+        positions.setZ(i, wave1 + wave2 + wave3);
+      }
+      
+      positions.needsUpdate = true;
+      this.water.geometry.computeVertexNormals();
+    }
     
     // Render Three.js scene
     if (this.threeRenderer && this.threeScene && this.camera) {
