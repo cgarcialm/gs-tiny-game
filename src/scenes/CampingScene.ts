@@ -267,20 +267,20 @@ export default class CampingScene extends Phaser.Scene {
     
     // Ground - LEFT side (camping area) - extends to lake edge
     const groundLeft = new THREE.Mesh(
-      new THREE.PlaneGeometry(44, 80), // Wider
+      new THREE.PlaneGeometry(28, 80), // Narrower to minimize overlap
       groundMaterial
     );
     groundLeft.rotation.x = -Math.PI / 2;
-    groundLeft.position.set(-20, 0, 0); // Covers x: -42 to 2 (meets lake)
+    groundLeft.position.set(-26, 0, 0); // Covers x: -40 to -12 (touches shore)
     this.threeScene.add(groundLeft);
     
-    // Ground - RIGHT side (beyond lake, under city and to mountains)
+    // Ground - RIGHT side (beyond lake, under city and mountains)
     const groundRight = new THREE.Mesh(
-      new THREE.PlaneGeometry(60, 80), // Wider to reach mountains
+      new THREE.PlaneGeometry(50, 80),
       groundMaterial
     );
     groundRight.rotation.x = -Math.PI / 2;
-    groundRight.position.set(52, 0, 0); // Covers x: 22 to 82 (starts where lake ends)
+    groundRight.position.set(45, 0, 0); // Covers x: 20 to 70 (beyond lake)
     this.threeScene.add(groundRight);
     
     // Add scattered rocks on LEFT ground only (camping area)
@@ -431,44 +431,34 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createLake() {
-    // Shore edge crosses: (8, 2) and (-4, -7)
-    // Lake extends perpendicular to this edge, away from camp
-    const edge1 = { x: 8, z: 2 };
-    const edge2 = { x: -4, z: -7 };
+    // ==================== EDIT LAKE CIRCLES HERE ====================
+    // Each circle: { x: X_POSITION, z: Z_POSITION, radius: SIZE }
+    // Lake is formed by overlapping these circles for organic shape
+    const LAKE_CIRCLES = [
+      { x: 10, z: -10, radius: 10 },   // Main body (further right)
+      { x: 15, z: -15, radius: 8 },    // Extends right toward city
+      { x: 8, z: -6, radius: 6 },       // At edge1 point (8, 2)
+      { x: 5, z: -20, radius: 9 },     // Extends back (negative z)
+      { x: -1, z: -12, radius: 6 },     // At edge2 point (-4, -7)
+      { x: 20, z: 5, radius: 7 },      // Positive z extension
+      { x: 18, z: -5, radius: 6 },     // Right extension
+      { x: 10, z: 2, radius: 5 },       // Far positive z
+      // { x: 10, z: 2, radius: 5 },       // Far positive z
+      { x: -8, z: -15, radius: 5 }       // Left extension (near mountains)
+    ];
+    // ================================================================
     
-    // Midpoint of shore edge
-    const edgeMidX = (edge1.x + edge2.x) / 2; // = 2
-    const edgeMidZ = (edge1.z + edge2.z) / 2; // = -2.5
+    // Create organic lake from overlapping circles
+    const waterCircles: THREE.Mesh[] = [];
+    const circles = LAKE_CIRCLES;
     
-    // Length of shore edge
-    const edgeLength = Math.sqrt((edge2.x - edge1.x) ** 2 + (edge2.z - edge1.z) ** 2);
-    
-    // Angle of shore edge
-    const edgeAngle = Math.atan2(edge2.z - edge1.z, edge2.x - edge1.x);
-    
-    // Perpendicular direction (lake extends this way, away from camp)
-    const lakeDepth = 25; // How far lake extends from shore
-    const perpAngle = edgeAngle + Math.PI / 2; // 90 degrees from edge
-    // Offset less to bring lake closer to origin
-    const lakeCenterX = edgeMidX + (lakeDepth / 3) * Math.cos(perpAngle); // Reduced offset
-    const lakeCenterZ = edgeMidZ + (lakeDepth / 3) * Math.sin(perpAngle);
-    
-    // Create lake basin
-    const basinGeometry = new THREE.PlaneGeometry(edgeLength, lakeDepth);
     const basinMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x1a3a5f, // Dark blue
+      color: 0x1a3a5f,
       emissive: 0x1a4d7f,
       emissiveIntensity: 0.4,
       roughness: 0.9
     });
-    const basin = new THREE.Mesh(basinGeometry, basinMaterial);
-    basin.rotation.x = -Math.PI / 2;
-    basin.rotation.z = edgeAngle;
-    basin.position.set(lakeCenterX, -0.08, lakeCenterZ);
-    this.threeScene.add(basin);
     
-    // Animated water surface
-    const waterGeometry = new THREE.PlaneGeometry(edgeLength, lakeDepth, 32, 32);
     const waterMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x87CEEB,
       emissive: 0x4a90e2,
@@ -477,14 +467,30 @@ export default class CampingScene extends Phaser.Scene {
       metalness: 0.4,
       transparent: false
     });
-    this.water = new THREE.Mesh(waterGeometry, waterMaterial);
-    this.water.rotation.x = -Math.PI / 2;
-    this.water.rotation.z = edgeAngle;
-    this.water.position.set(lakeCenterX, 0, lakeCenterZ);
-    this.threeScene.add(this.water);
     
-    // Store geometry for wave animation
-    this.water.userData.originalPositions = this.water.geometry.attributes.position.array.slice();
+    circles.forEach(circle => {
+      // Basin circle (dark blue below)
+      const basinGeo = new THREE.CircleGeometry(circle.radius, 32);
+      const basinMesh = new THREE.Mesh(basinGeo, basinMaterial);
+      basinMesh.rotation.x = -Math.PI / 2;
+      basinMesh.position.set(circle.x, -0.08, circle.z);
+      this.threeScene.add(basinMesh);
+      
+      // Water circle with subdivisions for waves
+      const waterGeo = new THREE.CircleGeometry(circle.radius, 32);
+      const waterMesh = new THREE.Mesh(waterGeo, waterMaterial);
+      waterMesh.rotation.x = -Math.PI / 2;
+      waterMesh.position.set(circle.x, 0, circle.z);
+      this.threeScene.add(waterMesh);
+      
+      // Store for animation
+      waterMesh.userData.originalPositions = waterMesh.geometry.attributes.position.array.slice();
+      waterCircles.push(waterMesh);
+    });
+    
+    // Store all water circles for animation
+    this.water = waterCircles[0]; // Main reference (for compatibility)
+    (this.water as any).allCircles = waterCircles;
   }
   
   private createForestTrees() {
@@ -1041,26 +1047,32 @@ export default class CampingScene extends Phaser.Scene {
       }
     });
     
-    // Update water animation (simple wave effect)
-    if (this.water && this.water.geometry) {
-      const positions = this.water.geometry.attributes.position;
-      const originalPositions = this.water.userData.originalPositions;
+    // Update water animation for all circles
+    if (this.water && (this.water as any).allCircles) {
+      const waterCircles = (this.water as any).allCircles as THREE.Mesh[];
       const time = this.time.now / 1000;
       
-      for (let i = 0; i < positions.count; i++) {
-        const x = originalPositions[i * 3];
-        const y = originalPositions[i * 3 + 1];
-        
-        // Create wave pattern (good visible waves)
-        const wave1 = Math.sin(x * 0.5 + time) * 0.05;
-        const wave2 = Math.sin(y * 0.3 + time * 1.3) * 0.03;
-        const wave3 = Math.sin((x + y) * 0.4 + time * 0.8) * 0.04;
-        
-        positions.setZ(i, wave1 + wave2 + wave3);
-      }
-      
-      positions.needsUpdate = true;
-      this.water.geometry.computeVertexNormals();
+      waterCircles.forEach(waterMesh => {
+        if (waterMesh.geometry) {
+          const positions = waterMesh.geometry.attributes.position;
+          const originalPositions = waterMesh.userData.originalPositions;
+          
+          for (let i = 0; i < positions.count; i++) {
+            const x = originalPositions[i * 3];
+            const y = originalPositions[i * 3 + 1];
+            
+            // Create wave pattern
+            const wave1 = Math.sin(x * 0.5 + time) * 0.05;
+            const wave2 = Math.sin(y * 0.3 + time * 1.3) * 0.03;
+            const wave3 = Math.sin((x + y) * 0.4 + time * 0.8) * 0.04;
+            
+            positions.setZ(i, wave1 + wave2 + wave3);
+          }
+          
+          positions.needsUpdate = true;
+          waterMesh.geometry.computeVertexNormals();
+        }
+      });
     }
     
     // Render Three.js scene
