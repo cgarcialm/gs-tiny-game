@@ -21,10 +21,20 @@ export default class CampingScene extends Phaser.Scene {
   private threeRenderer!: THREE.WebGLRenderer; // Renamed to avoid conflict with Phaser
   private spaceNeedle!: THREE.Group;
   
+  // Player character
+  private player!: THREE.Mesh;
+  private isJumping = false;
+  private jumpVelocity = 0;
+  
   // Camera controls
   private cameraAngleH = Math.PI / 3; // Start facing right (toward city)
   private cameraAngleV = 0.2; // Slightly upward
   private cameraDistance = 8;
+  
+  // Mouse controls
+  private lastPointerX = 0;
+  private lastPointerY = 0;
+  private isPointerDown = false;
 
   constructor() {
     super("Camping");
@@ -46,6 +56,12 @@ export default class CampingScene extends Phaser.Scene {
     // Create Space Needle in distance
     this.createSpaceNeedle();
     
+    // Create player character
+    this.createPlayer();
+    
+    // Set up mouse controls
+    this.setupMouseControls();
+    
     // Overlay text
     this.add.text(160, 15, "All Memories Recovered", {
       fontFamily: "monospace",
@@ -56,7 +72,7 @@ export default class CampingScene extends Phaser.Scene {
       strokeThickness: 3
     }).setOrigin(0.5).setDepth(100);
     
-    this.add.text(160, 35, "Arrow keys to look around", {
+    this.add.text(160, 35, "WASD/Arrows to move | SPACE to jump", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#dddddd",
@@ -130,6 +146,57 @@ export default class CampingScene extends Phaser.Scene {
     const sunlight = new THREE.DirectionalLight(0xff6b35, 1.2); // Warm sunset light
     sunlight.position.set(-10, 5, -5);
     this.threeScene.add(sunlight);
+  }
+  
+  private createPlayer() {
+    // Simple capsule character (Grayson)
+    const geometry = new THREE.CapsuleGeometry(0.4, 1.2, 8, 16);
+    const material = new THREE.MeshStandardMaterial({ 
+      color: 0x81c784, // Green (Grayson's shirt)
+      roughness: 0.7
+    });
+    this.player = new THREE.Mesh(geometry, material);
+    this.player.position.set(-2, 1, 2); // Start near tent
+    this.threeScene.add(this.player);
+    
+    // Add simple head
+    const headGeometry = new THREE.SphereGeometry(0.35, 8, 8);
+    const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffdbac }); // Skin tone
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 1;
+    this.player.add(head);
+  }
+  
+  private setupMouseControls() {
+    // Track mouse movement for camera rotation
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.isPointerDown = true;
+      this.lastPointerX = pointer.x;
+      this.lastPointerY = pointer.y;
+    });
+    
+    this.input.on('pointerup', () => {
+      this.isPointerDown = false;
+    });
+    
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (this.isPointerDown) {
+        // Calculate delta
+        const deltaX = pointer.x - this.lastPointerX;
+        const deltaY = pointer.y - this.lastPointerY;
+        
+        // Rotate camera
+        this.cameraAngleH -= deltaX * 0.01; // Horizontal rotation
+        this.cameraAngleV += deltaY * 0.01; // Vertical rotation
+        
+        // Clamp vertical rotation
+        this.cameraAngleV = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, this.cameraAngleV));
+        
+        // Update last position
+        this.lastPointerX = pointer.x;
+        this.lastPointerY = pointer.y;
+      }
+    });
   }
   
   private createCampingSite() {
@@ -400,23 +467,52 @@ export default class CampingScene extends Phaser.Scene {
     
     const dt = this.game.loop.delta / 1000;
     
-    // Camera controls (WASD or Arrow keys to look around)
-    const rotSpeed = 1.5; // Radians per second
+    // Player movement (WASD/Arrows)
+    if (this.player) {
+      const moveSpeed = 5;
+      let moveX = 0;
+      let moveZ = 0;
+      
+      if (this.controls.left.isDown) moveX -= 1;
+      if (this.controls.right.isDown) moveX += 1;
+      if (this.controls.up.isDown) moveZ -= 1;
+      if (this.controls.down.isDown) moveZ += 1;
+      
+      // Normalize diagonal movement
+      if (moveX !== 0 || moveZ !== 0) {
+        const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
+        moveX /= length;
+        moveZ /= length;
+      }
+      
+      // Apply movement
+      this.player.position.x += moveX * moveSpeed * dt;
+      this.player.position.z += moveZ * moveSpeed * dt;
+      
+      // Jumping (SPACE key)
+      if (Phaser.Input.Keyboard.JustDown(this.controls.jump) && !this.isJumping) {
+        this.isJumping = true;
+        this.jumpVelocity = 8;
+      }
+      
+      // Apply gravity and jumping
+      if (this.isJumping) {
+        this.jumpVelocity -= 20 * dt;
+        this.player.position.y += this.jumpVelocity * dt;
+        
+        if (this.player.position.y <= 1) {
+          this.player.position.y = 1;
+          this.isJumping = false;
+          this.jumpVelocity = 0;
+        }
+      }
+      
+      // Keep player in bounds
+      this.player.position.x = Math.max(-15, Math.min(15, this.player.position.x));
+      this.player.position.z = Math.max(-10, Math.min(10, this.player.position.z));
+    }
     
-    if (this.controls.left.isDown) {
-      this.cameraAngleH -= rotSpeed * dt;
-    }
-    if (this.controls.right.isDown) {
-      this.cameraAngleH += rotSpeed * dt;
-    }
-    if (this.controls.up.isDown) {
-      this.cameraAngleV = Math.min(Math.PI / 3, this.cameraAngleV + rotSpeed * dt);
-    }
-    if (this.controls.down.isDown) {
-      this.cameraAngleV = Math.max(-Math.PI / 6, this.cameraAngleV - rotSpeed * dt);
-    }
-    
-    // Update camera position based on angles
+    // Update camera to follow player
     this.updateCameraPosition();
     
     // Animate fire (flicker effect)
@@ -445,13 +541,15 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private updateCameraPosition() {
-    // Position camera in orbit around campfire
-    const camX = Math.sin(this.cameraAngleH) * this.cameraDistance;
-    const camZ = Math.cos(this.cameraAngleH) * this.cameraDistance;
-    const camY = 2 + Math.sin(this.cameraAngleV) * 3;
+    if (!this.player) return;
+    
+    // Third-person camera behind and above player
+    const camX = this.player.position.x + Math.sin(this.cameraAngleH) * this.cameraDistance;
+    const camZ = this.player.position.z + Math.cos(this.cameraAngleH) * this.cameraDistance;
+    const camY = this.player.position.y + 3 + Math.sin(this.cameraAngleV) * 2;
     
     this.camera.position.set(camX, camY, camZ);
-    this.camera.lookAt(0, 1, 0); // Look at campfire/center
+    this.camera.lookAt(this.player.position.x, this.player.position.y + 1, this.player.position.z);
   }
   
   shutdown() {
