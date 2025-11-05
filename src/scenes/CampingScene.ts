@@ -206,6 +206,25 @@ export default class CampingScene extends Phaser.Scene {
     const gridHelper = new THREE.GridHelper(40, 40, 0xffffff, 0x555555);
     gridHelper.position.y = 0.01; // Slightly above ground
     this.threeScene.add(gridHelper);
+    
+    // Add axis labels using Phaser text overlays
+    this.add.text(320, 90, "← X (Red)", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ff0000"
+    }).setOrigin(1, 0.5).setDepth(200);
+    
+    this.add.text(160, 10, "↑ Y (Green)", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#00ff00"
+    }).setOrigin(0.5, 0).setDepth(200);
+    
+    this.add.text(10, 90, "Z (Blue) →", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#0000ff"
+    }).setOrigin(0, 0.5).setDepth(200);
   }
   
   private setupMouseControls() {
@@ -412,24 +431,47 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createLake() {
-    // Create lake basin (dark blue with emissive to resist sunset tint)
-    const basinGeometry = new THREE.PlaneGeometry(20, 35);
+    // Shore edge crosses: (8, 2) and (-4, -7)
+    // Lake extends perpendicular to this edge, away from camp
+    const edge1 = { x: 8, z: 2 };
+    const edge2 = { x: -4, z: -7 };
+    
+    // Midpoint of shore edge
+    const edgeMidX = (edge1.x + edge2.x) / 2; // = 2
+    const edgeMidZ = (edge1.z + edge2.z) / 2; // = -2.5
+    
+    // Length of shore edge
+    const edgeLength = Math.sqrt((edge2.x - edge1.x) ** 2 + (edge2.z - edge1.z) ** 2);
+    
+    // Angle of shore edge
+    const edgeAngle = Math.atan2(edge2.z - edge1.z, edge2.x - edge1.x);
+    
+    // Perpendicular direction (lake extends this way, away from camp)
+    const lakeDepth = 25; // How far lake extends from shore
+    const perpAngle = edgeAngle + Math.PI / 2; // 90 degrees from edge
+    // Offset less to bring lake closer to origin
+    const lakeCenterX = edgeMidX + (lakeDepth / 3) * Math.cos(perpAngle); // Reduced offset
+    const lakeCenterZ = edgeMidZ + (lakeDepth / 3) * Math.sin(perpAngle);
+    
+    // Create lake basin
+    const basinGeometry = new THREE.PlaneGeometry(edgeLength, lakeDepth);
     const basinMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x1a3a5f, // Darker blue
-      emissive: 0x1a4d7f, // Dark blue glow (resists warm lighting)
+      color: 0x1a3a5f, // Dark blue
+      emissive: 0x1a4d7f,
       emissiveIntensity: 0.4,
       roughness: 0.9
     });
     const basin = new THREE.Mesh(basinGeometry, basinMaterial);
     basin.rotation.x = -Math.PI / 2;
-    basin.position.set(12, -0.08, -15); // Just below water
+    basin.rotation.z = edgeAngle;
+    basin.position.set(lakeCenterX, -0.08, lakeCenterZ);
     this.threeScene.add(basin);
     
     // Animated water surface
-    const waterGeometry = new THREE.PlaneGeometry(20, 35, 32, 32);
+    const waterGeometry = new THREE.PlaneGeometry(edgeLength, lakeDepth, 32, 32);
     const waterMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x87CEEB, // Sky blue
-      emissive: 0x4a90e2, // Self-illuminated blue (fights sunset lighting)
+      color: 0x87CEEB,
+      emissive: 0x4a90e2,
       emissiveIntensity: 0.3,
       roughness: 0.2,
       metalness: 0.4,
@@ -437,7 +479,8 @@ export default class CampingScene extends Phaser.Scene {
     });
     this.water = new THREE.Mesh(waterGeometry, waterMaterial);
     this.water.rotation.x = -Math.PI / 2;
-    this.water.position.set(12, 0, -15); // At ground level
+    this.water.rotation.z = edgeAngle;
+    this.water.position.set(lakeCenterX, 0, lakeCenterZ);
     this.threeScene.add(this.water);
     
     // Store geometry for wave animation
