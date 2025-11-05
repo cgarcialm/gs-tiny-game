@@ -334,9 +334,13 @@ export default class CampingScene extends Phaser.Scene {
         z = 5 + Math.random() * 20; // But must be BEHIND (positive z)
       }
       
-      // Skip if too close to campfire/tent area
+      // Skip if too close to campfire
       const distToFire = Math.sqrt(x * x + (z - 2) * (z - 2));
       if (distToFire < 6) continue;
+      
+      // Skip if too close to tent (tent is at -8, 0)
+      const distToTent = Math.sqrt((x + 8) * (x + 8) + z * z);
+      if (distToTent < 4) continue;
       
       const height = 8 + Math.random() * 8;
       
@@ -360,36 +364,78 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createMountainBackdrop() {
-    // Create mountains on LEFT side and behind camp
+    // Create layered mountains on LEFT side and behind camp
     // NO mountains on right side (city view must be clear!)
-    const mountainMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x1a4d2e, // Same dark green as trees
+    
+    // Darker green for distant mountains
+    const nearMountainMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x1a4d2e, // Dark green
       roughness: 0.9
     });
     
-    // Left mountain (tall)
+    const farMountainMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x0f3a1f, // Even darker green for depth
+      roughness: 0.9
+    });
+    
+    // Layer 1 - Nearest mountains (LEFT and BEHIND)
     const mountain1 = new THREE.Mesh(
       new THREE.ConeGeometry(30, 28, 32),
-      mountainMaterial
+      nearMountainMaterial
     );
-    mountain1.position.set(-25, 0, -30); // Far LEFT
+    mountain1.position.set(-25, 0, -30);
     this.threeScene.add(mountain1);
     
-    // Behind-left mountain
     const mountain2 = new THREE.Mesh(
       new THREE.ConeGeometry(25, 22, 32),
-      mountainMaterial
+      nearMountainMaterial
     );
-    mountain2.position.set(-15, 0, 30); // Behind and left
+    mountain2.position.set(-15, 0, 30);
     this.threeScene.add(mountain2);
     
-    // Far behind mountain
     const mountain3 = new THREE.Mesh(
       new THREE.ConeGeometry(35, 30, 32),
-      mountainMaterial
+      nearMountainMaterial
     );
-    mountain3.position.set(0, 0, 40); // Directly behind
+    mountain3.position.set(0, 0, 40);
     this.threeScene.add(mountain3);
+    
+    // Layer 2 - Middle distance (larger, further back)
+    const mountain4 = new THREE.Mesh(
+      new THREE.ConeGeometry(40, 35, 32),
+      farMountainMaterial
+    );
+    mountain4.position.set(-35, 0, -60);
+    this.threeScene.add(mountain4);
+    
+    const mountain5 = new THREE.Mesh(
+      new THREE.ConeGeometry(38, 32, 32),
+      farMountainMaterial
+    );
+    mountain5.position.set(-25, 0, 55);
+    this.threeScene.add(mountain5);
+    
+    const mountain6 = new THREE.Mesh(
+      new THREE.ConeGeometry(32, 28, 32),
+      farMountainMaterial
+    );
+    mountain6.position.set(-5, 0, 60);
+    this.threeScene.add(mountain6);
+    
+    // Layer 3 - Furthest (huge, very far)
+    const mountain7 = new THREE.Mesh(
+      new THREE.ConeGeometry(50, 40, 32),
+      farMountainMaterial
+    );
+    mountain7.position.set(-40, 0, -90);
+    this.threeScene.add(mountain7);
+    
+    const mountain8 = new THREE.Mesh(
+      new THREE.ConeGeometry(45, 38, 32),
+      farMountainMaterial
+    );
+    mountain8.position.set(0, 0, 80);
+    this.threeScene.add(mountain8);
   }
   
   private createCampChair(x: number, y: number, z: number) {
