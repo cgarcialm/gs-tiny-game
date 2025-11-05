@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import * as THREE from "three";
 import { initializeGameScene } from "../utils/sceneSetup";
+import { fadeToScene } from "../utils/sceneTransitions";
 import type { GameControls } from "../utils/controls";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
@@ -17,8 +18,13 @@ export default class CampingScene extends Phaser.Scene {
   // Three.js 3D elements
   private threeScene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
+  private threeRenderer!: THREE.WebGLRenderer; // Renamed to avoid conflict with Phaser
   private spaceNeedle!: THREE.Group;
+  
+  // Camera controls
+  private cameraAngleH = Math.PI / 3; // Start facing right (toward city)
+  private cameraAngleV = 0.2; // Slightly upward
+  private cameraDistance = 8;
 
   constructor() {
     super("Camping");
@@ -41,7 +47,7 @@ export default class CampingScene extends Phaser.Scene {
     this.createSpaceNeedle();
     
     // Overlay text
-    this.add.text(160, 20, "All Memories Recovered", {
+    this.add.text(160, 15, "All Memories Recovered", {
       fontFamily: "monospace",
       fontSize: "14px",
       color: "#ffffff",
@@ -50,7 +56,15 @@ export default class CampingScene extends Phaser.Scene {
       strokeThickness: 3
     }).setOrigin(0.5).setDepth(100);
     
-    this.add.text(160, 160, "Press ENTER to continue", {
+    this.add.text(160, 35, "Arrow keys to look around", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#dddddd",
+      stroke: "#000000",
+      strokeThickness: 2
+    }).setOrigin(0.5).setDepth(100);
+    
+    this.add.text(160, 165, "Press ENTER to continue", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#aaaaaa"
@@ -77,37 +91,37 @@ export default class CampingScene extends Phaser.Scene {
     const texture = new THREE.CanvasTexture(canvas);
     this.threeScene.background = texture;
     
-    // Create camera - angled to see city on right
+    // Create camera - will be controlled by player
     this.camera = new THREE.PerspectiveCamera(
       75, // FOV
       320 / 180, // Aspect ratio
       0.1, // Near
       1000 // Far
     );
-    this.camera.position.set(-3, 2, 3); // Camping spot on left
-    this.camera.lookAt(5, 8, -30); // Look toward city/Space Needle on right
+    // Initial position will be set in updateCameraPosition()
+    this.updateCameraPosition();
     
     // Create renderer
-    this.renderer = new THREE.WebGLRenderer({ 
+    this.threeRenderer = new THREE.WebGLRenderer({ 
       antialias: false,
       alpha: true 
     });
-    this.renderer.setSize(320, 180);
+    this.threeRenderer.setSize(320, 180);
     
     // Position renderer to overlay Phaser canvas exactly
     const gameCanvas = this.game.canvas;
     const rect = gameCanvas.getBoundingClientRect();
     
-    this.renderer.domElement.style.position = 'absolute';
-    this.renderer.domElement.style.top = rect.top + 'px';
-    this.renderer.domElement.style.left = rect.left + 'px';
-    this.renderer.domElement.style.width = rect.width + 'px';
-    this.renderer.domElement.style.height = rect.height + 'px';
-    this.renderer.domElement.style.pointerEvents = 'none';
-    this.renderer.domElement.style.zIndex = '1';
+    this.threeRenderer.domElement.style.position = 'absolute';
+    this.threeRenderer.domElement.style.top = rect.top + 'px';
+    this.threeRenderer.domElement.style.left = rect.left + 'px';
+    this.threeRenderer.domElement.style.width = rect.width + 'px';
+    this.threeRenderer.domElement.style.height = rect.height + 'px';
+    this.threeRenderer.domElement.style.pointerEvents = 'none';
+    this.threeRenderer.domElement.style.zIndex = '1';
     
     // Add renderer to body
-    document.body.appendChild(this.renderer.domElement);
+    document.body.appendChild(this.threeRenderer.domElement);
     
     // Sunset lighting
     const ambient = new THREE.AmbientLight(0xffa500, 0.8); // Warm orange ambient
@@ -384,6 +398,27 @@ export default class CampingScene extends Phaser.Scene {
       return;
     }
     
+    const dt = this.game.loop.delta / 1000;
+    
+    // Camera controls (WASD or Arrow keys to look around)
+    const rotSpeed = 1.5; // Radians per second
+    
+    if (this.controls.left.isDown) {
+      this.cameraAngleH -= rotSpeed * dt;
+    }
+    if (this.controls.right.isDown) {
+      this.cameraAngleH += rotSpeed * dt;
+    }
+    if (this.controls.up.isDown) {
+      this.cameraAngleV = Math.min(Math.PI / 3, this.cameraAngleV + rotSpeed * dt);
+    }
+    if (this.controls.down.isDown) {
+      this.cameraAngleV = Math.max(-Math.PI / 6, this.cameraAngleV - rotSpeed * dt);
+    }
+    
+    // Update camera position based on angles
+    this.updateCameraPosition();
+    
     // Animate fire (flicker effect)
     const fireObjects = this.threeScene.children.filter(obj => 
       obj instanceof THREE.Mesh && 
@@ -397,32 +432,35 @@ export default class CampingScene extends Phaser.Scene {
       }
     });
     
-    // Gentle camera sway for atmosphere
-    if (this.camera) {
-      this.camera.position.x = -3 + Math.sin(this.time.now / 3000) * 0.3;
-      this.camera.position.y = 2 + Math.sin(this.time.now / 2000) * 0.1;
-    }
-    
     // Render Three.js scene
-    if (this.renderer && this.threeScene && this.camera) {
-      this.renderer.render(this.threeScene, this.camera);
+    if (this.threeRenderer && this.threeScene && this.camera) {
+      this.threeRenderer.render(this.threeScene, this.camera);
     }
     
-    // Press ENTER to finish (TODO: Ending sequence)
+    // Press ENTER to finish
     if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
-      console.log("TODO: Game ending/credits - fade to title or show credits");
-      // For now, fade back to title
+      // Fade back to title (game complete!)
       fadeToScene(this, "Title", 2000);
     }
   }
   
+  private updateCameraPosition() {
+    // Position camera in orbit around campfire
+    const camX = Math.sin(this.cameraAngleH) * this.cameraDistance;
+    const camZ = Math.cos(this.cameraAngleH) * this.cameraDistance;
+    const camY = 2 + Math.sin(this.cameraAngleV) * 3;
+    
+    this.camera.position.set(camX, camY, camZ);
+    this.camera.lookAt(0, 1, 0); // Look at campfire/center
+  }
+  
   shutdown() {
     // Clean up Three.js resources
-    if (this.renderer) {
-      if (this.renderer.domElement.parentElement) {
-        this.renderer.domElement.parentElement.removeChild(this.renderer.domElement);
+    if (this.threeRenderer) {
+      if (this.threeRenderer.domElement.parentElement) {
+        this.threeRenderer.domElement.parentElement.removeChild(this.threeRenderer.domElement);
       }
-      this.renderer.dispose();
+      this.threeRenderer.dispose();
     }
   }
 }
