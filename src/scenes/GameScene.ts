@@ -355,13 +355,17 @@ export default class GameScene extends Phaser.Scene {
                 
                 // Grayson reflects on all memories
                 this.time.delayedCall(800, () => {
-                  this.dialogueManager.show("Grayson: That farmers market memory... it's so vivid now.\nAll four memories... I can see the whole picture now.");
+                  this.dialogueManager.show("Grayson: That farmers market memory... it's so vivid now.\nAll four memories... I can see the whole picture now.\n\nPress ENTER to remember...");
                   
-                  // TODO: Final scene/ending
-                  this.time.delayedCall(4000, () => {
-                    this.dialogueManager.hide();
-                    console.log("TODO: Final scene - all memories complete!");
-                  });
+                  // Wait for ENTER to transition to final camping scene
+                  const checkEnter = () => {
+                    if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+                      this.events.off('update', checkEnter);
+                      this.dialogueManager.hide();
+                      fadeToScene(this, "Camping", 1000);
+                    }
+                  };
+                  this.events.on('update', checkEnter);
                 });
               });
             }
