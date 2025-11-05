@@ -470,99 +470,93 @@ export default class CampingScene extends Phaser.Scene {
   private createHammock(x1: number, z1: number, x2: number, z2: number) {
     const hammockGroup = new THREE.Group();
     
-    // Calculate midpoint and direction
-    const midX = (x1 + x2) / 2;
-    const midZ = (z1 + z2) / 2;
-    const distance = Math.sqrt((x2 - x1) * (x2 - x1) + (z2 - z1) * (z2 - z1));
-    const angle = Math.atan2(z2 - z1, x2 - x1);
+    // Create hammock curve - stop short of trees to show rope attachment
+    const gapDistance = 0.5; // Stop 0.5 units before each tree (medium gap for rope)
+    const direction = { 
+      x: x2 - x1, 
+      z: z2 - z1 
+    };
+    const totalDist = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
+    const normDir = { x: direction.x / totalDist, z: direction.z / totalDist };
     
-    // Create curved hammock fabric using a plane with curved shape
-    const segments = 16;
-    const points: THREE.Vector3[] = [];
+    // Hammock endpoints (with gap)
+    const hammockStart = {
+      x: x1 + normDir.x * gapDistance,
+      z: z1 + normDir.z * gapDistance
+    };
+    const hammockEnd = {
+      x: x2 - normDir.x * gapDistance,
+      z: z2 - normDir.z * gapDistance
+    };
+    const hammockMid = {
+      x: (hammockStart.x + hammockEnd.x) / 2,
+      z: (hammockStart.z + hammockEnd.z) / 2
+    };
     
-    // Top edge (at tree height)
-    for (let i = 0; i <= segments; i++) {
-      const t = i / segments;
-      const x = x1 + (x2 - x1) * t;
-      const z = z1 + (z2 - z1) * t;
-      // Catenary curve (sag in middle)
-      const sag = Math.sin(t * Math.PI) * 0.8; // Max sag of 0.8 units
-      const y = 2.5 - sag; // Start at 2.5, sag down
-      points.push(new THREE.Vector3(x, y, z));
-    }
-    
-    // Create hammock as a curved tube/cylinder for thickness
     const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(x1, 1.7, z1), // Start at tree 1
-      new THREE.Vector3(midX, 0.9, midZ), // Sag in middle (0.8 units down - more curved)
-      new THREE.Vector3(x2, 1.7, z2)  // End at tree 2
+      new THREE.Vector3(hammockStart.x, 1.7, hammockStart.z),
+      new THREE.Vector3(hammockMid.x, 0.9, hammockMid.z), // Sag in middle
+      new THREE.Vector3(hammockEnd.x, 1.7, hammockEnd.z)
     ]);
     
-    const hammockGeometry = new THREE.TubeGeometry(
-      curve, // Path curve
-      20, // Tubular segments
-      0.2, // Constant radius
-      8, // Radial segments
-      false // Not closed
-    );
-    const hammockMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x5cb85c, // Bright green
-      roughness: 0.7
-    });
-    const hammock = new THREE.Mesh(hammockGeometry, hammockMaterial);
+    // Create tapered hammock with varying sphere sizes along curve
+    const numSpheres = 40;
+    for (let i = 0; i <= numSpheres; i++) {
+      const t = i / numSpheres;
+      const point = curve.getPoint(t);
+      
+      // Taper: very thin at ends, thick in middle
+      const taper = Math.sin(t * Math.PI);
+      const radius = 0.05 + taper * 0.18; // 0.05 at ends, 0.23 in middle
+      
+      const sphereGeo = new THREE.SphereGeometry(radius, 8, 8);
+      const sphereMat = new THREE.MeshStandardMaterial({ 
+        color: 0x5cb85c,
+        roughness: 0.7
+      });
+      const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+      sphere.position.copy(point);
+      hammockGroup.add(sphere);
+    }
     
-    hammockGroup.add(hammock);
-    
-    // Add red stripe along one edge of hammock
+    // Add red stripe along one edge of hammock (closer)
     const redStripe = curve.clone();
-    const redTubeGeo = new THREE.TubeGeometry(redStripe, 20, 0.05, 4, false);
+    const redTubeGeo = new THREE.TubeGeometry(redStripe, 20, 0.04, 4, false);
     const redMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const redTube = new THREE.Mesh(redTubeGeo, redMaterial);
-    // Offset slightly to side
-    redTube.position.set(0, 0.25, 0);
+    // Offset slightly to side (closer to hammock)
+    redTube.position.set(0, 0.12, 0);
     hammockGroup.add(redTube);
     
-    // Add yellow stripe along other edge
+    // Add yellow stripe along other edge (closer)
     const yellowStripe = curve.clone();
-    const yellowTubeGeo = new THREE.TubeGeometry(yellowStripe, 20, 0.05, 4, false);
+    const yellowTubeGeo = new THREE.TubeGeometry(yellowStripe, 20, 0.04, 4, false);
     const yellowMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
     const yellowTube = new THREE.Mesh(yellowTubeGeo, yellowMaterial);
-    // Offset to opposite side
-    yellowTube.position.set(0, -0.25, 0);
+    // Offset to opposite side (closer to hammock)
+    yellowTube.position.set(0, -0.12, 0);
     hammockGroup.add(yellowTube);
     
-    // Red rope (Tree 1 attachment to hammock end 1)
-    const hammockHeight1 = 1.7 - Math.sin(0) * 0.8; // Edge of hammock (less sag)
-    const rope1Points = [
-      new THREE.Vector3(x1, 3, z1), // Tree attachment point
-      new THREE.Vector3(x1, hammockHeight1, z1) // Hammock end 1
-    ];
-    const rope1Geo = new THREE.BufferGeometry().setFromPoints(rope1Points);
-    const rope1Mat = new THREE.LineBasicMaterial({ color: 0xff0000 });
-    const rope1 = new THREE.Line(rope1Geo, rope1Mat);
+    // Beige rope (Tree 1 to hammock end) - curved
+    const rope1Curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(x1, 3, z1), // Tree attachment (high)
+      new THREE.Vector3(x1 + normDir.x * 0.3, 2.2, z1 + normDir.z * 0.3), // Slight arc
+      new THREE.Vector3(hammockStart.x, 1.7, hammockStart.z) // Hammock end
+    ]);
+    const rope1Geo = new THREE.TubeGeometry(rope1Curve, 8, 0.04, 4, false);
+    const ropeMat = new THREE.MeshBasicMaterial({ color: 0xd2b48c }); // Beige/tan
+    const rope1 = new THREE.Mesh(rope1Geo, ropeMat);
     hammockGroup.add(rope1);
     
-    // Yellow rope (Tree 2 attachment to hammock end 2)
-    const hammockHeight2 = 1.7 - Math.sin(Math.PI) * 0.8; // Other edge (less sag)
-    const rope2Points = [
-      new THREE.Vector3(x2, 3, z2), // Tree attachment point
-      new THREE.Vector3(x2, hammockHeight2, z2) // Hammock end 2
-    ];
-    const rope2Geo = new THREE.BufferGeometry().setFromPoints(rope2Points);
-    const rope2Mat = new THREE.LineBasicMaterial({ color: 0xffff00 });
-    const rope2 = new THREE.Line(rope2Geo, rope2Mat);
+    // Beige rope (Tree 2 to hammock end) - curved
+    const rope2Curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(x2, 3, z2), // Tree attachment (high)
+      new THREE.Vector3(x2 - normDir.x * 0.3, 2.2, z2 - normDir.z * 0.3), // Slight arc
+      new THREE.Vector3(hammockEnd.x, 1.7, hammockEnd.z) // Hammock end
+    ]);
+    const rope2Geo = new THREE.TubeGeometry(rope2Curve, 8, 0.04, 4, false);
+    const rope2 = new THREE.Mesh(rope2Geo, ropeMat);
     hammockGroup.add(rope2);
-    
-    // Additional support ropes along hammock edges for visibility
-    const edgeRope1Points = [
-      new THREE.Vector3(x1, hammockHeight1, z1),
-      new THREE.Vector3(midX, 1.7 - 0.8, midZ), // Middle sag point
-      new THREE.Vector3(x2, hammockHeight2, z2)
-    ];
-    const edgeRope1Geo = new THREE.BufferGeometry().setFromPoints(edgeRope1Points);
-    const edgeRope1Mat = new THREE.LineBasicMaterial({ color: 0xff6600 }); // Orange edge
-    const edgeRope1 = new THREE.Line(edgeRope1Geo, edgeRope1Mat);
-    hammockGroup.add(edgeRope1);
     
     this.threeScene.add(hammockGroup);
     
