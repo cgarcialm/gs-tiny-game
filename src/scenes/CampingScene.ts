@@ -59,6 +59,9 @@ export default class CampingScene extends Phaser.Scene {
     // Create player character
     this.createPlayer();
     
+    // Add debug axes for positioning (TEMP)
+    this.addDebugAxes();
+    
     // Set up mouse controls
     this.setupMouseControls();
     
@@ -165,6 +168,43 @@ export default class CampingScene extends Phaser.Scene {
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = 1;
     this.player.add(head);
+  }
+  
+  private addDebugAxes() {
+    // Add coordinate axes for easier positioning
+    const axisLength = 20;
+    
+    // X axis (RED) - Left/Right
+    const xGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-axisLength, 0, 0),
+      new THREE.Vector3(axisLength, 0, 0)
+    ]);
+    const xMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+    const xAxis = new THREE.Line(xGeometry, xMaterial);
+    this.threeScene.add(xAxis);
+    
+    // Y axis (GREEN) - Up/Down
+    const yGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, axisLength, 0)
+    ]);
+    const yMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+    const yAxis = new THREE.Line(yGeometry, yMaterial);
+    this.threeScene.add(yAxis);
+    
+    // Z axis (BLUE) - Forward/Back
+    const zGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, -axisLength),
+      new THREE.Vector3(0, 0, axisLength)
+    ]);
+    const zMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
+    const zAxis = new THREE.Line(zGeometry, zMaterial);
+    this.threeScene.add(zAxis);
+    
+    // Add grid on ground for reference
+    const gridHelper = new THREE.GridHelper(40, 40, 0xffffff, 0x555555);
+    gridHelper.position.y = 0.01; // Slightly above ground
+    this.threeScene.add(gridHelper);
   }
   
   private setupMouseControls() {
@@ -322,7 +362,45 @@ export default class CampingScene extends Phaser.Scene {
     // Keep that view completely clear!
     
     const treeCount = 50;
+    const treePositions: {x: number, z: number, height: number}[] = [];
     
+    // FIXED TREES for hammock area
+    const hammockTree1 = { x: -4, z: 7 }; // Further back
+    const hammockTree2 = { x: -6, z: 3 }; // Closer to origin, next to tent area
+    
+    // Create the two fixed trees first (marked with bright foliage for visibility)
+    [hammockTree1, hammockTree2].forEach((pos, idx) => {
+      const height = 10;
+      
+      // Trunk
+      const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, height);
+      const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a0f });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      trunk.position.set(pos.x, height / 2, pos.z);
+      this.threeScene.add(trunk);
+      
+      // Foliage (brighter green to mark hammock trees)
+      const foliageGeometry = new THREE.ConeGeometry(1.5, 5, 8);
+      const foliageMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x3a7d3a, // Brighter green for hammock trees
+        emissive: 0x1a4d2e,
+        emissiveIntensity: 0.3
+      });
+      const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+      foliage.position.set(pos.x, height - 1, pos.z);
+      this.threeScene.add(foliage);
+      
+      // Add marker sphere at attachment point
+      const markerGeometry = new THREE.SphereGeometry(0.2);
+      const markerMaterial = new THREE.MeshBasicMaterial({ color: idx === 0 ? 0xff0000 : 0xffff00 });
+      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+      marker.position.set(pos.x, 3, pos.z); // Attachment height
+      this.threeScene.add(marker);
+      
+      treePositions.push({x: pos.x, z: pos.z, height});
+    });
+    
+    // Now create random trees
     for (let i = 0; i < treeCount; i++) {
       // Random position - focus on LEFT and BEHIND
       let x = -5 - Math.random() * 20; // LEFT side only (negative x)
@@ -342,6 +420,11 @@ export default class CampingScene extends Phaser.Scene {
       const distToTent = Math.sqrt((x + 8) * (x + 8) + z * z);
       if (distToTent < 4) continue;
       
+      // Skip if in hammock area (protect area between the two fixed trees)
+      const distToHammock1 = Math.sqrt((x - hammockTree1.x) * (x - hammockTree1.x) + (z - hammockTree1.z) * (z - hammockTree1.z));
+      const distToHammock2 = Math.sqrt((x - hammockTree2.x) * (x - hammockTree2.x) + (z - hammockTree2.z) * (z - hammockTree2.z));
+      if (distToHammock1 < 3 || distToHammock2 < 3) continue;
+      
       const height = 8 + Math.random() * 8;
       
       // Trunk (very dark brown, almost black)
@@ -357,10 +440,127 @@ export default class CampingScene extends Phaser.Scene {
       const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
       foliage.position.set(x, height - 1, z);
       this.threeScene.add(foliage);
+      
+      // Save position
+      treePositions.push({x, z, height});
     }
+    
+    // Find and log 5 closest trees to center (campfire at 0, 2)
+    const centerX = 0, centerZ = 2;
+    const sorted = treePositions
+      .map(t => ({
+        ...t,
+        dist: Math.sqrt((t.x - centerX) * (t.x - centerX) + (t.z - centerZ) * (t.z - centerZ))
+      }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 5);
+    
+    console.log("5 Closest trees to campfire:");
+    sorted.forEach((t, i) => {
+      console.log(`  Tree ${i + 1}: x=${t.x.toFixed(1)}, z=${t.z.toFixed(1)}, dist=${t.dist.toFixed(1)}`);
+    });
     
     // Add mountain backdrop on LEFT and behind
     this.createMountainBackdrop();
+    
+    // Create hammock between the two fixed trees
+    this.createHammock(hammockTree1.x, hammockTree1.z, hammockTree2.x, hammockTree2.z);
+  }
+  
+  private createHammock(x1: number, z1: number, x2: number, z2: number) {
+    const hammockGroup = new THREE.Group();
+    
+    // Calculate midpoint and direction
+    const midX = (x1 + x2) / 2;
+    const midZ = (z1 + z2) / 2;
+    const distance = Math.sqrt((x2 - x1) * (x2 - x1) + (z2 - z1) * (z2 - z1));
+    const angle = Math.atan2(z2 - z1, x2 - x1);
+    
+    // Create curved hammock fabric using a plane with curved shape
+    const segments = 16;
+    const points: THREE.Vector3[] = [];
+    
+    // Top edge (at tree height)
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const x = x1 + (x2 - x1) * t;
+      const z = z1 + (z2 - z1) * t;
+      // Catenary curve (sag in middle)
+      const sag = Math.sin(t * Math.PI) * 0.8; // Max sag of 0.8 units
+      const y = 2.5 - sag; // Start at 2.5, sag down
+      points.push(new THREE.Vector3(x, y, z));
+    }
+    
+    // Create hammock fabric as a plane stretched between trees
+    const hammockWidth = 0.8; // Width of hammock
+    const hammockGeometry = new THREE.PlaneGeometry(distance, hammockWidth, 16, 4);
+    const hammockMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x5cb85c, // Bright green
+      side: THREE.DoubleSide,
+      roughness: 0.7
+    });
+    const hammock = new THREE.Mesh(hammockGeometry, hammockMaterial);
+    
+    // Position at midpoint between trees
+    hammock.position.set(midX, 1.7, midZ);
+    
+    // Rotate to align with trees - plane should stretch between them
+    hammock.rotation.order = 'YXZ';
+    hammock.rotation.y = angle - Math.PI * 0.705; // Align length with tree direction
+    hammock.rotation.x = 0;
+    hammock.rotation.z = 0;
+    
+    // Apply sag to vertices
+    const positionAttribute = hammock.geometry.attributes.position;
+    for (let i = 0; i < positionAttribute.count; i++) {
+      const x = positionAttribute.getX(i);
+      // Progress from -distance/2 to +distance/2
+      const progress = (x + distance / 2) / distance; // 0 to 1
+      const sag = Math.sin(progress * Math.PI) * 0.8; // Sag in middle
+      const currentY = positionAttribute.getY(i);
+      positionAttribute.setY(i, currentY - sag);
+    }
+    positionAttribute.needsUpdate = true;
+    hammock.geometry.computeVertexNormals();
+    
+    hammockGroup.add(hammock);
+    
+    // Red rope (Tree 1 attachment to hammock end 1)
+    const hammockHeight1 = 1.7 - Math.sin(0) * 0.8; // Edge of hammock (less sag)
+    const rope1Points = [
+      new THREE.Vector3(x1, 3, z1), // Tree attachment point
+      new THREE.Vector3(x1, hammockHeight1, z1) // Hammock end 1
+    ];
+    const rope1Geo = new THREE.BufferGeometry().setFromPoints(rope1Points);
+    const rope1Mat = new THREE.LineBasicMaterial({ color: 0xff0000 });
+    const rope1 = new THREE.Line(rope1Geo, rope1Mat);
+    hammockGroup.add(rope1);
+    
+    // Yellow rope (Tree 2 attachment to hammock end 2)
+    const hammockHeight2 = 1.7 - Math.sin(Math.PI) * 0.8; // Other edge (less sag)
+    const rope2Points = [
+      new THREE.Vector3(x2, 3, z2), // Tree attachment point
+      new THREE.Vector3(x2, hammockHeight2, z2) // Hammock end 2
+    ];
+    const rope2Geo = new THREE.BufferGeometry().setFromPoints(rope2Points);
+    const rope2Mat = new THREE.LineBasicMaterial({ color: 0xffff00 });
+    const rope2 = new THREE.Line(rope2Geo, rope2Mat);
+    hammockGroup.add(rope2);
+    
+    // Additional support ropes along hammock edges for visibility
+    const edgeRope1Points = [
+      new THREE.Vector3(x1, hammockHeight1, z1),
+      new THREE.Vector3(midX, 1.7 - 0.8, midZ), // Middle sag point
+      new THREE.Vector3(x2, hammockHeight2, z2)
+    ];
+    const edgeRope1Geo = new THREE.BufferGeometry().setFromPoints(edgeRope1Points);
+    const edgeRope1Mat = new THREE.LineBasicMaterial({ color: 0xff6600 }); // Orange edge
+    const edgeRope1 = new THREE.Line(edgeRope1Geo, edgeRope1Mat);
+    hammockGroup.add(edgeRope1);
+    
+    this.threeScene.add(hammockGroup);
+    
+    console.log(`Hammock created between (${x1}, ${z1}) and (${x2}, ${z2})`);
   }
   
   private createMountainBackdrop() {
