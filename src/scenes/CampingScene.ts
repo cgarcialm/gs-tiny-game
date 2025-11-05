@@ -265,23 +265,14 @@ export default class CampingScene extends Phaser.Scene {
       roughness: 0.9 
     });
     
-    // Ground - LEFT side (camping area) - extends to lake edge
-    const groundLeft = new THREE.Mesh(
-      new THREE.PlaneGeometry(28, 80), // Narrower to minimize overlap
+    // One large ground plane covering everything
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(120, 120), // Large enough to cover entire scene
       groundMaterial
     );
-    groundLeft.rotation.x = -Math.PI / 2;
-    groundLeft.position.set(-26, 0, 0); // Covers x: -40 to -12 (touches shore)
-    this.threeScene.add(groundLeft);
-    
-    // Ground - RIGHT side (beyond lake, under city and mountains)
-    const groundRight = new THREE.Mesh(
-      new THREE.PlaneGeometry(50, 80),
-      groundMaterial
-    );
-    groundRight.rotation.x = -Math.PI / 2;
-    groundRight.position.set(45, 0, 0); // Covers x: 20 to 70 (beyond lake)
-    this.threeScene.add(groundRight);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(0, 0, 0); // Centered at origin
+    this.threeScene.add(ground);
     
     // Add scattered rocks on LEFT ground only (camping area)
     for (let i = 0; i < 15; i++) {
@@ -443,7 +434,6 @@ export default class CampingScene extends Phaser.Scene {
       { x: 20, z: 5, radius: 7 },      // Positive z extension
       { x: 18, z: -5, radius: 6 },     // Right extension
       { x: 10, z: 2, radius: 5 },       // Far positive z
-      // { x: 10, z: 2, radius: 5 },       // Far positive z
       { x: -8, z: -15, radius: 5 }       // Left extension (near mountains)
     ];
     // ================================================================
@@ -480,7 +470,7 @@ export default class CampingScene extends Phaser.Scene {
       const waterGeo = new THREE.CircleGeometry(circle.radius, 32);
       const waterMesh = new THREE.Mesh(waterGeo, waterMaterial);
       waterMesh.rotation.x = -Math.PI / 2;
-      waterMesh.position.set(circle.x, 0, circle.z);
+      waterMesh.position.set(circle.x, 0.1, circle.z); // Raised slightly above ground
       this.threeScene.add(waterMesh);
       
       // Store for animation
