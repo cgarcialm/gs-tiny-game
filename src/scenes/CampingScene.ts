@@ -463,14 +463,14 @@ export default class CampingScene extends Phaser.Scene {
       const basinGeo = new THREE.CircleGeometry(circle.radius, 32);
       const basinMesh = new THREE.Mesh(basinGeo, basinMaterial);
       basinMesh.rotation.x = -Math.PI / 2;
-      basinMesh.position.set(circle.x, -0.08, circle.z);
+      basinMesh.position.set(circle.x, 0.01, circle.z);
       this.threeScene.add(basinMesh);
       
       // Water circle with subdivisions for waves
       const waterGeo = new THREE.CircleGeometry(circle.radius, 32);
       const waterMesh = new THREE.Mesh(waterGeo, waterMaterial);
       waterMesh.rotation.x = -Math.PI / 2;
-      waterMesh.position.set(circle.x, 0.1, circle.z); // Raised slightly above ground
+      waterMesh.position.set(circle.x, 0.05, circle.z); // Raised slightly above ground
       this.threeScene.add(waterMesh);
       
       // Store for animation
