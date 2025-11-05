@@ -60,7 +60,7 @@ export default class CampingScene extends Phaser.Scene {
     // Create player character
     this.createPlayer();
     
-    // Add debug axes for positioning (TEMP)
+    // Add debug axes for positioning
     this.addDebugAxes();
     
     // Set up mouse controls
@@ -241,25 +241,38 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createCampingSite() {
-    // Ground (brown dirt/forest floor)
-    const groundGeometry = new THREE.PlaneGeometry(80, 80);
     const groundMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x6B5D4F, // Brown dirt
-      roughness: 0.9
+      roughness: 0.9 
     });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    this.threeScene.add(ground);
     
-    // Add scattered rocks on ground
+    // Ground - LEFT side (camping area) - extends to lake edge
+    const groundLeft = new THREE.Mesh(
+      new THREE.PlaneGeometry(44, 80), // Wider
+      groundMaterial
+    );
+    groundLeft.rotation.x = -Math.PI / 2;
+    groundLeft.position.set(-20, 0, 0); // Covers x: -42 to 2 (meets lake)
+    this.threeScene.add(groundLeft);
+    
+    // Ground - RIGHT side (beyond lake, under city and to mountains)
+    const groundRight = new THREE.Mesh(
+      new THREE.PlaneGeometry(60, 80), // Wider to reach mountains
+      groundMaterial
+    );
+    groundRight.rotation.x = -Math.PI / 2;
+    groundRight.position.set(52, 0, 0); // Covers x: 22 to 82 (starts where lake ends)
+    this.threeScene.add(groundRight);
+    
+    // Add scattered rocks on LEFT ground only (camping area)
     for (let i = 0; i < 15; i++) {
       const rockGeometry = new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 6, 6);
       const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
       const rock = new THREE.Mesh(rockGeometry, rockMaterial);
       rock.position.set(
-        (Math.random() - 0.5) * 20,
+        -30 + Math.random() * 20, // Keep on left side only (x: -30 to -10)
         0.1,
-        (Math.random() - 0.5) * 15
+        (Math.random() - 0.5) * 20
       );
       rock.scale.set(1, 0.7, 1); // Flatten slightly
       this.threeScene.add(rock);
@@ -399,52 +412,36 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createLake() {
-    // Create lake basin (depression below ground level)
-    const basinGeometry = new THREE.PlaneGeometry(25, 35);
+    // Create lake basin (dark blue with emissive to resist sunset tint)
+    const basinGeometry = new THREE.PlaneGeometry(20, 35);
     const basinMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x5a4a3a, // Darker brown (lake bed)
+      color: 0x1a3a5f, // Darker blue
+      emissive: 0x1a4d7f, // Dark blue glow (resists warm lighting)
+      emissiveIntensity: 0.4,
       roughness: 0.9
     });
     const basin = new THREE.Mesh(basinGeometry, basinMaterial);
     basin.rotation.x = -Math.PI / 2;
-    basin.position.set(10, 0, -15); // Same level as ground
+    basin.position.set(12, -0.08, -15); // Just below water
     this.threeScene.add(basin);
     
     // Animated water surface
-    const waterGeometry = new THREE.PlaneGeometry(25, 35, 32, 32);
+    const waterGeometry = new THREE.PlaneGeometry(20, 35, 32, 32);
     const waterMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x5a8fb4, // Blue water
-      roughness: 0.1,
-      metalness: 0.6,
-      transparent: true,
-      opacity: 0.85
+      color: 0x87CEEB, // Sky blue
+      emissive: 0x4a90e2, // Self-illuminated blue (fights sunset lighting)
+      emissiveIntensity: 0.3,
+      roughness: 0.2,
+      metalness: 0.4,
+      transparent: false
     });
     this.water = new THREE.Mesh(waterGeometry, waterMaterial);
     this.water.rotation.x = -Math.PI / 2;
-    this.water.position.set(10, 0.05, -15); // Slightly above basin
+    this.water.position.set(12, 0, -15); // At ground level
     this.threeScene.add(this.water);
     
     // Store geometry for wave animation
     this.water.userData.originalPositions = this.water.geometry.attributes.position.array.slice();
-    
-    // Add gray rocks along the shore
-    const numRocks = 30;
-    for (let i = 0; i < numRocks; i++) {
-      const rockSize = 0.2 + Math.random() * 0.5;
-      const rockGeo = new THREE.SphereGeometry(rockSize, 6, 6);
-      const rockMat = new THREE.MeshStandardMaterial({ 
-        color: 0x707070 + Math.floor(Math.random() * 0x202020)
-      });
-      const rock = new THREE.Mesh(rockGeo, rockMat);
-      
-      // Position along shore
-      const shoreX = -2 + Math.random() * 7;
-      const shoreZ = -3 - Math.random() * 25;
-      
-      rock.position.set(shoreX, rockSize * 0.5 - 0.1, shoreZ);
-      rock.scale.set(1, 0.5 + Math.random() * 0.4, 1);
-      this.threeScene.add(rock);
-    }
   }
   
   private createForestTrees() {
@@ -1011,7 +1008,7 @@ export default class CampingScene extends Phaser.Scene {
         const x = originalPositions[i * 3];
         const y = originalPositions[i * 3 + 1];
         
-        // Create wave pattern
+        // Create wave pattern (good visible waves)
         const wave1 = Math.sin(x * 0.5 + time) * 0.05;
         const wave2 = Math.sin(y * 0.3 + time * 1.3) * 0.03;
         const wave3 = Math.sin((x + y) * 0.4 + time * 0.8) * 0.04;
