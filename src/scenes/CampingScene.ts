@@ -31,8 +31,9 @@ export default class CampingScene extends Phaser.Scene {
   
   // Camera controls
   private cameraAngleH = Math.PI / 3; // Start facing right (toward city)
-  private cameraAngleV = 0.2; // Slightly upward
-  private cameraDistance = 8;
+  private cameraAngleV = 0.3; // Looking down slightly
+  private cameraDistance = 6; // Medium distance
+  private cameraHeightOffset = 3; // Higher above player
   
   // Mouse tracking for delta
   private lastMouseX = 160;
@@ -1401,10 +1402,14 @@ export default class CampingScene extends Phaser.Scene {
     // Third-person camera behind and above player
     const camX = this.player.position.x + Math.sin(this.cameraAngleH) * this.cameraDistance;
     const camZ = this.player.position.z + Math.cos(this.cameraAngleH) * this.cameraDistance;
-    const camY = this.player.position.y + 3 + Math.sin(this.cameraAngleV) * 2;
+    const camY = this.player.position.y + this.cameraHeightOffset + Math.sin(this.cameraAngleV) * 3;
     
+    // Set camera position
     this.camera.position.set(camX, camY, camZ);
-    this.camera.lookAt(this.player.position.x, this.player.position.y + 1, this.player.position.z);
+    
+    // Look at point above player (character in lower third of screen)
+    const lookAtY = this.player.position.y + 1;
+    this.camera.lookAt(this.player.position.x, lookAtY, this.player.position.z);
   }
   
   shutdown() {
