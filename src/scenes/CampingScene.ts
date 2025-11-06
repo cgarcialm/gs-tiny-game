@@ -192,10 +192,11 @@ export default class CampingScene extends Phaser.Scene {
             if (size.y < size.x * 0.1 || mesh.name.toLowerCase().includes('stand') || mesh.name.toLowerCase().includes('base')) {
               toRemove.push(mesh);
             } else if (mesh.material) {
-              // Brighten airplane parts
+              // Bright airplane - clearly visible
               const mat = mesh.material as THREE.MeshStandardMaterial;
-              mat.emissive = new THREE.Color(0xffffff);
-              mat.emissiveIntensity = 0.3;
+              mat.color = new THREE.Color(0xdddddd); // Light gray/white
+              mat.emissive = new THREE.Color(0xaaaaaa); // Bright glow
+              mat.emissiveIntensity = 0.25;
             }
           }
         });
@@ -205,7 +206,7 @@ export default class CampingScene extends Phaser.Scene {
         
         // Position back behind city at horizon
         this.airplane.position.set(-80, 30, -70); // Behind city skyline
-        const scale = 0.4
+        const scale = 0.3
         this.airplane.scale.set(scale, scale, scale);
         this.airplane.rotation.y = Math.PI / 2; // Flying left to right
         
