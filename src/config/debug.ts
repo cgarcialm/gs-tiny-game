@@ -30,3 +30,9 @@ export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "
  */
 export const DEBUG_START_LEVEL = 4;
 
+/**
+ * Show debug grid and axes in 3D camping scene
+ * true = Show coordinate axes and grid (for positioning)
+ * false = Hide debug visualizations (clean view)
+ */
+export const DEBUG_SHOW_GRID = false;

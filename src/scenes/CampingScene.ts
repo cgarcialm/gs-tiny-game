@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
+import { DEBUG_SHOW_GRID } from "../config/debug";
 import type { GameControls } from "../utils/controls";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
@@ -61,8 +62,10 @@ export default class CampingScene extends Phaser.Scene {
     // Create player character
     this.createPlayer();
     
-    // Add debug axes for positioning
-    this.addDebugAxes();
+    // Add debug axes for positioning (controlled by config)
+    if (DEBUG_SHOW_GRID) {
+      this.addDebugAxes();
+    }
     
     // Set up mouse controls
     this.setupMouseControls();
