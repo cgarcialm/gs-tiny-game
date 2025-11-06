@@ -28,6 +28,13 @@ export default class CampingScene extends Phaser.Scene {
   private player!: THREE.Mesh;
   private isJumping = false;
   private jumpVelocity = 0;
+  private walkAnimTime = 0;
+  
+  // Character parts for animation
+  private leftLeg!: THREE.Mesh;
+  private rightLeg!: THREE.Mesh;
+  private leftArm!: THREE.Mesh;
+  private rightArm!: THREE.Mesh;
   
   // Camera controls
   private cameraAngleH = Math.PI / 3; // Start facing right (toward city)
@@ -203,19 +210,19 @@ export default class CampingScene extends Phaser.Scene {
     rightShoe.position.set(0.15, 0.08, 0);
     this.player.add(rightShoe);
     
-    // Legs (brown pants)
+    // Legs (brown pants) - store for animation
     const pantsMat = new THREE.MeshStandardMaterial({ 
       color: 0x6b4423,
       emissive: 0x6b4423,
       emissiveIntensity: 0.15
     });
-    const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6), pantsMat);
-    leftLeg.position.set(-0.15, 0.5, 0);
-    this.player.add(leftLeg);
+    this.leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6), pantsMat);
+    this.leftLeg.position.set(-0.15, 0.5, 0);
+    this.player.add(this.leftLeg);
     
-    const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6), pantsMat);
-    rightLeg.position.set(0.15, 0.5, 0);
-    this.player.add(rightLeg);
+    this.rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6), pantsMat);
+    this.rightLeg.position.set(0.15, 0.5, 0);
+    this.player.add(this.rightLeg);
     
     // Torso (bright green shirt)
     const shirtMat = new THREE.MeshStandardMaterial({ 
@@ -227,19 +234,19 @@ export default class CampingScene extends Phaser.Scene {
     torso.position.set(0, 1.15, 0);
     this.player.add(torso);
     
-    // Arms (skin tone)
+    // Arms (skin tone) - store for animation
     const armMat = new THREE.MeshStandardMaterial({ 
       color: 0xffe5cc,
       emissive: 0xffe5cc,
       emissiveIntensity: 0.15
     });
-    const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), armMat);
-    leftArm.position.set(-0.3, 1.1, 0);
-    this.player.add(leftArm);
+    this.leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), armMat);
+    this.leftArm.position.set(-0.3, 1.1, 0);
+    this.player.add(this.leftArm);
     
-    const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), armMat);
-    rightArm.position.set(0.3, 1.1, 0);
-    this.player.add(rightArm);
+    this.rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), armMat);
+    this.rightArm.position.set(0.3, 1.1, 0);
+    this.player.add(this.rightArm);
     
     // Head (skin tone) - smaller so cap covers it
     const headMat = new THREE.MeshStandardMaterial({ 
@@ -1279,11 +1286,6 @@ export default class CampingScene extends Phaser.Scene {
         if (keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown) right -= 1;
       }
       
-      // Debug: log if any movement input detected
-      if (forward !== 0 || right !== 0) {
-        console.log("Movement input:", { forward, right, cameraAngleH: this.cameraAngleH.toFixed(2) });
-      }
-      
       // Calculate camera's forward and right directions (on XZ plane)
       const cameraForward = new THREE.Vector3();
       const cameraRight = new THREE.Vector3();
@@ -1315,6 +1317,24 @@ export default class CampingScene extends Phaser.Scene {
       if (moveVector.length() > 0) {
         const targetAngle = Math.atan2(moveVector.x, moveVector.z);
         this.player.rotation.y = targetAngle;
+        
+        // Animate walking
+        this.walkAnimTime += dt * 8; // Animation speed
+        const swing = Math.sin(this.walkAnimTime) * 0.3; // Swing amount
+        
+        // Legs swing opposite
+        this.leftLeg.rotation.x = swing;
+        this.rightLeg.rotation.x = -swing;
+        
+        // Arms swing opposite to legs
+        this.leftArm.rotation.x = -swing * 0.8; // Less swing than legs
+        this.rightArm.rotation.x = swing * 0.8;
+      } else {
+        // Reset to idle pose
+        this.leftLeg.rotation.x = 0;
+        this.rightLeg.rotation.x = 0;
+        this.leftArm.rotation.x = 0;
+        this.rightArm.rotation.x = 0;
       }
       
       // Jumping (SPACE key)
