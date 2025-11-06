@@ -932,9 +932,26 @@ export default class CampingScene extends Phaser.Scene {
       (gltf) => {
         this.spaceNeedle = gltf.scene;
         
+        // Lighten the Space Needle materials
+        this.spaceNeedle.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            if (mesh.material) {
+              const mat = mesh.material as THREE.MeshStandardMaterial;
+              // Lighten the color
+              if (mat.color) {
+                mat.color.multiplyScalar(1.8); // Brighten by 80%
+              }
+              // Add slight emissive glow
+              mat.emissive = new THREE.Color(0x9090a0);
+              mat.emissiveIntensity = 0.2;
+            }
+          }
+        });
+        
         // Position and scale the model
-        this.spaceNeedle.position.set(12, 0, -32); // Closer (less negative z)
-        this.spaceNeedle.scale.set(0.08, 0.08, 0.08); // Much bigger
+        this.spaceNeedle.position.set(12, 0, -32);
+        this.spaceNeedle.scale.set(0.08, 0.08, 0.08);
         
         // Rotate if needed
         this.spaceNeedle.rotation.y = 0;
@@ -986,11 +1003,7 @@ export default class CampingScene extends Phaser.Scene {
   
   private createSeattleSkyline() {
     // Create dense Seattle skyline with many buildings
-    const buildingMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x505050,
-      emissive: 0xffa500,
-      emissiveIntensity: 0.15
-    });
+    // Varying colors for each building
     
     // Dense array of buildings (varying heights like Seattle)
     const buildings = [
@@ -1030,7 +1043,30 @@ export default class CampingScene extends Phaser.Scene {
     
     buildings.forEach(b => {
       const geometry = new THREE.BoxGeometry(b.width, b.height, b.depth);
-      const building = new THREE.Mesh(geometry, buildingMaterial);
+      
+      // Random building color with more variety
+      const colorVariations = [
+        0x1a1a1a, // Black
+        0x1a1a1a, // Black (appears twice for ~20% chance)
+        0x3a3a3a, // Very dark gray
+        0x505050, // Dark gray
+        0x707070, // Light gray
+        0x8a8a8a, // Very light gray
+        0x4a3a2a, // Dark brown
+        0x6a5a4a, // Tan
+        0x5a6a7a, // Blue-gray
+        0x7a6a5a  // Warm gray
+      ];
+      const randomColor = colorVariations[Math.floor(Math.random() * colorVariations.length)];
+      
+      const buildingMat = new THREE.MeshStandardMaterial({ 
+        color: randomColor,
+        emissive: randomColor, // Use same color for emissive
+        emissiveIntensity: 0.05, // Very subtle glow (won't wash out color)
+        roughness: 0.7
+      });
+      
+      const building = new THREE.Mesh(geometry, buildingMat);
       building.position.set(b.x, b.height / 2, b.z);
       this.threeScene.add(building);
       
