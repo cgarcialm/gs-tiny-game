@@ -412,7 +412,7 @@ export default class CampingScene extends Phaser.Scene {
     this.createForestTrees();
     
     // Camp chair facing fire
-    this.createCampChair(-2, 0, 4);
+    this.createCampChair(-3, 0.5, 4.5);
   }
   
   private createLake() {
@@ -1023,70 +1023,49 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createCampChair(x: number, y: number, z: number) {
+    // Load camping chair 3D model
+    const loader = new GLTFLoader();
+    loader.load(
+      'camping_chair.glb',
+      (gltf) => {
+        const chairModel = gltf.scene;
+        
+        // Position and scale
+        chairModel.position.set(x, y, z);
+        chairModel.scale.set(1.5, 1.5, 1.5); // Adjust scale as needed
+        
+        // Calculate rotation to face opposite direction (away from fire)
+        const fireX = 0, fireZ = 2;
+        const angleToFire = Math.atan2(fireX - x, fireZ - z);
+        chairModel.rotation.y = angleToFire + Math.PI; // Add 180 degrees
+        
+        this.threeScene.add(chairModel);
+        console.log("Camping chair 3D model loaded!");
+      },
+      undefined,
+      (error) => {
+        console.error("Error loading camping chair model:", error);
+        // Fallback: use simple chair
+        this.createSimpleChair(x, y, z);
+      }
+    );
+  }
+  
+  private createSimpleChair(x: number, y: number, z: number) {
+    // Simple fallback chair
     const chairGroup = new THREE.Group();
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x2c2c2c });
     
-    // Metal frame material (dark gray/black)
-    const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x2c2c2c });
-    
-    // Fabric material (dark blue/gray)
-    const fabricMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x34495e,
-      roughness: 0.8
-    });
-    
-    // Frame - front legs (X shape when viewed from side)
-    const frontLegLeft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.03, 0.03, 0.9),
-      frameMaterial
-    );
-    frontLegLeft.position.set(-0.3, 0.45, 0.2);
-    frontLegLeft.rotation.z = 0.2;
-    chairGroup.add(frontLegLeft);
-    
-    const frontLegRight = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.03, 0.03, 0.9),
-      frameMaterial
-    );
-    frontLegRight.position.set(0.3, 0.45, 0.2);
-    frontLegRight.rotation.z = -0.2;
-    chairGroup.add(frontLegRight);
-    
-    // Frame - back legs
-    const backLegLeft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.03, 0.03, 1.2),
-      frameMaterial
-    );
-    backLegLeft.position.set(-0.3, 0.6, -0.2);
-    backLegLeft.rotation.z = 0.15;
-    backLegLeft.rotation.x = -0.2;
-    chairGroup.add(backLegLeft);
-    
-    const backLegRight = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.03, 0.03, 1.2),
-      frameMaterial
-    );
-    backLegRight.position.set(0.3, 0.6, -0.2);
-    backLegRight.rotation.z = -0.15;
-    backLegRight.rotation.x = -0.2;
-    chairGroup.add(backLegRight);
-    
-    // Seat fabric (curved slightly)
-    const seatGeometry = new THREE.PlaneGeometry(0.7, 0.6, 8, 4);
-    const seat = new THREE.Mesh(seatGeometry, fabricMaterial);
-    seat.rotation.x = -Math.PI / 2 - 0.2; // Angled back slightly
-    seat.position.set(0, 0.45, 0);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.8), frameMat);
+    seat.position.y = 0.4;
     chairGroup.add(seat);
     
-    // Backrest fabric
-    const backGeometry = new THREE.PlaneGeometry(0.7, 0.8);
-    const back = new THREE.Mesh(backGeometry, fabricMaterial);
-    back.position.set(0, 0.8, -0.3);
-    back.rotation.x = -0.15; // Slight recline
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.1), frameMat);
+    back.position.set(0, 0.7, -0.35);
     chairGroup.add(back);
     
     chairGroup.position.set(x, y, z);
     
-    // Calculate rotation to face the fire (at 0, 0, 2)
     const fireX = 0, fireZ = 2;
     const angleToFire = Math.atan2(fireX - x, fireZ - z);
     chairGroup.rotation.y = angleToFire;
