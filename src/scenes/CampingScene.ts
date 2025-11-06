@@ -91,9 +91,10 @@ export default class CampingScene extends Phaser.Scene {
     canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
     const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-    gradient.addColorStop(0, '#FF6B9D'); // Pink top
-    gradient.addColorStop(0.4, '#FFA500'); // Orange middle
-    gradient.addColorStop(0.7, '#FFD700'); // Golden
+    gradient.addColorStop(0, '#4a2a5a'); // Dark purple top
+    gradient.addColorStop(0.2, '#FF6B9D'); // Pink
+    gradient.addColorStop(0.5, '#FFA500'); // Orange middle
+    gradient.addColorStop(0.75, '#FFD700'); // Golden
     gradient.addColorStop(1, '#87CEEB'); // Blue bottom
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 256, 256);
