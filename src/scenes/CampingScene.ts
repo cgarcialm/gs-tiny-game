@@ -338,60 +338,23 @@ export default class CampingScene extends Phaser.Scene {
       }
     );
     
-    // Campfire in center
-    const fireGroup = new THREE.Group();
-    
-    // Rock ring around fire
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const rockGeometry = new THREE.SphereGeometry(0.3, 6, 6);
-      const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x505050 });
-      const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-      rock.position.set(
-        Math.cos(angle) * 1.2,
-        0.15,
-        Math.sin(angle) * 1.2
-      );
-      rock.scale.set(1, 0.6, 1);
-      fireGroup.add(rock);
-    }
-    
-    // Fire logs (crossed)
-    const logGeometry = new THREE.CylinderGeometry(0.12, 0.12, 1.5);
-    const logMaterial = new THREE.MeshStandardMaterial({ color: 0x4a3728 });
-    for (let i = 0; i < 4; i++) {
-      const log = new THREE.Mesh(logGeometry, logMaterial);
-      log.rotation.z = Math.PI / 2;
-      log.rotation.y = (i / 4) * Math.PI;
-      log.position.y = 0.15;
-      fireGroup.add(log);
-    }
-    
-    // Fire (animated glow)
-    const fireGeometry = new THREE.SphereGeometry(0.4, 8, 8);
-    const fireMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0xff4500,
-      transparent: true,
-      opacity: 0.8
-    });
-    const fire = new THREE.Mesh(fireGeometry, fireMaterial);
-    fire.position.y = 0.5;
-    fire.scale.set(1, 1.5, 1);
-    fireGroup.add(fire);
-    
-    // Inner fire glow
-    const glowGeometry = new THREE.SphereGeometry(0.25, 8, 8);
-    const glowMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0xffff00,
-      transparent: true,
-      opacity: 0.9
-    });
-    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-    glow.position.y = 0.4;
-    fireGroup.add(glow);
-    
-    fireGroup.position.set(0, 0, 2);
-    this.threeScene.add(fireGroup);
+    // Load campfire 3D model
+    const fireLoader = new GLTFLoader();
+    fireLoader.load(
+      'low_poly_campfire.glb',
+      (gltf) => {
+        const fireModel = gltf.scene;
+        fireModel.position.set(0, 0.1, 2); // Center of camp
+        fireModel.scale.set(0.1, 0.1, 0.1); // Adjust as needed
+        fireModel.rotation.y = 0;
+        this.threeScene.add(fireModel);
+        console.log("Campfire 3D model loaded!");
+      },
+      undefined,
+      (error) => {
+        console.error("Error loading campfire model:", error);
+      }
+    );
     
     // Add lake on right side (toward city)
     this.createLake();
