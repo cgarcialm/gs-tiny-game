@@ -1427,8 +1427,8 @@ export default class CampingScene extends Phaser.Scene {
     // Set camera position
     this.camera.position.set(camX, camY, camZ);
     
-    // Look at point above player (character in lower third of screen)
-    const lookAtY = this.player.position.y + 1;
+    // Look at point well above player so character appears in lower third of screen
+    const lookAtY = this.player.position.y + 3; // Look 3 units above player (was 1)
     this.camera.lookAt(this.player.position.x, lookAtY, this.player.position.z);
   }
   
