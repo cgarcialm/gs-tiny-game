@@ -966,15 +966,16 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createSeattleSkyline() {
-    // Create multiple buildings of varying heights
+    // Create dense Seattle skyline with many buildings
     const buildingMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x404040,
+      color: 0x505050,
       emissive: 0xffa500,
-      emissiveIntensity: 0.1
+      emissiveIntensity: 0.15
     });
     
-    // Array of building positions and sizes
+    // Dense array of buildings (varying heights like Seattle)
     const buildings = [
+      // ORIGINAL 7 buildings (keep original positions)
       { x: 8, z: -35, width: 2, height: 8, depth: 2 },
       { x: 11, z: -38, width: 1.5, height: 6, depth: 1.5 },
       { x: 18, z: -42, width: 2.5, height: 10, depth: 2 },
@@ -982,6 +983,30 @@ export default class CampingScene extends Phaser.Scene {
       { x: 22, z: -40, width: 2, height: 9, depth: 2 },
       { x: 25, z: -45, width: 1.5, height: 5, depth: 1.5 },
       { x: 5, z: -40, width: 2, height: 7, depth: 2 },
+      
+      // NEW buildings (shifted left)
+      { x: -10, z: -36, width: 2.5, height: 12, depth: 2.5 },
+      { x: -7, z: -34, width: 1.8, height: 8, depth: 1.8 },
+      { x: -4, z: -38, width: 2.2, height: 11, depth: 2 },
+      { x: -1, z: -37, width: 2, height: 10, depth: 2 },
+      
+      { x: -12, z: -40, width: 2, height: 10, depth: 2 },
+      { x: -9, z: -41, width: 2.3, height: 13, depth: 2.3 },
+      { x: -6, z: -39, width: 1.6, height: 7, depth: 1.6 },
+      { x: -3, z: -42, width: 2.5, height: 15, depth: 2.5 },
+      { x: 0, z: -43, width: 1.9, height: 9, depth: 1.9 },
+      { x: 3, z: -41, width: 2.4, height: 12, depth: 2.2 },
+      
+      { x: -11, z: -45, width: 2.2, height: 16, depth: 2.2 },
+      { x: -8, z: -47, width: 2.6, height: 18, depth: 2.5 },
+      { x: -5, z: -46, width: 2, height: 14, depth: 2 },
+      { x: -2, z: -48, width: 2.8, height: 17, depth: 2.8 },
+      { x: 1, z: -46, width: 2.3, height: 15, depth: 2.3 },
+      { x: 4, z: -47, width: 2.5, height: 16, depth: 2.5 },
+      
+      // Extra tall (new)
+      { x: -7, z: -44, width: 3, height: 20, depth: 3 },
+      { x: -2, z: -45, width: 2.7, height: 19, depth: 2.7 }
     ];
     
     buildings.forEach(b => {
