@@ -423,44 +423,6 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createLake() {
-    // Simplified animated water without normal maps
-    const waterGeometry = new THREE.PlaneGeometry(25, 35, 32, 32);
-    const waterMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x5a8fb4, // Blue water
-      roughness: 0.1,
-      metalness: 0.6,
-      transparent: true,
-      opacity: 0.85
-    });
-    this.water = new THREE.Mesh(waterGeometry, waterMaterial);
-    this.water.rotation.x = -Math.PI / 2;
-    this.water.position.set(10, 0.1, -15);
-    this.threeScene.add(this.water);
-    
-    // Store geometry for wave animation
-    this.water.userData.originalPositions = this.water.geometry.attributes.position.array.slice();
-    
-    // Add gray rocks along the shore (between ground and water)
-    const numRocks = 30;
-    for (let i = 0; i < numRocks; i++) {
-      const rockSize = 0.2 + Math.random() * 0.5;
-      const rockGeo = new THREE.SphereGeometry(rockSize, 6, 6);
-      const rockMat = new THREE.MeshStandardMaterial({ 
-        color: 0x707070 + Math.floor(Math.random() * 0x202020) // Varying grays
-      });
-      const rock = new THREE.Mesh(rockGeo, rockMat);
-      
-      // Position along the shore (transition zone)
-      const shoreX = -2 + Math.random() * 7; // Shore strip
-      const shoreZ = -3 - Math.random() * 25; // Along lake edge
-      
-      rock.position.set(shoreX, rockSize * 0.5, shoreZ);
-      rock.scale.set(1, 0.5 + Math.random() * 0.4, 1); // Flatten
-      this.threeScene.add(rock);
-    }
-  }
-  
-  private createLake() {
     // ==================== EDIT LAKE CIRCLES HERE ====================
     // Each circle: { x: X_POSITION, z: Z_POSITION, radius: SIZE }
     // Lake is formed by overlapping these circles for organic shape
@@ -472,7 +434,7 @@ export default class CampingScene extends Phaser.Scene {
       { x: -1, z: -12, radius: 10 },     // At edge2 point (-4, -7)
       { x: 20, z: 5, radius: 7 },      // Positive z extension
       { x: 18, z: -5, radius: 6 },     // Right extension
-      { x: 10, z: 2, radius: 5 },       // Far positive z
+      { x: 10, z: -6, radius: 10 },       // Far positive z
       { x: -8, z: -10, radius: 8 },       // Left extension (near mountains)
       { x: -10, z: -20, radius: 10 }       // Left extension (near mountains)
     ];
