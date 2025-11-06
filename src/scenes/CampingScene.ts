@@ -672,8 +672,77 @@ export default class CampingScene extends Phaser.Scene {
     // Add water beyond the city (right side)
     this.createDistantWater();
     
+    // Add distant mountain range with snow (far horizon)
+    this.createDistantMountains();
+    
     // Create hammock between the two fixed trees
     this.createHammock(hammockTree1.x, hammockTree1.z, hammockTree2.x, hammockTree2.z);
+  }
+  
+  private createDistantMountains() {
+    // Far distant mountains beyond city - creates horizon
+    const distantMountainMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x1a3a5a, // Dark blue (distant atmosphere)
+      roughness: 0.8
+    });
+    
+    const snowMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xe0e8f0, // White-blue snow
+      emissive: 0xffffff,
+      emissiveIntensity: 0.1,
+      roughness: 0.6
+    });
+    
+    const baseY = 0;
+    
+    // Diagonal horizon behind city (shifted toward positive x)
+    const mountains = [
+      { x: -10, z: -55, radius: 5, height: 4 },
+      { x: 0, z: -56, radius: 4, height: 3 },
+      { x: 10, z: -57, radius: 6, height: 5 },
+      { x: 20, z: -58, radius: 5, height: 4 },
+      { x: 30, z: -59, radius: 7, height: 5 },
+      { x: 40, z: -60, radius: 5, height: 4 },
+      { x: 50, z: -61, radius: 6, height: 5 },
+      { x: 60, z: -62, radius: 4, height: 3 },
+      { x: 70, z: -63, radius: 5, height: 4 }
+    ];
+    
+    // Right-side horizon (parallel to z-axis, constant x)
+    const rightHorizonX = 85; // Right side horizon
+    const rightMountains = [
+      { x: rightHorizonX, z: -60, radius: 5, height: 4 },
+      { x: rightHorizonX, z: -50, radius: 4, height: 3 },
+      { x: rightHorizonX, z: -40, radius: 6, height: 5 },
+      { x: rightHorizonX, z: -30, radius: 5, height: 4 },
+      { x: rightHorizonX, z: -20, radius: 4, height: 3 },
+      { x: rightHorizonX, z: -10, radius: 5, height: 4 },
+      { x: rightHorizonX, z: 0, radius: 6, height: 5 },
+      { x: rightHorizonX, z: 10, radius: 4, height: 3 },
+      { x: rightHorizonX, z: 20, radius: 5, height: 4 },
+      { x: rightHorizonX, z: 30, radius: 4, height: 3 },
+      { x: rightHorizonX, z: 40, radius: 6, height: 5 },
+      { x: rightHorizonX, z: 50, radius: 5, height: 4 }
+    ];
+    
+    // Combine both mountain lines
+    const allMountains = [...mountains, ...rightMountains];
+    
+    allMountains.forEach(m => {
+      // Mountain body (dark)
+      const mountainGeo = new THREE.ConeGeometry(m.radius, m.height, 32);
+      const mountain = new THREE.Mesh(mountainGeo, distantMountainMaterial);
+      mountain.position.set(m.x, baseY + m.height / 2, m.z);
+      this.threeScene.add(mountain);
+      
+      // Snow cap (top 30% of mountain)
+      const snowCapHeight = m.height * 0.3;
+      const snowCapRadius = m.radius * 0.3; // Narrower at top
+      const snowGeo = new THREE.ConeGeometry(snowCapRadius, snowCapHeight, 32);
+      const snowCap = new THREE.Mesh(snowGeo, snowMaterial);
+      snowCap.position.set(m.x, baseY + m.height - snowCapHeight / 2, m.z);
+      this.threeScene.add(snowCap);
+    });
   }
   
   private createDistantWater() {
