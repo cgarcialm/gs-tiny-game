@@ -669,8 +669,54 @@ export default class CampingScene extends Phaser.Scene {
     // Add mountain backdrop on LEFT and behind
     this.createMountainBackdrop();
     
+    // Add water beyond the city (right side)
+    this.createDistantWater();
+    
     // Create hammock between the two fixed trees
     this.createHammock(hammockTree1.x, hammockTree1.z, hammockTree2.x, hammockTree2.z);
+  }
+  
+  private createDistantWater() {
+    // Water area beyond city (right side)
+    // x: 30 to 70, z: -25 to -50
+    
+    const waterMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x87CEEB,
+      emissive: 0x4a90e2,
+      emissiveIntensity: 0.3,
+      roughness: 0.2,
+      metalness: 0.4,
+      transparent: false
+    });
+    
+    const basinMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x1a3a5f,
+      emissive: 0x1a4d7f,
+      emissiveIntensity: 0.4,
+      roughness: 0.9
+    });
+    
+    // Water plane in that area
+    const distantWaterGeo = new THREE.PlaneGeometry(40, 40, 32, 32); // Width 40, depth 25
+    const distantWater = new THREE.Mesh(distantWaterGeo, waterMaterial);
+    distantWater.rotation.x = -Math.PI / 2;
+    distantWater.position.set(60, 0.1, -40); // Centered at x=50, z=-37.5
+    this.threeScene.add(distantWater);
+    distantWater.userData.originalPositions = distantWater.geometry.attributes.position.array.slice();
+    
+    // Basin
+    const distantBasin = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 40),
+      basinMaterial
+    );
+    distantBasin.rotation.x = -Math.PI / 2;
+    distantBasin.position.set(60, 0.01, -40);
+    this.threeScene.add(distantBasin);
+    
+    // Add to animation (if water reference exists)
+    if (this.water && (this.water as any).allCircles) {
+      (this.water as any).allCircles.push(distantWater);
+    }
   }
   
   private createHammock(x1: number, z1: number, x2: number, z2: number) {
