@@ -152,7 +152,7 @@ export default class CampingScene extends Phaser.Scene {
     this.threeScene.add(ambient);
     
     const sunlight = new THREE.DirectionalLight(0xff6b35, 1.2); // Warm sunset light
-    sunlight.position.set(-10, 5, -5);
+    sunlight.position.set(20, 4, -25); // Opposite x (was -10, now +10)
     this.threeScene.add(sunlight);
   }
   
