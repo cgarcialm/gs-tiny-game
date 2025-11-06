@@ -713,9 +713,28 @@ export default class CampingScene extends Phaser.Scene {
     distantBasin.position.set(60, 0.01, -40);
     this.threeScene.add(distantBasin);
     
-    // Add to animation (if water reference exists)
+    // Add corner circle to smooth the transition between back water and distant water
+    const cornerRadius = 15;
+    const cornerWaterGeo = new THREE.CircleGeometry(cornerRadius, 32);
+    const cornerWater = new THREE.Mesh(cornerWaterGeo, waterMaterial);
+    cornerWater.rotation.x = -Math.PI / 2;
+    cornerWater.position.set(40, 0.1, -30); // Correct corner (between backWater z=-20 and distantWater z=-40)
+    this.threeScene.add(cornerWater);
+    cornerWater.userData.originalPositions = cornerWater.geometry.attributes.position.array.slice();
+    
+    // Corner basin
+    const cornerBasin = new THREE.Mesh(
+      new THREE.CircleGeometry(cornerRadius, 32),
+      basinMaterial
+    );
+    cornerBasin.rotation.x = -Math.PI / 2;
+    cornerBasin.position.set(55, 0.01, -30);
+    this.threeScene.add(cornerBasin);
+    
+    // Add to animation
     if (this.water && (this.water as any).allCircles) {
       (this.water as any).allCircles.push(distantWater);
+      (this.water as any).allCircles.push(cornerWater);
     }
   }
   
