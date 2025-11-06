@@ -320,35 +320,23 @@ export default class CampingScene extends Phaser.Scene {
       this.threeScene.add(rock);
     }
     
-    // Tent (orange/tan - left side) - A-frame style
-    const tentGroup = new THREE.Group();
-    
-    // Tent body (pyramid/A-frame)
-    const tentShape = new THREE.Shape();
-    tentShape.moveTo(-1.5, 0);
-    tentShape.lineTo(0, 1.8);
-    tentShape.lineTo(1.5, 0);
-    tentShape.lineTo(-1.5, 0);
-    
-    const extrudeSettings = { depth: 2, bevelEnabled: false };
-    const tentGeometry = new THREE.ExtrudeGeometry(tentShape, extrudeSettings);
-    const tentMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xD2691E, // Tan/brown
-      side: THREE.DoubleSide 
-    });
-    const tent = new THREE.Mesh(tentGeometry, tentMaterial);
-    tent.rotation.y = Math.PI / 2;
-    tentGroup.add(tent);
-    
-    // Tent door flap (darker)
-    // const doorGeometry = new THREE.PlaneGeometry(0.8, 1.2);
-    // const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-    // const door = new THREE.Mesh(doorGeometry, doorMaterial);
-    // door.position.set(0, 0.6, 1.01);
-    // tentGroup.add(door);
-    
-    tentGroup.position.set(-7, 0, 1);
-    this.threeScene.add(tentGroup);
+    // Load tent 3D model
+    const tentLoader = new GLTFLoader();
+    tentLoader.load(
+      'tent.glb',
+      (gltf) => {
+        const tentModel = gltf.scene;
+        tentModel.position.set(-7, 0, 1); // Left side of camp
+        tentModel.scale.set(0.015, 0.015, 0.015); // Much smaller (GLB is huge!)
+        tentModel.rotation.y = 0; // Adjust rotation if needed
+        this.threeScene.add(tentModel);
+        console.log("Tent 3D model loaded! Scale:", tentModel.scale);
+      },
+      undefined,
+      (error) => {
+        console.error("Error loading tent model:", error);
+      }
+    );
     
     // Campfire in center
     const fireGroup = new THREE.Group();
