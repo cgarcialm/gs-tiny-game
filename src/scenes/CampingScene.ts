@@ -564,13 +564,16 @@ export default class CampingScene extends Phaser.Scene {
     for (let i = 0; i < treeCount; i++) {
       // Random position - focus on LEFT and BEHIND
       let x = -5 - Math.random() * 20; // LEFT side only (negative x)
-      let z = -10 + Math.random() * 25; // Behind and beside
+      let z = -4 + Math.random() * 19; // From z=-4 to z=15 (not past -4)
       
       // Also add some trees behind the camp
       if (Math.random() < 0.3) {
         x = (Math.random() - 0.5) * 30; // Can be anywhere horizontally
         z = 5 + Math.random() * 20; // But must be BEHIND (positive z)
       }
+      
+      // Ensure z doesn't go below -4
+      if (z < -4) z = -4 + Math.random() * 4;
       
       // Skip if too close to campfire
       const distToFire = Math.sqrt(x * x + (z - 2) * (z - 2));
