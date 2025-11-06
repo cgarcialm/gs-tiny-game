@@ -154,6 +154,41 @@ export default class CampingScene extends Phaser.Scene {
     const sunlight = new THREE.DirectionalLight(0xff6b35, 1.2); // Warm sunset light
     sunlight.position.set(20, 4, -25); // Opposite x (was -10, now +10)
     this.threeScene.add(sunlight);
+    
+    // Add stars in the sky
+    this.createStars();
+  }
+  
+  private createStars() {
+    // Create many bright stars scattered across the sky
+    const starCount = 400;
+    
+    for (let i = 0; i < starCount; i++) {
+      // Random position - spread across sky above horizon
+      const x = (Math.random() - 0.5) * 100;
+      const y = 20 + Math.random() * 5; // High in sky (y=20 to y=60)
+      const z = (Math.random() - 0.5) * 100;
+      
+      // Create each star as a bright glowing sphere
+      const starSize = 0.1 + Math.random() * 0.2; // Bigger
+      const starGeo = new THREE.SphereGeometry(starSize, 8, 8);
+      const starMat = new THREE.MeshBasicMaterial({ 
+        color: 0xffffee, // Warm white
+        fog: false // Don't let fog affect stars
+      });
+      const star = new THREE.Mesh(starGeo, starMat);
+      star.position.set(x, y, z);
+      this.threeScene.add(star);
+    }
+    
+    // Add one test star in obvious position
+    const testStar = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffffff })
+    );
+    testStar.position.set(0, 30, -20); // Directly above and visible
+    this.threeScene.add(testStar);
+    console.log("Stars created - look up to see them!");
   }
   
   private createPlayer() {
