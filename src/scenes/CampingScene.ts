@@ -310,13 +310,13 @@ export default class CampingScene extends Phaser.Scene {
     tentGroup.add(tent);
     
     // Tent door flap (darker)
-    const doorGeometry = new THREE.PlaneGeometry(0.8, 1.2);
-    const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-    const door = new THREE.Mesh(doorGeometry, doorMaterial);
-    door.position.set(0, 0.6, 1.01);
-    tentGroup.add(door);
+    // const doorGeometry = new THREE.PlaneGeometry(0.8, 1.2);
+    // const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+    // const door = new THREE.Mesh(doorGeometry, doorMaterial);
+    // door.position.set(0, 0.6, 1.01);
+    // tentGroup.add(door);
     
-    tentGroup.position.set(-8, 0, 0);
+    tentGroup.position.set(-7, 0, 1);
     this.threeScene.add(tentGroup);
     
     // Campfire in center
@@ -430,13 +430,13 @@ export default class CampingScene extends Phaser.Scene {
       { x: 10, z: -10, radius: 10 },   // Main body (further right)
       { x: 15, z: -15, radius: 8 },    // Extends right toward city
       { x: 8, z: -6, radius: 6 },       // At edge1 point (8, 2)
-      { x: 5, z: -20, radius: 9 },     // Extends back (negative z)
-      { x: -1, z: -12, radius: 6 },     // At edge2 point (-4, -7)
+      { x: 5, z: -22, radius: 9 },     // Extends back (negative z)
+      { x: -1, z: -12, radius: 10 },     // At edge2 point (-4, -7)
       { x: 20, z: 5, radius: 7 },      // Positive z extension
       { x: 18, z: -5, radius: 6 },     // Right extension
       { x: 10, z: 2, radius: 5 },       // Far positive z
-      { x: -8, z: -20, radius: 15 },       // Left extension (near mountains)
-      { x: -15, z: -30, radius: 20 }       // Left extension (near mountains)
+      { x: -8, z: -10, radius: 8 },       // Left extension (near mountains)
+      { x: -10, z: -20, radius: 10 }       // Left extension (near mountains)
     ];
     // ================================================================
     
@@ -950,7 +950,7 @@ export default class CampingScene extends Phaser.Scene {
         });
         
         // Position and scale the model
-        this.spaceNeedle.position.set(12, 0, -32);
+        this.spaceNeedle.position.set(12, 0, -35);
         this.spaceNeedle.scale.set(0.08, 0.08, 0.08);
         
         // Rotate if needed
