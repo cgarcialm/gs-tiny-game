@@ -34,10 +34,9 @@ export default class CampingScene extends Phaser.Scene {
   private cameraAngleV = 0.2; // Slightly upward
   private cameraDistance = 8;
   
-  // Mouse controls
-  private lastPointerX = 0;
-  private lastPointerY = 0;
-  private isPointerDown = false;
+  // Mouse tracking for delta
+  private lastMouseX = 160;
+  private lastMouseY = 90;
 
   constructor() {
     super("Camping");
@@ -80,7 +79,7 @@ export default class CampingScene extends Phaser.Scene {
       strokeThickness: 3
     }).setOrigin(0.5).setDepth(100);
     
-    this.add.text(160, 35, "WASD/Arrows to move | Drag mouse to look | SPACE to jump", {
+    this.add.text(160, 35, "WASD/Arrows to move | Mouse to look | SPACE to jump", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#dddddd",
@@ -260,34 +259,22 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private setupMouseControls() {
-    // Track mouse movement for camera rotation
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      this.isPointerDown = true;
-      this.lastPointerX = pointer.x;
-      this.lastPointerY = pointer.y;
-    });
-    
-    this.input.on('pointerup', () => {
-      this.isPointerDown = false;
-    });
-    
+    // Track mouse movement for camera rotation (accumulates, allows 360°)
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      if (this.isPointerDown) {
-        // Calculate delta
-        const deltaX = pointer.x - this.lastPointerX;
-        const deltaY = pointer.y - this.lastPointerY;
-        
-        // Rotate camera
-        this.cameraAngleH -= deltaX * 0.01; // Horizontal rotation
-        this.cameraAngleV += deltaY * 0.01; // Vertical rotation
-        
-        // Clamp vertical rotation
-        this.cameraAngleV = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, this.cameraAngleV));
-        
-        // Update last position
-        this.lastPointerX = pointer.x;
-        this.lastPointerY = pointer.y;
-      }
+      // Calculate delta from last position
+      const deltaX = pointer.x - this.lastMouseX;
+      const deltaY = pointer.y - this.lastMouseY;
+      
+      // Accumulate rotation (allows full 360° rotation!)
+      this.cameraAngleH -= deltaX * 0.03; // Horizontal rotation (3x more sensitive)
+      this.cameraAngleV += deltaY * 0.02; // Vertical rotation (increased)
+      
+      // Clamp vertical rotation (prevent flipping)
+      this.cameraAngleV = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, this.cameraAngleV));
+      
+      // Update last position
+      this.lastMouseX = pointer.x;
+      this.lastMouseY = pointer.y;
     });
   }
   
@@ -1199,10 +1186,25 @@ export default class CampingScene extends Phaser.Scene {
       let forward = 0; // Forward/backward
       let right = 0;   // Left/right
       
-      if (this.controls.up.isDown) forward += 1;    // Move forward (toward camera direction)
-      if (this.controls.down.isDown) forward -= 1;  // Move backward
-      if (this.controls.right.isDown) right += 1;   // Move right
-      if (this.controls.left.isDown) right -= 1;    // Move left
+      // Arrow keys
+      if (this.controls.up.isDown) forward += 1;
+      if (this.controls.down.isDown) forward -= 1;
+      if (this.controls.right.isDown) right += 1;
+      if (this.controls.left.isDown) right -= 1;
+      
+      // WASD keys (need to add manually)
+      const keyboard = this.input.keyboard;
+      if (keyboard) {
+        if (keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W).isDown) forward += 1;
+        if (keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S).isDown) forward -= 1;
+        if (keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D).isDown) right += 1;
+        if (keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown) right -= 1;
+      }
+      
+      // Debug: log if any movement input detected
+      if (forward !== 0 || right !== 0) {
+        console.log("Movement input:", { forward, right, cameraAngleH: this.cameraAngleH.toFixed(2) });
+      }
       
       // Calculate camera's forward and right directions (on XZ plane)
       const cameraForward = new THREE.Vector3();
