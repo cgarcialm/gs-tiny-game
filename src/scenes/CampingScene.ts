@@ -434,7 +434,8 @@ export default class CampingScene extends Phaser.Scene {
       { x: 20, z: 5, radius: 7 },      // Positive z extension
       { x: 18, z: -5, radius: 6 },     // Right extension
       { x: 10, z: 2, radius: 5 },       // Far positive z
-      { x: -8, z: -15, radius: 5 }       // Left extension (near mountains)
+      { x: -8, z: -20, radius: 15 },       // Left extension (near mountains)
+      { x: -15, z: -30, radius: 20 }       // Left extension (near mountains)
     ];
     // ================================================================
     
@@ -477,6 +478,38 @@ export default class CampingScene extends Phaser.Scene {
       waterMesh.userData.originalPositions = waterMesh.geometry.attributes.position.array.slice();
       waterCircles.push(waterMesh);
     });
+    
+    // Add large rectangular water to cover x=20 onwards
+    const farWaterGeo = new THREE.PlaneGeometry(70, 80, 32, 32); // Large coverage
+    const farWaterMesh = new THREE.Mesh(farWaterGeo, waterMaterial);
+    farWaterMesh.rotation.x = -Math.PI / 2;
+    farWaterMesh.position.set(50, 0.1, 20); // Centered at x=50, covers x=20 to x=80
+    this.threeScene.add(farWaterMesh);
+    farWaterMesh.userData.originalPositions = farWaterMesh.geometry.attributes.position.array.slice();
+    waterCircles.push(farWaterMesh);
+    
+    // Basin under far water
+    const farBasinGeo = new THREE.PlaneGeometry(70, 80);
+    const farBasinMesh = new THREE.Mesh(farBasinGeo, basinMaterial);
+    farBasinMesh.rotation.x = -Math.PI / 2;
+    farBasinMesh.position.set(50, 0.01, 20);
+    this.threeScene.add(farBasinMesh);
+    
+    // Add another rectangle at z=-50 from x=10 onwards
+    const backWaterGeo = new THREE.PlaneGeometry(70, 20, 32, 32); // Width 70, height 20
+    const backWaterMesh = new THREE.Mesh(backWaterGeo, waterMaterial);
+    backWaterMesh.rotation.x = -Math.PI / 2;
+    backWaterMesh.position.set(45, 0.1, -20); // Centered at x=45 (covers x=10 to x=80), z=-50
+    this.threeScene.add(backWaterMesh);
+    backWaterMesh.userData.originalPositions = backWaterMesh.geometry.attributes.position.array.slice();
+    waterCircles.push(backWaterMesh);
+    
+    // Basin under back water
+    const backBasinGeo = new THREE.PlaneGeometry(70, 20);
+    const backBasinMesh = new THREE.Mesh(backBasinGeo, basinMaterial);
+    backBasinMesh.rotation.x = -Math.PI / 2;
+    backBasinMesh.position.set(45, 0.01, -20);
+    this.threeScene.add(backBasinMesh);
     
     // Store all water circles for animation
     this.water = waterCircles[0]; // Main reference (for compatibility)
@@ -551,6 +584,10 @@ export default class CampingScene extends Phaser.Scene {
       const distToHammock1 = Math.sqrt((x - hammockTree1.x) * (x - hammockTree1.x) + (z - hammockTree1.z) * (z - hammockTree1.z));
       const distToHammock2 = Math.sqrt((x - hammockTree2.x) * (x - hammockTree2.x) + (z - hammockTree2.z) * (z - hammockTree2.z));
       if (distToHammock1 < 3 || distToHammock2 < 3) continue;
+      
+      // Skip if in lake area (8, -6, radius 6)
+      const distToLake = Math.sqrt((x - 8) * (x - 8) + (z + 6) * (z + 6));
+      if (distToLake < 7) continue; // 6 + 1 buffer
       
       const height = 8 + Math.random() * 8;
       
