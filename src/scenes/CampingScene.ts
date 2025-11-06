@@ -1310,6 +1310,12 @@ export default class CampingScene extends Phaser.Scene {
       this.player.position.x += moveVector.x * moveSpeed * dt;
       this.player.position.z += moveVector.z * moveSpeed * dt;
       
+      // Rotate player to face movement direction
+      if (moveVector.length() > 0) {
+        const targetAngle = Math.atan2(moveVector.x, moveVector.z);
+        this.player.rotation.y = targetAngle;
+      }
+      
       // Jumping (SPACE key)
       if (Phaser.Input.Keyboard.JustDown(this.controls.jump) && !this.isJumping) {
         this.isJumping = true;
