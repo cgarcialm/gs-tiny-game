@@ -23,6 +23,7 @@ export default class CampingScene extends Phaser.Scene {
   private threeRenderer!: THREE.WebGLRenderer; // Renamed to avoid conflict with Phaser
   private spaceNeedle!: THREE.Group;
   private water!: THREE.Mesh;
+  private airplane!: THREE.Group;
   
   // Player character
   private player!: THREE.Mesh;
@@ -40,7 +41,7 @@ export default class CampingScene extends Phaser.Scene {
   private cameraAngleH = Math.PI / 3; // Start facing right (toward city)
   private cameraAngleV = 0.3; // Looking down slightly
   private cameraDistance = 6; // Medium distance
-  private cameraHeightOffset = 3; // Higher above player
+  private cameraHeightOffset = 4; // Higher above player
   
   // Mouse tracking for delta
   private lastMouseX = 160;
@@ -164,6 +165,56 @@ export default class CampingScene extends Phaser.Scene {
     
     // Add stars in the sky
     this.createStars();
+    
+    // Add airplane flying in distance
+    this.createAirplane();
+  }
+  
+  private createAirplane() {
+    // Load airplane GLB model
+    const airplaneLoader = new GLTFLoader();
+    airplaneLoader.load(
+      '1400_boeing_737_airplane_for_free.glb',
+      (gltf) => {
+        this.airplane = gltf.scene;
+        
+        // Remove stand/base and brighten materials
+        const toRemove: THREE.Object3D[] = [];
+        this.airplane.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            
+            // Check if this is the stand (usually at bottom, flat)
+            const bbox = new THREE.Box3().setFromObject(mesh);
+            const size = bbox.getSize(new THREE.Vector3());
+            
+            // If it's very flat (stand/base), mark for removal
+            if (size.y < size.x * 0.1 || mesh.name.toLowerCase().includes('stand') || mesh.name.toLowerCase().includes('base')) {
+              toRemove.push(mesh);
+            } else if (mesh.material) {
+              // Brighten airplane parts
+              const mat = mesh.material as THREE.MeshStandardMaterial;
+              mat.emissive = new THREE.Color(0xffffff);
+              mat.emissiveIntensity = 0.3;
+            }
+          }
+        });
+        
+        // Remove stand pieces
+        toRemove.forEach(obj => obj.parent?.remove(obj));
+        
+        // Position back behind city at horizon
+        this.airplane.position.set(-80, 30, -70); // Behind city skyline
+        const scale = 0.4
+        this.airplane.scale.set(scale, scale, scale);
+        this.airplane.rotation.y = Math.PI / 2; // Flying left to right
+        
+        this.threeScene.add(this.airplane);
+        console.log("Airplane GLB loaded - scale 0.5");
+      },
+      undefined,
+      (error) => console.error("Airplane load error:", error)
+    );
   }
   
   private createStars() {
@@ -1362,6 +1413,21 @@ export default class CampingScene extends Phaser.Scene {
     
     // Update camera to follow player
     this.updateCameraPosition();
+    
+    // Animate airplane flying across
+    if (this.airplane) {
+      this.airplane.position.x += dt * 15; // Fly left to right
+      
+      // Debug log every 2 seconds
+      if (Math.floor(this.time.now / 2000) !== Math.floor((this.time.now - this.game.loop.delta) / 2000)) {
+        console.log("Airplane position:", this.airplane.position.x.toFixed(1), this.airplane.position.y, this.airplane.position.z);
+      }
+      
+      // Loop: reset when too far right
+      if (this.airplane.position.x > 100) {
+        this.airplane.position.x = -100;
+      }
+    }
     
     // Animate fire (flicker effect)
     const fireObjects = this.threeScene.children.filter(obj => 
