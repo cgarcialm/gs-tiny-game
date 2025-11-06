@@ -1193,27 +1193,43 @@ export default class CampingScene extends Phaser.Scene {
     
     const dt = this.game.loop.delta / 1000;
     
-    // Player movement (WASD/Arrows)
+    // Player movement (WASD/Arrows) - camera-relative
     if (this.player) {
       const moveSpeed = 5;
-      let moveX = 0;
-      let moveZ = 0;
+      let forward = 0; // Forward/backward
+      let right = 0;   // Left/right
       
-      if (this.controls.left.isDown) moveX -= 1;
-      if (this.controls.right.isDown) moveX += 1;
-      if (this.controls.up.isDown) moveZ -= 1;
-      if (this.controls.down.isDown) moveZ += 1;
+      if (this.controls.up.isDown) forward += 1;    // Move forward (toward camera direction)
+      if (this.controls.down.isDown) forward -= 1;  // Move backward
+      if (this.controls.right.isDown) right += 1;   // Move right
+      if (this.controls.left.isDown) right -= 1;    // Move left
       
-      // Normalize diagonal movement
-      if (moveX !== 0 || moveZ !== 0) {
-        const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
-        moveX /= length;
-        moveZ /= length;
+      // Calculate camera's forward and right directions (on XZ plane)
+      const cameraForward = new THREE.Vector3();
+      const cameraRight = new THREE.Vector3();
+      
+      // Get camera's look direction
+      this.camera.getWorldDirection(cameraForward);
+      cameraForward.y = 0; // Project onto ground plane
+      cameraForward.normalize();
+      
+      // Right is perpendicular to forward
+      cameraRight.crossVectors(cameraForward, new THREE.Vector3(0, 1, 0));
+      cameraRight.normalize();
+      
+      // Combine forward and right movements
+      const moveVector = new THREE.Vector3();
+      moveVector.addScaledVector(cameraForward, forward);
+      moveVector.addScaledVector(cameraRight, right);
+      
+      // Normalize if moving diagonally
+      if (moveVector.length() > 0) {
+        moveVector.normalize();
       }
       
       // Apply movement
-      this.player.position.x += moveX * moveSpeed * dt;
-      this.player.position.z += moveZ * moveSpeed * dt;
+      this.player.position.x += moveVector.x * moveSpeed * dt;
+      this.player.position.z += moveVector.z * moveSpeed * dt;
       
       // Jumping (SPACE key)
       if (Phaser.Input.Keyboard.JustDown(this.controls.jump) && !this.isJumping) {
