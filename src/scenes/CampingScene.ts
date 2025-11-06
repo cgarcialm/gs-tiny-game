@@ -184,22 +184,99 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createPlayer() {
-    // Simple capsule character (Grayson)
-    const geometry = new THREE.CapsuleGeometry(0.4, 1.2, 8, 16);
-    const material = new THREE.MeshStandardMaterial({ 
-      color: 0x81c784, // Green (Grayson's shirt)
-      roughness: 0.7
-    });
-    this.player = new THREE.Mesh(geometry, material);
-    this.player.position.set(-2, 1, 2); // Start near tent
-    this.threeScene.add(this.player);
+    // Improved Grayson character - colors resist warm lighting
+    this.player = new THREE.Group() as any;
+    this.player.position.set(-2, 0, 2); // Start near tent
     
-    // Add simple head
-    const headGeometry = new THREE.SphereGeometry(0.35, 8, 8);
-    const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffdbac }); // Skin tone
-    const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.y = 1;
+    // Shoes/feet (dark brown)
+    const shoeMat = new THREE.MeshStandardMaterial({ 
+      color: 0x3e2723,
+      emissive: 0x3e2723,
+      emissiveIntensity: 0.2
+    });
+    const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.3), shoeMat);
+    leftShoe.position.set(-0.15, 0.08, 0);
+    this.player.add(leftShoe);
+    
+    const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.3), shoeMat);
+    rightShoe.position.set(0.15, 0.08, 0);
+    this.player.add(rightShoe);
+    
+    // Legs (brown pants)
+    const pantsMat = new THREE.MeshStandardMaterial({ 
+      color: 0x6b4423,
+      emissive: 0x6b4423,
+      emissiveIntensity: 0.15
+    });
+    const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6), pantsMat);
+    leftLeg.position.set(-0.15, 0.5, 0);
+    this.player.add(leftLeg);
+    
+    const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6), pantsMat);
+    rightLeg.position.set(0.15, 0.5, 0);
+    this.player.add(rightLeg);
+    
+    // Torso (bright green shirt)
+    const shirtMat = new THREE.MeshStandardMaterial({ 
+      color: 0x81c784,
+      emissive: 0x81c784,
+      emissiveIntensity: 0.2
+    });
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.3), shirtMat);
+    torso.position.set(0, 1.15, 0);
+    this.player.add(torso);
+    
+    // Arms (skin tone)
+    const armMat = new THREE.MeshStandardMaterial({ 
+      color: 0xffe5cc,
+      emissive: 0xffe5cc,
+      emissiveIntensity: 0.15
+    });
+    const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), armMat);
+    leftArm.position.set(-0.3, 1.1, 0);
+    this.player.add(leftArm);
+    
+    const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), armMat);
+    rightArm.position.set(0.3, 1.1, 0);
+    this.player.add(rightArm);
+    
+    // Head (skin tone) - smaller so cap covers it
+    const headMat = new THREE.MeshStandardMaterial({ 
+      color: 0xffe5cc,
+      emissive: 0xffe5cc,
+      emissiveIntensity: 0.15
+    });
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), headMat);
+    head.position.set(0, 1.65, 0);
     this.player.add(head);
+    
+    // Blonde hair (back of head)
+    const hairMat = new THREE.MeshStandardMaterial({ 
+      color: 0xf4d03f, // Blonde
+      emissive: 0xf4d03f,
+      emissiveIntensity: 0.2
+    });
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), hairMat);
+    hair.position.set(0, 1.68, -0.15); // Back of head
+    hair.scale.set(0.8, 1, 0.6); // Flatten to look like hair
+    this.player.add(hair);
+    
+    // Cap (blue - covers head properly)
+    const capMat = new THREE.MeshStandardMaterial({ 
+      color: 0x2196f3, // Blue (not cyan)
+      emissive: 0x2196f3,
+      emissiveIntensity: 0.25
+    });
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), capMat);
+    cap.position.set(0, 1.75, 0);
+    this.player.add(cap);
+    
+    // Cap brim
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.05, 16), capMat);
+    brim.position.set(0, 1.68, 0.08); // Slightly forward
+    this.player.add(brim);
+    
+    this.threeScene.add(this.player);
   }
   
   private addDebugAxes() {
