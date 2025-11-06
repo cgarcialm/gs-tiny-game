@@ -181,13 +181,6 @@ export default class CampingScene extends Phaser.Scene {
       this.threeScene.add(star);
     }
     
-    // Add one test star in obvious position
-    const testStar = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 8, 8),
-      new THREE.MeshBasicMaterial({ color: 0xffffff })
-    );
-    testStar.position.set(0, 30, -20); // Directly above and visible
-    this.threeScene.add(testStar);
     console.log("Stars created - look up to see them!");
   }
   
@@ -551,13 +544,6 @@ export default class CampingScene extends Phaser.Scene {
       foliage.position.set(pos.x, height - 1, pos.z);
       this.threeScene.add(foliage);
       
-      // Add marker sphere at attachment point
-      const markerGeometry = new THREE.SphereGeometry(0.2);
-      const markerMaterial = new THREE.MeshBasicMaterial({ color: idx === 0 ? 0xff0000 : 0xffff00 });
-      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-      marker.position.set(pos.x, 3, pos.z); // Attachment height
-      this.threeScene.add(marker);
-      
       treePositions.push({x: pos.x, z: pos.z, height});
     });
     
@@ -636,6 +622,9 @@ export default class CampingScene extends Phaser.Scene {
     
     // Add distant mountain range with snow (far horizon)
     this.createDistantMountains();
+    
+    // Add shoreline rocks along the water edge
+    this.createShorelineRocks();
     
     // Create hammock between the two fixed trees
     this.createHammock(hammockTree1.x, hammockTree1.z, hammockTree2.x, hammockTree2.z);
@@ -766,6 +755,53 @@ export default class CampingScene extends Phaser.Scene {
     if (this.water && (this.water as any).allCircles) {
       (this.water as any).allCircles.push(distantWater);
       (this.water as any).allCircles.push(cornerWater);
+    }
+  }
+  
+  private createShorelineRocks() {
+    // Add gray rocks along shore (ground side only, not in water)
+    const numRocks = 100;
+    
+    // Shore edge points
+    const edge1 = { x: 15, z: 2 };
+    const edge2 = { x: -13, z: -7 };
+    
+    for (let i = 0; i < numRocks; i++) {
+      // Position along the shore line
+      const t = i / numRocks; // Evenly distributed along shore
+      const baseX = edge1.x + (edge2.x - edge1.x) * t;
+      const baseZ = edge1.z + (edge2.z - edge1.z) * t;
+      
+      // Offset toward camping ground (away from water)
+      const perpX = -(edge2.z - edge1.z); // Perpendicular to shore
+      const perpZ = (edge2.x - edge1.x);
+      const perpLength = Math.sqrt(perpX * perpX + perpZ * perpZ);
+      
+      // Place on ground side with scatter
+      const offset = -1 - Math.random() * 3; // -1 to -3 units toward ground
+      const x = baseX + (perpX / perpLength) * offset;
+      const z = baseZ + (perpZ / perpLength) * offset;
+      
+      // Skip if too close to camp objects
+      const distToFire = Math.sqrt(x * x + (z - 2) * (z - 2));
+      const distToTent = Math.sqrt((x + 8) * (x + 8) + z * z);
+      if (distToFire < 3.5 || distToTent < 3.5) continue;
+      
+      // Create gray rock using MeshBasicMaterial (unaffected by lighting)
+      const rockSize = 0.3 + Math.random() * 0.5;
+      const rockGeo = new THREE.SphereGeometry(rockSize, 8, 8);
+      
+      // Pick from actual gray colors (not hex math!)
+      const grayColors = [0x505050, 0x606060, 0x707070, 0x808080, 0x909090, 0x5a5a5a, 0x6a6a6a];
+      const grayShade = grayColors[Math.floor(Math.random() * grayColors.length)];
+      
+      const rockMat = new THREE.MeshBasicMaterial({ 
+        color: grayShade // True gray
+      });
+      const rock = new THREE.Mesh(rockGeo, rockMat);
+      rock.position.set(x, rockSize * 0.4, z);
+      rock.scale.set(1, 0.5 + Math.random() * 0.3, 1); // Flatten
+      this.threeScene.add(rock);
     }
   }
   
