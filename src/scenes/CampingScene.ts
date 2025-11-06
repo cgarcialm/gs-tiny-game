@@ -78,29 +78,7 @@ export default class CampingScene extends Phaser.Scene {
     // Set up mouse controls
     this.setupMouseControls();
     
-    // Overlay text
-    this.add.text(160, 15, "All Memories Recovered", {
-      fontFamily: "monospace",
-      fontSize: "14px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      stroke: "#000000",
-      strokeThickness: 3
-    }).setOrigin(0.5).setDepth(100);
-    
-    this.add.text(160, 35, "WASD/Arrows to move | Mouse to look | SPACE to jump", {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#dddddd",
-      stroke: "#000000",
-      strokeThickness: 2
-    }).setOrigin(0.5).setDepth(100);
-    
-    this.add.text(160, 165, "Press ENTER to continue", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#aaaaaa"
-    }).setOrigin(0.5).setDepth(100);
+    // Overlay text removed for clean view
   }
 
   private setupThreeJS() {
@@ -375,24 +353,7 @@ export default class CampingScene extends Phaser.Scene {
     gridHelper.position.y = 0.01; // Slightly above ground
     this.threeScene.add(gridHelper);
     
-    // Add axis labels using Phaser text overlays
-    this.add.text(320, 90, "← X (Red)", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#ff0000"
-    }).setOrigin(1, 0.5).setDepth(200);
-    
-    this.add.text(160, 10, "↑ Y (Green)", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#00ff00"
-    }).setOrigin(0.5, 0).setDepth(200);
-    
-    this.add.text(10, 90, "Z (Blue) →", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#0000ff"
-    }).setOrigin(0, 0.5).setDepth(200);
+    // Axis labels removed for clean view
   }
   
   private setupMouseControls() {
@@ -406,8 +367,8 @@ export default class CampingScene extends Phaser.Scene {
       this.cameraAngleH -= deltaX * 0.03; // Horizontal rotation (3x more sensitive)
       this.cameraAngleV += deltaY * 0.02; // Vertical rotation (increased)
       
-      // Clamp vertical rotation (prevent flipping)
-      this.cameraAngleV = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, this.cameraAngleV));
+      // Clamp vertical rotation (allow more tilt up/down)
+      this.cameraAngleV = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.cameraAngleV));
       
       // Update last position
       this.lastMouseX = pointer.x;
