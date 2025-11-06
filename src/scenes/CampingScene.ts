@@ -474,7 +474,7 @@ export default class CampingScene extends Phaser.Scene {
     const hammockTree2 = { x: -7, z: 4 }; // Next to tent area
     
     // Create the two fixed trees first (marked with bright foliage for visibility)
-    [hammockTree1, hammockTree2].forEach((pos, idx) => {
+    [hammockTree1, hammockTree2].forEach((pos) => {
       const height = 10;
       
       // Trunk
