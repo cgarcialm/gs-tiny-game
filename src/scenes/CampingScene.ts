@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
 import type { GameControls } from "../utils/controls";
@@ -924,48 +925,63 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createSpaceNeedle() {
+    // Load actual Space Needle 3D model
+    const loader = new GLTFLoader();
+    loader.load(
+      'space_needle.glb',
+      (gltf) => {
+        this.spaceNeedle = gltf.scene;
+        
+        // Position and scale the model
+        this.spaceNeedle.position.set(12, 0, -32); // Closer (less negative z)
+        this.spaceNeedle.scale.set(0.08, 0.08, 0.08); // Much bigger
+        
+        // Rotate if needed
+        this.spaceNeedle.rotation.y = 0;
+        
+        this.threeScene.add(this.spaceNeedle);
+        console.log("Space Needle 3D model loaded!");
+      },
+      (progress) => {
+        // Loading progress
+        console.log(`Loading Space Needle: ${(progress.loaded / progress.total * 100).toFixed(0)}%`);
+      },
+      (error) => {
+        console.error("Error loading Space Needle model:", error);
+        // Fallback: create simple placeholder
+        this.createSimpleSpaceNeedle();
+      }
+    );
+    
+    // Add Seattle city skyline (simple buildings)
+    this.createSeattleSkyline();
+  }
+  
+  private createSimpleSpaceNeedle() {
+    // Fallback simple Space Needle if model fails to load
     this.spaceNeedle = new THREE.Group();
     
-    // Base (tripod legs - simplified)
-    const baseGeometry = new THREE.CylinderGeometry(0.15, 0.4, 4);
     const baseMaterial = new THREE.MeshStandardMaterial({ color: 0xb0b0b0 });
-    const base = new THREE.Mesh(baseGeometry, baseMaterial);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.4, 4), baseMaterial);
     base.position.y = 2;
     this.spaceNeedle.add(base);
     
-    // Observation deck (UFO shape)
-    const deckGeometry = new THREE.CylinderGeometry(1.2, 0.8, 0.6);
     const deckMaterial = new THREE.MeshStandardMaterial({ 
       color: 0xe0e0e0,
       emissive: 0xff6b35,
       emissiveIntensity: 0.2
     });
-    const deck = new THREE.Mesh(deckGeometry, deckMaterial);
+    const deck = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.8, 0.6), deckMaterial);
     deck.position.y = 5;
     this.spaceNeedle.add(deck);
     
-    // Spire (antenna)
-    const spireGeometry = new THREE.CylinderGeometry(0.05, 0.15, 4);
-    const spireMaterial = new THREE.MeshStandardMaterial({ color: 0xd0d0d0 });
-    const spire = new THREE.Mesh(spireGeometry, spireMaterial);
+    const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.15, 4), baseMaterial);
     spire.position.y = 8;
     this.spaceNeedle.add(spire);
     
-    // Top tip
-    const tipGeometry = new THREE.SphereGeometry(0.1);
-    const tipMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red light
-    const tip = new THREE.Mesh(tipGeometry, tipMaterial);
-    tip.position.y = 10.2;
-    this.spaceNeedle.add(tip);
-    
-    // Position to the right in the distance
     this.spaceNeedle.position.set(15, 0, -40);
     this.spaceNeedle.scale.set(3, 3, 3);
-    
     this.threeScene.add(this.spaceNeedle);
-    
-    // Add Seattle city skyline (simple buildings)
-    this.createSeattleSkyline();
   }
   
   private createSeattleSkyline() {
