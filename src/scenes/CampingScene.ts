@@ -37,11 +37,14 @@ export default class CampingScene extends Phaser.Scene {
   private leftArm!: THREE.Mesh;
   private rightArm!: THREE.Mesh;
   
+  // Fire interaction
+  private ouchText?: Phaser.GameObjects.Text;
+  
   // Camera controls
   private cameraAngleH = Math.PI / 3; // Start facing right (toward city)
-  private cameraAngleV = 0.3; // Looking down slightly
+  private cameraAngleV = -0.3; // Looking up slightly
   private cameraDistance = 6; // Medium distance
-  private cameraHeightOffset = 4; // Higher above player
+  private cameraHeightOffset = 4; // Higher above player (compensate for y=0)
   
   // Mouse tracking for delta
   private lastMouseX = 160;
@@ -1428,6 +1431,52 @@ export default class CampingScene extends Phaser.Scene {
       // Keep player in bounds
       this.player.position.x = Math.max(-15, Math.min(15, this.player.position.x));
       this.player.position.z = Math.max(-10, Math.min(10, this.player.position.z));
+      
+      // Check if player walks through fire (fire is at 0, 0, 2)
+      const fireX = 0, fireZ = 2;
+      const distToFire = Math.sqrt(
+        (this.player.position.x - fireX) ** 2 + 
+        (this.player.position.z - fireZ) ** 2
+      );
+      
+      if (distToFire < 1.5 && !this.isJumping) {
+        // Too close to fire! Auto-jump and say "Ouch!"
+        console.log("Fire collision! Distance:", distToFire);
+        this.isJumping = true;
+        this.jumpVelocity = 8;
+        
+        // Show "Ouch!" text via DOM (floats up and fades)
+        const ouchDiv = document.createElement('div');
+        ouchDiv.textContent = "Ouch!";
+        ouchDiv.style.position = 'fixed';
+        ouchDiv.style.top = '50%';
+        ouchDiv.style.left = '50%';
+        ouchDiv.style.transform = 'translate(-50%, -50%)';
+        ouchDiv.style.fontSize = '35px';
+        ouchDiv.style.fontFamily = 'monospace';
+        ouchDiv.style.fontWeight = 'bold';
+        ouchDiv.style.color = '#ff0000';
+        // ouchDiv.style.textShadow = '2px 2px 4px'; // Shadow for visibility
+        ouchDiv.style.zIndex = '9999';
+        ouchDiv.style.pointerEvents = 'none';
+        ouchDiv.style.transition = 'all 1.5s ease-out';
+        document.body.appendChild(ouchDiv);
+        
+        console.log("Ouch text created!");
+        
+        // Animate: float up and fade out
+        setTimeout(() => {
+          ouchDiv.style.top = '20%'; // Float up
+          ouchDiv.style.opacity = '0'; // Fade out
+        }, 50);
+        
+        // Remove after animation
+        setTimeout(() => {
+          if (ouchDiv.parentNode) {
+            document.body.removeChild(ouchDiv);
+          }
+        }, 1600);
+      }
     }
     
     // Update camera to follow player
