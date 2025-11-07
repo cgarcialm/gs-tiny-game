@@ -40,6 +40,12 @@ export default class CampingScene extends Phaser.Scene {
   // Fire interaction
   private ouchText?: Phaser.GameObjects.Text;
   
+  // Ceci NPC
+  private ceci!: THREE.Group;
+  private interactPromptDiv?: HTMLDivElement;
+  private hasTalkedToCeci = false;
+  private lastDialogueClose = 0;
+  
   // Camera controls
   private cameraAngleH = Math.PI / 3; // Start facing right (toward city)
   private cameraAngleV = 0.1; // Nearly horizontal (slight upward tilt)
@@ -229,9 +235,10 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createCeci() {
-    // Create Ceci sitting between fire and rocks, watching the city
-    const ceci = new THREE.Group();
-    ceci.position.set(3, 0, 3); // Between fire and right-side rocks
+    // Create Ceci standing between fire and rocks, watching the city
+    this.ceci = new THREE.Group() as any;
+    this.ceci.position.set(3, 0, 3); // Between fire and right-side rocks
+    const ceci = this.ceci; // Alias for easier reference
     
     // Black shoes
     const shoeMat = new THREE.MeshStandardMaterial({ 
@@ -1549,6 +1556,96 @@ export default class CampingScene extends Phaser.Scene {
       this.player.position.x = Math.max(-15, Math.min(15, this.player.position.x));
       this.player.position.z = Math.max(-10, Math.min(10, this.player.position.z));
       
+      // Check distance to Ceci for interaction
+      if (this.ceci) {
+        const distToCeci = Math.sqrt(
+          (this.player.position.x - this.ceci.position.x) ** 2 + 
+          (this.player.position.z - this.ceci.position.z) ** 2
+        );
+        
+        // Debug log when close
+        if (distToCeci < 2 && Math.floor(this.time.now / 1000) % 2 === 0) {
+          console.log("Near Ceci! Distance:", distToCeci.toFixed(2));
+        }
+        
+        if (distToCeci < 2 && !this.hasTalkedToCeci) {
+          // Show "Press E" prompt via DOM (only if haven't talked yet)
+          if (!this.interactPromptDiv) {
+            this.interactPromptDiv = document.createElement('div');
+            this.interactPromptDiv.textContent = "Press E to talk to Ceci";
+            this.interactPromptDiv.style.position = 'fixed';
+            this.interactPromptDiv.style.bottom = '20%';
+            this.interactPromptDiv.style.left = '50%';
+            this.interactPromptDiv.style.transform = 'translateX(-50%)';
+            this.interactPromptDiv.style.fontSize = '18px';
+            this.interactPromptDiv.style.fontFamily = 'monospace';
+            this.interactPromptDiv.style.color = '#ffff00';
+            this.interactPromptDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            this.interactPromptDiv.style.padding = '10px 20px';
+            this.interactPromptDiv.style.borderRadius = '5px';
+            this.interactPromptDiv.style.zIndex = '9999';
+            this.interactPromptDiv.style.pointerEvents = 'none';
+            document.body.appendChild(this.interactPromptDiv);
+            console.log("Prompt shown!");
+          }
+          
+          // Handle E key press
+          if (Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+            console.log("E key pressed - Talking to Ceci!");
+            this.hasTalkedToCeci = true; // Mark as talked
+            
+            // Show dialogue via DOM (not Phaser DialogueManager - gets hidden by Three.js)
+            const dialogueDiv = document.createElement('div');
+            dialogueDiv.textContent = "Ceci: Do you want to plant some flowers with me? Let's walk around :)";
+            dialogueDiv.style.position = 'fixed';
+            dialogueDiv.style.bottom = '10%';
+            dialogueDiv.style.left = '50%';
+            dialogueDiv.style.transform = 'translateX(-50%)';
+            dialogueDiv.style.fontSize = '16px';
+            dialogueDiv.style.fontFamily = 'monospace';
+            dialogueDiv.style.color = '#ffffff';
+            dialogueDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+            dialogueDiv.style.padding = '15px 25px';
+            dialogueDiv.style.borderRadius = '8px';
+            dialogueDiv.style.zIndex = '9999';
+            dialogueDiv.style.maxWidth = '80%';
+            dialogueDiv.style.textAlign = 'center';
+            document.body.appendChild(dialogueDiv);
+            
+            // Remove after 4 seconds or on ENTER
+            const removeDialogue = () => {
+              if (dialogueDiv.parentNode) {
+                document.body.removeChild(dialogueDiv);
+              }
+            };
+            
+            setTimeout(removeDialogue, 4000);
+            
+            // Also allow closing with ENTER
+            const enterListener = (e: KeyboardEvent) => {
+              if (e.key === 'Enter') {
+                removeDialogue();
+                this.lastDialogueClose = this.time.now; // Record close time
+                document.removeEventListener('keydown', enterListener);
+              }
+            };
+            document.addEventListener('keydown', enterListener);
+            
+            // Hide prompt
+            if (this.interactPromptDiv) {
+              document.body.removeChild(this.interactPromptDiv);
+              this.interactPromptDiv = undefined;
+            }
+          }
+        } else {
+          // Remove prompt when too far
+          if (this.interactPromptDiv) {
+            document.body.removeChild(this.interactPromptDiv);
+            this.interactPromptDiv = undefined;
+          }
+        }
+      }
+      
       // Check if player walks through fire (fire is at 0, 0, 2)
       const fireX = 0, fireZ = 2;
       const distToFire = Math.sqrt(
@@ -1660,8 +1757,9 @@ export default class CampingScene extends Phaser.Scene {
       this.threeRenderer.render(this.threeScene, this.camera);
     }
     
-    // Press ENTER to finish
-    if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+    // Press ENTER to finish (but not right after closing dialogue)
+    const timeSinceDialogue = this.time.now - this.lastDialogueClose;
+    if (Phaser.Input.Keyboard.JustDown(this.controls.advance) && timeSinceDialogue > 500) {
       // Fade back to title (game complete!)
       fadeToScene(this, "Title", 2000);
     }
