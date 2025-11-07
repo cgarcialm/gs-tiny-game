@@ -42,7 +42,7 @@ export default class CampingScene extends Phaser.Scene {
   
   // Camera controls
   private cameraAngleH = Math.PI / 3; // Start facing right (toward city)
-  private cameraAngleV = -0.3; // Looking up slightly
+  private cameraAngleV = 0.1; // Nearly horizontal (slight upward tilt)
   private cameraDistance = 6; // Medium distance
   private cameraHeightOffset = 4; // Higher above player (compensate for y=0)
   
