@@ -55,6 +55,7 @@ export default class CampingScene extends Phaser.Scene {
   private lastDialogueClose = 0;
   private ceciFollowing = false;
   private ceciWalkTime = 0;
+  private dialogueActive = false;
   
   // Flower planting
   private flowerModel?: THREE.Object3D;
@@ -1692,11 +1693,6 @@ export default class CampingScene extends Phaser.Scene {
           (this.player.position.z - this.ceci.position.z) ** 2
         );
         
-        // Debug log when close
-        if (distToCeci < 2 && Math.floor(this.time.now / 1000) % 2 === 0) {
-          console.log("Near Ceci! Distance:", distToCeci.toFixed(2));
-        }
-        
         if (distToCeci < 2 && !this.hasTalkedToCeci) {
           // Show "Press E" prompt via DOM (only if haven't talked yet)
           if (!this.interactPromptDiv) {
@@ -1718,12 +1714,13 @@ export default class CampingScene extends Phaser.Scene {
             console.log("Prompt shown!");
           }
           
-          // Handle E key press
-          if (Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+          // Handle E key press (only if dialogue not already active)
+          if (Phaser.Input.Keyboard.JustDown(this.controls.interact) && !this.dialogueActive) {
             console.log("E key pressed - Talking to Ceci!");
-            this.hasTalkedToCeci = true; // Mark as talked
+            this.hasTalkedToCeci = true;
+            this.dialogueActive = true; // Block further E presses
             
-            // Show dialogue via DOM (not Phaser DialogueManager - gets hidden by Three.js)
+            // Show dialogue via DOM
             const dialogueDiv = document.createElement('div');
             dialogueDiv.textContent = "Ceci: Do you want to plant some flowers with me? Let's walk around :)";
             dialogueDiv.style.position = 'fixed';
@@ -1742,22 +1739,33 @@ export default class CampingScene extends Phaser.Scene {
             document.body.appendChild(dialogueDiv);
             
             // Remove after 4 seconds or on ENTER
+            let dialogueClosed = false;
             const removeDialogue = () => {
+              if (dialogueClosed) return; // Prevent double-removal
+              dialogueClosed = true;
+              
               if (dialogueDiv.parentNode) {
                 document.body.removeChild(dialogueDiv);
               }
+              
+              this.lastDialogueClose = this.time.now;
+              this.dialogueActive = false; // Re-enable E key
+              this.ceciFollowing = true;
+              this.plantingFlowers = true;
+              console.log("Dialogue closed! Ceci following, planting activated!");
             };
             
-            setTimeout(removeDialogue, 4000);
+            // Auto-close after 4 seconds
+            const autoCloseTimer = setTimeout(() => {
+              removeDialogue();
+              document.removeEventListener('keydown', enterListener);
+            }, 4000);
             
-            // Also allow closing with ENTER
+            // Allow closing with ENTER
             const enterListener = (e: KeyboardEvent) => {
               if (e.key === 'Enter') {
+                clearTimeout(autoCloseTimer); // Cancel auto-close
                 removeDialogue();
-                this.lastDialogueClose = this.time.now; // Record close time
-                this.ceciFollowing = true; // Start following!
-                this.plantingFlowers = true; // Start planting flowers!
-                console.log("Ceci is following! Planting flowers activated!");
                 document.removeEventListener('keydown', enterListener);
               }
             };
@@ -1879,11 +1887,6 @@ export default class CampingScene extends Phaser.Scene {
     // Animate airplane flying across
     if (this.airplane) {
       this.airplane.position.x += dt * 15; // Fly left to right
-      
-      // Debug log every 2 seconds
-      if (Math.floor(this.time.now / 2000) !== Math.floor((this.time.now - this.game.loop.delta) / 2000)) {
-        console.log("Airplane position:", this.airplane.position.x.toFixed(1), this.airplane.position.y, this.airplane.position.z);
-      }
       
       // Loop: reset when too far right
       if (this.airplane.position.x > 100) {
