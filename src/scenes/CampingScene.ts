@@ -73,6 +73,9 @@ export default class CampingScene extends Phaser.Scene {
     // Create player character
     this.createPlayer();
     
+    // Create Ceci character (sitting in chair)
+    this.createCeci();
+    
     // Add debug axes for positioning (controlled by config)
     if (DEBUG_SHOW_GRID) {
       this.addDebugAxes();
@@ -223,6 +226,97 @@ export default class CampingScene extends Phaser.Scene {
     }
     
     console.log("Stars created - look up to see them!");
+  }
+  
+  private createCeci() {
+    // Create Ceci sitting between fire and rocks, watching the city
+    const ceci = new THREE.Group();
+    ceci.position.set(3, 0, 3); // Between fire and right-side rocks
+    
+    // Black shoes
+    const shoeMat = new THREE.MeshStandardMaterial({ 
+      color: 0x1a1a1a,
+      emissive: 0x1a1a1a,
+      emissiveIntensity: 0.15
+    });
+    const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 0.25), shoeMat);
+    leftShoe.position.set(-0.12, 0, 0);
+    ceci.add(leftShoe);
+    
+    const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 0.25), shoeMat);
+    rightShoe.position.set(0.12, 0, 0);
+    ceci.add(rightShoe);
+    
+    // Legs (light blue shorts) - standing straight
+    const shortsMat = new THREE.MeshStandardMaterial({ 
+      color: 0x5f9ea0,
+      emissive: 0x5f9ea0,
+      emissiveIntensity: 0.2
+    });
+    const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.6), shortsMat);
+    leftLeg.position.set(-0.12, 0.5, 0);
+    ceci.add(leftLeg);
+    
+    const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.6), shortsMat);
+    rightLeg.position.set(0.12, 0.5, 0);
+    ceci.add(rightLeg);
+    
+    // Torso (white shirt)
+    const shirtMat = new THREE.MeshStandardMaterial({ 
+      color: 0xffffff,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.25
+    });
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.25), shirtMat);
+    torso.position.set(0, 1, 0);
+    ceci.add(torso);
+    
+    // Arms (skin tone) - down by sides
+    const armMat = new THREE.MeshStandardMaterial({ 
+      color: 0xd4a574,
+      emissive: 0xd4a574,
+      emissiveIntensity: 0.15
+    });
+    const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5), armMat);
+    leftArm.position.set(-0.25, 1.05, 0);
+    ceci.add(leftArm);
+    
+    const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5), armMat);
+    rightArm.position.set(0.25, 1.05, 0);
+    ceci.add(rightArm);
+    
+    // Head (skin tone)
+    const headMat = new THREE.MeshStandardMaterial({ 
+      color: 0xd4a574,
+      emissive: 0xd4a574,
+      emissiveIntensity: 0.15
+    });
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), headMat);
+    head.position.set(0, 1.5, 0);
+    ceci.add(head);
+    
+    // Long brown hair
+    const hairMat = new THREE.MeshStandardMaterial({ 
+      color: 0x5d4037,
+      emissive: 0x5d4037,
+      emissiveIntensity: 0.2
+    });
+    
+    // Hair on top
+    const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), hairMat);
+    hairTop.position.set(0, 1.55, -0.05);
+    hairTop.scale.set(1, 0.8, 1);
+    ceci.add(hairTop);
+    
+    // Long hair down back
+    const hairBack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 0.1), hairMat);
+    hairBack.position.set(0, 1.2, -0.2);
+    ceci.add(hairBack);
+    
+    // Rotate to face the city/lake view (toward Space Needle)
+    ceci.rotation.y = Math.PI; // Facing toward city (northeast)
+    
+    this.threeScene.add(ceci);
   }
   
   private createPlayer() {
