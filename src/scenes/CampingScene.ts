@@ -1365,9 +1365,32 @@ export default class CampingScene extends Phaser.Scene {
         moveVector.normalize();
       }
       
-      // Apply movement
-      this.player.position.x += moveVector.x * moveSpeed * dt;
-      this.player.position.z += moveVector.z * moveSpeed * dt;
+      // Calculate new position
+      const newX = this.player.position.x + moveVector.x * moveSpeed * dt;
+      const newZ = this.player.position.z + moveVector.z * moveSpeed * dt;
+      
+      // Check collisions with objects
+      let canMove = true;
+      
+      // Tent collision (at -7, 0, 1)
+      const distToTent = Math.sqrt((newX + 7) ** 2 + (newZ - 1) ** 2);
+      if (distToTent < 2) canMove = false;
+      
+      // Chair collision (at -2, 0, 4) - smaller to allow passing near fire
+      const distToChair = Math.sqrt((newX + 2.5) ** 2 + (newZ - 4.5) ** 2);
+      if (distToChair < 0.8) canMove = false;
+      
+      // Hammock area collision (between trees at -4, 7 and -7, 4)
+      const hammockMidX = (-4 + -7) / 2; // -5.5
+      const hammockMidZ = (7 + 4) / 2; // 5.5
+      const distToHammock = Math.sqrt((newX - hammockMidX) ** 2 + (newZ - hammockMidZ) ** 2);
+      if (distToHammock < 1.2) canMove = false; // Smaller area just between trees
+      
+      // Apply movement only if no collision
+      if (canMove) {
+        this.player.position.x = newX;
+        this.player.position.z = newZ;
+      }
       
       // Rotate player to face movement direction
       if (moveVector.length() > 0) {
