@@ -780,6 +780,9 @@ export default class CampingScene extends Phaser.Scene {
     // Add shoreline rocks along the water edge
     this.createShorelineRocks();
     
+    // Add grass patches around camping area
+    this.loadGrass();
+    
     // Create hammock between the two fixed trees
     this.createHammock(hammockTree1.x, hammockTree1.z, hammockTree2.x, hammockTree2.z);
   }
@@ -946,6 +949,57 @@ export default class CampingScene extends Phaser.Scene {
       (this.water as any).allCircles.push(distantWater);
       (this.water as any).allCircles.push(cornerWater);
     }
+  }
+  
+  private loadGrass() {
+    // Load grass model and scatter around camping area
+    const grassLoader = new GLTFLoader();
+    grassLoader.load(
+      'grass.glb',
+      (gltf) => {
+        const grassModel = gltf.scene;
+        console.log("Grass loaded!");
+        
+        // Scatter grass patches around camping area and toward shore
+        const numGrassPatches = 30;
+        
+        for (let i = 0; i < numGrassPatches; i++) {
+          const grass = grassModel.clone();
+          
+          // Make grass greener (resist warm lighting)
+          grass.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
+              if (mesh.material) {
+                const mat = mesh.material as THREE.MeshStandardMaterial;
+                // Add green emissive to keep grass green
+                mat.emissive = new THREE.Color(0x2d5a2d);
+                mat.emissiveIntensity = 0.3;
+              }
+            }
+          });
+          
+          // Position across camping area to shore
+          const x = -25 + Math.random() * 45; // x: -35 to 10 (extends to shore!)
+          const z = 5 + Math.random() * 30; // z: -10 to 20
+          
+          // Skip if too close to camp objects
+          const distToFire = Math.sqrt(x * x + (z - 2) ** 2);
+          const distToTent = Math.sqrt((x + 7) ** 2 + (z - 1) ** 2);
+          if (distToFire < 4 || distToTent < 4) continue;
+          
+          grass.position.set(x, 0, z);
+          grass.scale.set(0.5 + Math.random() * 0.5, 0.5 + Math.random() * 0.5, 0.5 + Math.random() * 0.5);
+          grass.rotation.y = Math.random() * Math.PI * 2;
+          
+          this.threeScene.add(grass);
+        }
+        
+        console.log("Grass patches placed!");
+      },
+      undefined,
+      (error) => console.error("Error loading grass:", error)
+    );
   }
   
   private createShorelineRocks() {
