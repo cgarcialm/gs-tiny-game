@@ -355,14 +355,14 @@ export default class GameScene extends Phaser.Scene {
                 
                 // Grayson reflects on all memories
                 this.time.delayedCall(800, () => {
-                  this.dialogueManager.show("Grayson: That farmers market memory... it's so vivid now.\nAll four memories... I can see the whole picture now.\n\nPress ENTER to remember...");
+                  this.dialogueManager.show("Grayson: Finally! I put the pieces together. I can get out of the void...");
                   
-                  // Wait for ENTER to transition to final camping scene
+                  // Wait for ENTER to transition to camping scene (no fade)
                   const checkEnter = () => {
                     if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
                       this.events.off('update', checkEnter);
                       this.dialogueManager.hide();
-                      fadeToScene(this, "Camping", 1000);
+                      this.scene.start("Camping"); // Direct start for 2D→3D transition
                     }
                   };
                   this.events.on('update', checkEnter);

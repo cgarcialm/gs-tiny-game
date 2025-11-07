@@ -64,14 +64,19 @@ export default class CampingScene extends Phaser.Scene {
   private flowerSpacing = 1.5; // Distance between flowers
   
   // Camera controls
-  private cameraAngleH = Math.PI / 3; // Start facing right (toward city)
-  private cameraAngleV = -0.5; // Nearly horizontal (slight upward tilt)
+  private cameraAngleH = Math.PI; // Start facing player from front
+  private cameraAngleV = 0; // Horizontal view
   private cameraDistance = 6; // Medium distance
-  private cameraHeightOffset = 4; // Higher above player (compensate for y=0)
+  private cameraHeightOffset = 4; // Higher above player
   
   // Mouse tracking for delta
   private lastMouseX = 160;
   private lastMouseY = 90;
+  
+  // Intro sequence
+  private introActive = true;
+  private hasMovedMouse = false;
+  private introText?: HTMLDivElement;
 
   constructor() {
     super("Camping");
@@ -107,7 +112,26 @@ export default class CampingScene extends Phaser.Scene {
     // Set up mouse controls
     this.setupMouseControls();
     
-    // Overlay text removed for clean view
+    // Show intro instruction
+    this.showIntroText();
+  }
+  
+  private showIntroText() {
+    this.introText = document.createElement('div');
+    this.introText.textContent = "Move mouse to look around";
+    this.introText.style.position = 'fixed';
+    this.introText.style.top = '50%';
+    this.introText.style.left = '50%';
+    this.introText.style.transform = 'translate(-50%, -50%)';
+    this.introText.style.fontSize = '24px';
+    this.introText.style.fontFamily = 'monospace';
+    this.introText.style.color = '#ffffff';
+    this.introText.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    this.introText.style.padding = '20px 30px';
+    this.introText.style.borderRadius = '10px';
+    this.introText.style.zIndex = '9999';
+    this.introText.style.textAlign = 'center';
+    document.body.appendChild(this.introText);
   }
 
   private setupThreeJS() {
@@ -479,17 +503,31 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private setupMouseControls() {
-    // Track mouse movement for camera rotation (accumulates, allows 360°)
+    // Track mouse movement for camera rotation
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       // Calculate delta from last position
       const deltaX = pointer.x - this.lastMouseX;
       const deltaY = pointer.y - this.lastMouseY;
       
-      // Accumulate rotation (allows full 360° rotation!)
-      this.cameraAngleH -= deltaX * 0.03; // Horizontal rotation (3x more sensitive)
-      this.cameraAngleV += deltaY * 0.02; // Vertical rotation (increased)
+      // Detect first mouse movement (end intro)
+      if (this.introActive && (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1)) {
+        this.hasMovedMouse = true;
+        this.introActive = false;
+        
+        // Remove intro text
+        if (this.introText && this.introText.parentNode) {
+          document.body.removeChild(this.introText);
+          this.introText = undefined;
+        }
+        
+        console.log("Intro ended - controls enabled!");
+      }
       
-      // Clamp vertical rotation (allow more tilt up/down)
+      // Accumulate rotation (allows full 360° rotation!)
+      this.cameraAngleH -= deltaX * 0.03;
+      this.cameraAngleV += deltaY * 0.02;
+      
+      // Clamp vertical rotation
       this.cameraAngleV = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.cameraAngleV));
       
       // Update last position
@@ -1510,6 +1548,18 @@ export default class CampingScene extends Phaser.Scene {
     }
     
     const dt = this.game.loop.delta / 1000;
+    
+    // During intro, only camera can move
+    if (this.introActive) {
+      // Update camera but skip player movement
+      this.updateCameraPosition();
+      
+      // Render Three.js
+      if (this.threeRenderer && this.threeScene && this.camera) {
+        this.threeRenderer.render(this.threeScene, this.camera);
+      }
+      return;
+    }
     
     // Player movement (WASD/Arrows) - camera-relative
     if (this.player) {
