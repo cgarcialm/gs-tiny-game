@@ -56,6 +56,12 @@ export default class CampingScene extends Phaser.Scene {
   private ceciFollowing = false;
   private ceciWalkTime = 0;
   
+  // Flower planting
+  private flowerModel?: THREE.Object3D;
+  private plantingFlowers = false;
+  private lastFlowerPosition = new THREE.Vector2(0, 0);
+  private flowerSpacing = 1.5; // Distance between flowers
+  
   // Camera controls
   private cameraAngleH = Math.PI / 3; // Start facing right (toward city)
   private cameraAngleV = -0.5; // Nearly horizontal (slight upward tilt)
@@ -783,6 +789,9 @@ export default class CampingScene extends Phaser.Scene {
     // Add grass patches around camping area
     this.loadGrass();
     
+    // Load flowers for planting
+    this.loadFlowers();
+    
     // Create hammock between the two fixed trees
     this.createHammock(hammockTree1.x, hammockTree1.z, hammockTree2.x, hammockTree2.z);
   }
@@ -949,6 +958,21 @@ export default class CampingScene extends Phaser.Scene {
       (this.water as any).allCircles.push(distantWater);
       (this.water as any).allCircles.push(cornerWater);
     }
+  }
+  
+  private loadFlowers() {
+    // Load flower pack
+    const flowerLoader = new GLTFLoader();
+    flowerLoader.load(
+      'low_poly_flowers_pack_game_ready.glb',
+      (gltf) => {
+        // Store one of the flower models from the pack
+        this.flowerModel = gltf.scene.children[0] || gltf.scene;
+        console.log("Flowers loaded! Pack has", gltf.scene.children.length, "models");
+      },
+      undefined,
+      (error) => console.error("Error loading flowers:", error)
+    );
   }
   
   private loadGrass() {
@@ -1628,6 +1652,39 @@ export default class CampingScene extends Phaser.Scene {
       this.player.position.x = Math.max(-15, Math.min(15, this.player.position.x));
       this.player.position.z = Math.max(-10, Math.min(10, this.player.position.z));
       
+      // Plant flowers behind Grayson
+      if (this.plantingFlowers && this.flowerModel) {
+        const currentPos = new THREE.Vector2(this.player.position.x, this.player.position.z);
+        const distSinceLastFlower = currentPos.distanceTo(this.lastFlowerPosition);
+        
+        // Plant a flower every flowerSpacing units traveled
+        if (distSinceLastFlower >= this.flowerSpacing) {
+          const flower = this.flowerModel.clone();
+          
+          // Preserve original flower colors
+          flower.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
+              if (mesh.material) {
+                const mat = mesh.material as THREE.MeshStandardMaterial;
+                const originalColor = mat.color.clone();
+                mat.emissive = originalColor;
+                mat.emissiveIntensity = 0.01; // Subtle - just resist sunset tint
+              }
+            }
+          });
+          
+          flower.position.set(this.player.position.x, 0, this.player.position.z);
+          const scale = 0.05;
+          flower.scale.set(scale, scale, scale);
+          flower.rotation.y = Math.random() * Math.PI * 2;
+          this.threeScene.add(flower);
+          
+          // Update last flower position
+          this.lastFlowerPosition.set(this.player.position.x, this.player.position.z);
+        }
+      }
+      
       // Check distance to Ceci for interaction
       if (this.ceci) {
         const distToCeci = Math.sqrt(
@@ -1699,7 +1756,8 @@ export default class CampingScene extends Phaser.Scene {
                 removeDialogue();
                 this.lastDialogueClose = this.time.now; // Record close time
                 this.ceciFollowing = true; // Start following!
-                console.log("Ceci is now following Grayson!");
+                this.plantingFlowers = true; // Start planting flowers!
+                console.log("Ceci is following! Planting flowers activated!");
                 document.removeEventListener('keydown', enterListener);
               }
             };
