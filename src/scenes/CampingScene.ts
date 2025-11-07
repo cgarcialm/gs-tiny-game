@@ -1401,10 +1401,27 @@ export default class CampingScene extends Phaser.Scene {
         this.jumpVelocity -= 20 * dt;
         this.player.position.y += this.jumpVelocity * dt;
         
-        if (this.player.position.y <= 1) {
-          this.player.position.y = 1;
+        // Jump animation - arms up, legs tucked
+        const jumpProgress = (this.player.position.y) / 2; // 0 to 1 as jump progresses
+        
+        // Arms raise up during jump
+        this.leftArm.rotation.x = -Math.PI / 3 * jumpProgress; // Raise left arm
+        this.rightArm.rotation.x = -Math.PI / 3 * jumpProgress; // Raise right arm
+        this.leftArm.rotation.z = -0.3 * jumpProgress; // Spread arms out
+        this.rightArm.rotation.z = 0.3 * jumpProgress;
+        
+        // Legs tuck up during jump
+        this.leftLeg.rotation.x = Math.PI / 4 * jumpProgress; // Tuck legs
+        this.rightLeg.rotation.x = Math.PI / 4 * jumpProgress;
+        
+        if (this.player.position.y <= 0) {
+          this.player.position.y = 0; // Land on ground (not 1)
           this.isJumping = false;
           this.jumpVelocity = 0;
+          
+          // Reset jump pose
+          this.leftArm.rotation.z = 0;
+          this.rightArm.rotation.z = 0;
         }
       }
       
