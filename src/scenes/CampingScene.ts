@@ -36,16 +36,25 @@ export default class CampingScene extends Phaser.Scene {
   private rightLeg!: THREE.Mesh;
   private leftArm!: THREE.Mesh;
   private rightArm!: THREE.Mesh;
+  private leftShoe!: THREE.Mesh;
+  private rightShoe!: THREE.Mesh;
   
   // Fire interaction
   private ouchText?: Phaser.GameObjects.Text;
   
   // Ceci NPC
   private ceci!: THREE.Group;
+  private ceciLeftLeg!: THREE.Mesh;
+  private ceciRightLeg!: THREE.Mesh;
+  private ceciLeftArm!: THREE.Mesh;
+  private ceciRightArm!: THREE.Mesh;
+  private ceciLeftShoe!: THREE.Mesh;
+  private ceciRightShoe!: THREE.Mesh;
   private interactPromptDiv?: HTMLDivElement;
   private hasTalkedToCeci = false;
   private lastDialogueClose = 0;
   private ceciFollowing = false;
+  private ceciWalkTime = 0;
   
   // Camera controls
   private cameraAngleH = Math.PI / 3; // Start facing right (toward city)
@@ -241,33 +250,33 @@ export default class CampingScene extends Phaser.Scene {
     this.ceci.position.set(3, 0, 3); // Between fire and right-side rocks
     const ceci = this.ceci; // Alias for easier reference
     
-    // Black shoes
+    // Black shoes - store for animation
     const shoeMat = new THREE.MeshStandardMaterial({ 
       color: 0x1a1a1a,
       emissive: 0x1a1a1a,
       emissiveIntensity: 0.15
     });
-    const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 0.25), shoeMat);
-    leftShoe.position.set(-0.12, 0, 0);
-    ceci.add(leftShoe);
+    this.ceciLeftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 0.25), shoeMat);
+    this.ceciLeftShoe.position.set(-0.12, 0, 0);
+    ceci.add(this.ceciLeftShoe);
     
-    const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 0.25), shoeMat);
-    rightShoe.position.set(0.12, 0, 0);
-    ceci.add(rightShoe);
+    this.ceciRightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 0.25), shoeMat);
+    this.ceciRightShoe.position.set(0.12, 0, 0);
+    ceci.add(this.ceciRightShoe);
     
-    // Legs (light blue shorts) - standing straight
+    // Legs (light blue shorts) - standing straight, store for animation
     const shortsMat = new THREE.MeshStandardMaterial({ 
       color: 0x5f9ea0,
       emissive: 0x5f9ea0,
       emissiveIntensity: 0.2
     });
-    const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.6), shortsMat);
-    leftLeg.position.set(-0.12, 0.5, 0);
-    ceci.add(leftLeg);
+    this.ceciLeftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.6), shortsMat);
+    this.ceciLeftLeg.position.set(-0.12, 0.5, 0);
+    ceci.add(this.ceciLeftLeg);
     
-    const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.6), shortsMat);
-    rightLeg.position.set(0.12, 0.5, 0);
-    ceci.add(rightLeg);
+    this.ceciRightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.6), shortsMat);
+    this.ceciRightLeg.position.set(0.12, 0.5, 0);
+    ceci.add(this.ceciRightLeg);
     
     // Torso (white shirt)
     const shirtMat = new THREE.MeshStandardMaterial({ 
@@ -279,19 +288,19 @@ export default class CampingScene extends Phaser.Scene {
     torso.position.set(0, 1, 0);
     ceci.add(torso);
     
-    // Arms (skin tone) - down by sides
+    // Arms (skin tone) - down by sides, store for animation
     const armMat = new THREE.MeshStandardMaterial({ 
       color: 0xd4a574,
       emissive: 0xd4a574,
       emissiveIntensity: 0.15
     });
-    const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5), armMat);
-    leftArm.position.set(-0.25, 1.05, 0);
-    ceci.add(leftArm);
+    this.ceciLeftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5), armMat);
+    this.ceciLeftArm.position.set(-0.25, 1.05, 0);
+    ceci.add(this.ceciLeftArm);
     
-    const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5), armMat);
-    rightArm.position.set(0.25, 1.05, 0);
-    ceci.add(rightArm);
+    this.ceciRightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5), armMat);
+    this.ceciRightArm.position.set(0.25, 1.05, 0);
+    ceci.add(this.ceciRightArm);
     
     // Head (skin tone)
     const headMat = new THREE.MeshStandardMaterial({ 
@@ -332,19 +341,19 @@ export default class CampingScene extends Phaser.Scene {
     this.player = new THREE.Group() as any;
     this.player.position.set(-2, 0, 2); // Start near tent
     
-    // Shoes/feet (dark brown)
+    // Shoes/feet (dark brown) - store for animation
     const shoeMat = new THREE.MeshStandardMaterial({ 
       color: 0x3e2723,
       emissive: 0x3e2723,
       emissiveIntensity: 0.2
     });
-    const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.3), shoeMat);
-    leftShoe.position.set(-0.15, 0.08, 0);
-    this.player.add(leftShoe);
+    this.leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.3), shoeMat);
+    this.leftShoe.position.set(-0.15, 0.08, 0);
+    this.player.add(this.leftShoe);
     
-    const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.3), shoeMat);
-    rightShoe.position.set(0.15, 0.08, 0);
-    this.player.add(rightShoe);
+    this.rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.3), shoeMat);
+    this.rightShoe.position.set(0.15, 0.08, 0);
+    this.player.add(this.rightShoe);
     
     // Legs (brown pants) - store for animation
     const pantsMat = new THREE.MeshStandardMaterial({ 
@@ -1499,23 +1508,31 @@ export default class CampingScene extends Phaser.Scene {
         const targetAngle = Math.atan2(moveVector.x, moveVector.z);
         this.player.rotation.y = targetAngle;
         
-        // Animate walking
-        this.walkAnimTime += dt * 8; // Animation speed
-        const swing = Math.sin(this.walkAnimTime) * 0.3; // Swing amount
+        // Fun skipping animation
+        this.walkAnimTime += dt * 10;
+        const swing = Math.sin(this.walkAnimTime) * 0.5;
         
-        // Legs swing opposite
+        // Legs and shoes swing together
         this.leftLeg.rotation.x = swing;
         this.rightLeg.rotation.x = -swing;
+        this.leftShoe.rotation.x = swing;
+        this.rightShoe.rotation.x = -swing;
         
-        // Arms swing opposite to legs
-        this.leftArm.rotation.x = -swing * 0.8; // Less swing than legs
-        this.rightArm.rotation.x = swing * 0.8;
+        // Arms swing opposite
+        this.leftArm.rotation.x = -swing;
+        this.rightArm.rotation.x = swing;
+        this.leftArm.rotation.z = Math.sin(this.walkAnimTime) * 0.2;
+        this.rightArm.rotation.z = -Math.sin(this.walkAnimTime) * 0.2;
       } else {
         // Reset to idle pose
         this.leftLeg.rotation.x = 0;
         this.rightLeg.rotation.x = 0;
+        this.leftShoe.rotation.x = 0;
+        this.rightShoe.rotation.x = 0;
         this.leftArm.rotation.x = 0;
         this.rightArm.rotation.x = 0;
+        this.leftArm.rotation.z = 0;
+        this.rightArm.rotation.z = 0;
       }
       
       // Jumping (SPACE key)
@@ -1715,6 +1732,32 @@ export default class CampingScene extends Phaser.Scene {
         // Rotate Ceci to face Grayson
         const angle = Math.atan2(dirX, dirZ);
         this.ceci.rotation.y = angle;
+        
+        // Walking animation for Ceci (no bounce)
+        this.ceciWalkTime += dt * 10;
+        const swing = Math.sin(this.ceciWalkTime) * 0.5;
+        
+        // Legs and shoes swing
+        this.ceciLeftLeg.rotation.x = swing;
+        this.ceciRightLeg.rotation.x = -swing;
+        this.ceciLeftShoe.rotation.x = swing;
+        this.ceciRightShoe.rotation.x = -swing;
+        
+        // Arms swing opposite
+        this.ceciLeftArm.rotation.x = -swing;
+        this.ceciRightArm.rotation.x = swing;
+        this.ceciLeftArm.rotation.z = Math.sin(this.ceciWalkTime) * 0.2;
+        this.ceciRightArm.rotation.z = -Math.sin(this.ceciWalkTime) * 0.2;
+      } else {
+        // Reset when standing still
+        this.ceciLeftLeg.rotation.x = 0;
+        this.ceciRightLeg.rotation.x = 0;
+        this.ceciLeftShoe.rotation.x = 0;
+        this.ceciRightShoe.rotation.x = 0;
+        this.ceciLeftArm.rotation.x = 0;
+        this.ceciRightArm.rotation.x = 0;
+        this.ceciLeftArm.rotation.z = 0;
+        this.ceciRightArm.rotation.z = 0;
       }
     }
     
