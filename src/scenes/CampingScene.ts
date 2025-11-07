@@ -660,11 +660,50 @@ export default class CampingScene extends Phaser.Scene {
     // Add distant mountain range with snow (far horizon)
     this.createDistantMountains();
     
+    // Add Mt. Rainier at horizon corner
+    this.loadMtRainier();
+    
     // Add shoreline rocks along the water edge
     this.createShorelineRocks();
     
     // Create hammock between the two fixed trees
     this.createHammock(hammockTree1.x, hammockTree1.z, hammockTree2.x, hammockTree2.z);
+  }
+  
+  private loadMtRainier() {
+    // Load Mt. Rainier model at the corner of horizon lines
+    const rainierLoader = new GLTFLoader();
+    rainierLoader.load(
+      'mount_rainier.glb',
+      (gltf) => {
+        const mtRainier = gltf.scene;
+        
+        // Position at corner where diagonal and right horizon lines meet
+        mtRainier.position.set(80, -5, -80); // Corner position
+        const scale = 1.8
+        mtRainier.scale.set(scale, scale, scale); // Prominent feature
+        mtRainier.rotation.y = 30;
+        
+        // Make mountain darker
+        mtRainier.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            if (mesh.material) {
+              const mat = mesh.material as THREE.MeshStandardMaterial;
+              // Slightly darken the original color
+              mat.color.multiplyScalar(0.98); // 85% of original brightness (subtle darkening)
+              mat.emissive = new THREE.Color(0x000000); // No glow
+              mat.emissiveIntensity = 0;
+            }
+          }
+        });
+        
+        this.threeScene.add(mtRainier);
+        console.log("Mt. Rainier loaded at horizon corner!");
+      },
+      undefined,
+      (error) => console.error("Error loading Mt. Rainier:", error)
+    );
   }
   
   private createDistantMountains() {
@@ -683,23 +722,23 @@ export default class CampingScene extends Phaser.Scene {
     
     const baseY = 0;
     
-    // Diagonal horizon behind city (shifted toward positive x)
+    // Diagonal horizon - stops before Mt. Rainier
     const mountains = [
-      { x: -10, z: -55, radius: 5, height: 4 },
-      { x: 0, z: -56, radius: 4, height: 3 },
-      { x: 10, z: -57, radius: 6, height: 5 },
-      { x: 20, z: -58, radius: 5, height: 4 },
-      { x: 30, z: -59, radius: 7, height: 5 },
-      { x: 40, z: -60, radius: 5, height: 4 },
-      { x: 50, z: -61, radius: 6, height: 5 },
-      { x: 60, z: -62, radius: 4, height: 3 },
-      { x: 70, z: -63, radius: 5, height: 4 }
+      { x: -10, z: -65, radius: 8, height: 10 },
+      { x: 0, z: -65, radius: 10, height: 8 },
+      { x: 10, z: -63, radius: 6, height: 5 },
+      { x: 17, z: -65, radius: 8, height: 6 },
+      { x: 25, z: -62, radius: 7, height: 4 },
+      { x: 40, z: -68, radius: 10, height: 5 },
+      // { x: 40, z: -60, radius: 5, height: 4 },
+      // { x: 50, z: -61, radius: 6, height: 5 }
+      // Removed x=60 and x=70 to clear space for Mt. Rainier
     ];
     
-    // Right-side horizon (parallel to z-axis, constant x)
+    // Right-side horizon - skips Mt. Rainier area
     const rightHorizonX = 85; // Right side horizon
     const rightMountains = [
-      { x: rightHorizonX, z: -60, radius: 5, height: 4 },
+      // Skip z=-60 (too close to Mt. Rainier at z=-70)
       { x: rightHorizonX, z: -50, radius: 4, height: 3 },
       { x: rightHorizonX, z: -40, radius: 6, height: 5 },
       { x: rightHorizonX, z: -30, radius: 5, height: 4 },
