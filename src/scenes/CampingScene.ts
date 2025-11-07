@@ -1649,9 +1649,11 @@ export default class CampingScene extends Phaser.Scene {
         }
       }
       
-      // Keep player in bounds
-      this.player.position.x = Math.max(-15, Math.min(15, this.player.position.x));
-      this.player.position.z = Math.max(-10, Math.min(10, this.player.position.z));
+      // Keep player in camping area bounds
+      // Allow more positive z (toward mountains/behind camp)
+      // Limit positive x (water area)
+      this.player.position.x = Math.max(-15, Math.min(15, this.player.position.x)); // Can't go far into water
+      this.player.position.z = Math.max(-3, Math.min(20, this.player.position.z)); // Can explore behind camp
       
       // Plant flowers behind Grayson
       if (this.plantingFlowers && this.flowerModel) {
