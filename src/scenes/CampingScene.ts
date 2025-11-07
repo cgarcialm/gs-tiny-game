@@ -45,6 +45,7 @@ export default class CampingScene extends Phaser.Scene {
   private interactPromptDiv?: HTMLDivElement;
   private hasTalkedToCeci = false;
   private lastDialogueClose = 0;
+  private ceciFollowing = false;
   
   // Camera controls
   private cameraAngleH = Math.PI / 3; // Start facing right (toward city)
@@ -1626,6 +1627,8 @@ export default class CampingScene extends Phaser.Scene {
               if (e.key === 'Enter') {
                 removeDialogue();
                 this.lastDialogueClose = this.time.now; // Record close time
+                this.ceciFollowing = true; // Start following!
+                console.log("Ceci is now following Grayson!");
                 document.removeEventListener('keydown', enterListener);
               }
             };
@@ -1690,6 +1693,28 @@ export default class CampingScene extends Phaser.Scene {
             document.body.removeChild(ouchDiv);
           }
         }, 1600);
+      }
+    }
+    
+    // Update Ceci following behavior
+    if (this.ceciFollowing && this.ceci && this.player) {
+      // Follow Grayson with some distance
+      const dirX = this.player.position.x - this.ceci.position.x;
+      const dirZ = this.player.position.z - this.ceci.position.z;
+      const distToGrayson = Math.sqrt(dirX * dirX + dirZ * dirZ);
+      
+      // Only move if too far away (maintain ~2 unit distance)
+      if (distToGrayson > 2.5) {
+        const followSpeed = 3; // Slower than Grayson
+        const normX = dirX / distToGrayson;
+        const normZ = dirZ / distToGrayson;
+        
+        this.ceci.position.x += normX * followSpeed * dt;
+        this.ceci.position.z += normZ * followSpeed * dt;
+        
+        // Rotate Ceci to face Grayson
+        const angle = Math.atan2(dirX, dirZ);
+        this.ceci.rotation.y = angle;
       }
     }
     
