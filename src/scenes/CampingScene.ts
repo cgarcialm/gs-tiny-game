@@ -361,6 +361,18 @@ export default class CampingScene extends Phaser.Scene {
     hairBack.position.set(0, 1.2, -0.2);
     ceci.add(hairBack);
     
+    // Subtle face for Ceci
+    // Eyes (dark brown)
+    const ceciEyeMat = new THREE.MeshBasicMaterial({ color: 0x3d2817 });
+    
+    const ceciLeftEye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), ceciEyeMat);
+    ceciLeftEye.position.set(-0.06, 1.53, 0.18);
+    ceci.add(ceciLeftEye);
+    
+    const ceciRightEye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), ceciEyeMat);
+    ceciRightEye.position.set(0.06, 1.53, 0.18);
+    ceci.add(ceciRightEye);
+    
     // Rotate to face the city/lake view (toward Space Needle)
     ceci.rotation.y = Math.PI; // Facing toward city (northeast)
     
@@ -424,41 +436,67 @@ export default class CampingScene extends Phaser.Scene {
     this.rightArm.position.set(0.3, 1.1, 0);
     this.player.add(this.rightArm);
     
-    // Head (skin tone) - smaller so cap covers it
+    // Head (skin tone) - raised higher
     const headMat = new THREE.MeshStandardMaterial({ 
       color: 0xffe5cc,
       emissive: 0xffe5cc,
       emissiveIntensity: 0.15
     });
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), headMat);
-    head.position.set(0, 1.65, 0);
+    head.position.set(0, 1.75, 0); // Raised (was 1.65)
     this.player.add(head);
     
-    // Blonde hair (back of head)
+    // Blonde hair (back and sides)
     const hairMat = new THREE.MeshStandardMaterial({ 
       color: 0xf4d03f, // Blonde
       emissive: 0xf4d03f,
       emissiveIntensity: 0.2
     });
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), hairMat);
-    hair.position.set(0, 1.68, -0.15); // Back of head
-    hair.scale.set(0.8, 1, 0.6); // Flatten to look like hair
-    this.player.add(hair);
     
-    // Cap (blue - covers head properly)
+    // Hair back
+    const hairBack = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), hairMat);
+    hairBack.position.set(0, 1.78, -0.15);
+    hairBack.scale.set(0.8, 1, 0.6);
+    this.player.add(hairBack);
+    
+    // Hair left side
+    const hairLeft = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), hairMat);
+    hairLeft.position.set(-0.18, 1.75, 0);
+    hairLeft.scale.set(0.5, 1, 0.8);
+    this.player.add(hairLeft);
+    
+    // Hair right side
+    const hairRight = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), hairMat);
+    hairRight.position.set(0.18, 1.75, 0);
+    hairRight.scale.set(0.5, 1, 0.8);
+    this.player.add(hairRight);
+    
+    // Cap (blue - covers head)
     const capMat = new THREE.MeshStandardMaterial({ 
-      color: 0x2196f3, // Blue (not cyan)
+      color: 0x2196f3,
       emissive: 0x2196f3,
       emissiveIntensity: 0.25
     });
     const cap = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), capMat);
-    cap.position.set(0, 1.75, 0);
+    cap.position.set(0, 1.85, 0); // Raised
     this.player.add(cap);
     
     // Cap brim
     const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.05, 16), capMat);
-    brim.position.set(0, 1.68, 0.08); // Slightly forward
+    brim.position.set(0, 1.9, 0.08);
     this.player.add(brim);
+    
+    // Subtle face features
+    // Eyes (dark brown, natural)
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x3d2817 });
+    
+    const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), eyeMat);
+    leftEye.position.set(-0.07, 1.77, 0.21);
+    this.player.add(leftEye);
+    
+    const rightEye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), eyeMat);
+    rightEye.position.set(0.07, 1.77, 0.21);
+    this.player.add(rightEye);
     
     this.threeScene.add(this.player);
   }
