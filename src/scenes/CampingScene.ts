@@ -118,7 +118,7 @@ export default class CampingScene extends Phaser.Scene {
   
   private showIntroText() {
     this.introText = document.createElement('div');
-    this.introText.textContent = "Move mouse to look around";
+    this.introText.innerHTML = "Use mouse to look around<br>Use WASD or Arrow keys to move";
     this.introText.style.position = 'fixed';
     this.introText.style.top = '50%';
     this.introText.style.left = '50%';
@@ -383,6 +383,7 @@ export default class CampingScene extends Phaser.Scene {
     // Improved Grayson character - colors resist warm lighting
     this.player = new THREE.Group() as any;
     this.player.position.set(-2, 0, 2); // Start near tent
+    this.player.rotation.y = Math.PI; // Face camera at start (camera is at angleH π, south)
     
     // Shoes/feet (dark brown) - store for animation
     const shoeMat = new THREE.MeshStandardMaterial({ 
@@ -546,20 +547,6 @@ export default class CampingScene extends Phaser.Scene {
       // Calculate delta from last position
       const deltaX = pointer.x - this.lastMouseX;
       const deltaY = pointer.y - this.lastMouseY;
-      
-      // Detect first mouse movement (end intro)
-      if (this.introActive && (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1)) {
-        this.hasMovedMouse = true;
-        this.introActive = false;
-        
-        // Remove intro text
-        if (this.introText && this.introText.parentNode) {
-          document.body.removeChild(this.introText);
-          this.introText = undefined;
-        }
-        
-        console.log("Intro ended - controls enabled!");
-      }
       
       // Accumulate rotation (allows full 360° rotation!)
       this.cameraAngleH -= deltaX * 0.03;
@@ -1587,16 +1574,45 @@ export default class CampingScene extends Phaser.Scene {
     
     const dt = this.game.loop.delta / 1000;
     
-    // During intro, only camera can move
+    // Check for any key press to end intro
     if (this.introActive) {
-      // Update camera but skip player movement
-      this.updateCameraPosition();
+      // Check if any movement key is pressed
+      const keyboard = this.input.keyboard;
+      let anyKeyPressed = false;
       
-      // Render Three.js
-      if (this.threeRenderer && this.threeScene && this.camera) {
-        this.threeRenderer.render(this.threeScene, this.camera);
+      if (this.controls.up.isDown || this.controls.down.isDown || 
+          this.controls.left.isDown || this.controls.right.isDown) {
+        anyKeyPressed = true;
       }
-      return;
+      
+      if (keyboard) {
+        if (keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W).isDown ||
+            keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S).isDown ||
+            keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown ||
+            keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D).isDown) {
+          anyKeyPressed = true;
+        }
+      }
+      
+      if (anyKeyPressed) {
+        // End intro!
+        this.introActive = false;
+        if (this.introText && this.introText.parentNode) {
+          document.body.removeChild(this.introText);
+          this.introText = undefined;
+        }
+        console.log("Intro ended - movement started!");
+        // Don't return - let movement happen this frame
+      } else {
+        // Still in intro - update camera but skip player movement
+        this.updateCameraPosition();
+        
+        // Render Three.js
+        if (this.threeRenderer && this.threeScene && this.camera) {
+          this.threeRenderer.render(this.threeScene, this.camera);
+        }
+        return;
+      }
     }
     
     // Player movement (WASD/Arrows) - camera-relative
@@ -1812,12 +1828,12 @@ export default class CampingScene extends Phaser.Scene {
             
             // Show dialogue via DOM
             const dialogueDiv = document.createElement('div');
-            dialogueDiv.textContent = "Ceci: Do you want to plant some flowers with me? Let's walk around :)";
+            dialogueDiv.innerHTML = "Ceci: Do you want to plant some flowers with me?<br>Let's walk around :)";
             dialogueDiv.style.position = 'fixed';
             dialogueDiv.style.bottom = '10%';
             dialogueDiv.style.left = '50%';
             dialogueDiv.style.transform = 'translateX(-50%)';
-            dialogueDiv.style.fontSize = '16px';
+            dialogueDiv.style.fontSize = '20px';
             dialogueDiv.style.fontFamily = 'monospace';
             dialogueDiv.style.color = '#ffffff';
             dialogueDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
