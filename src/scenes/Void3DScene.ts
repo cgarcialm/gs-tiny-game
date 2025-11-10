@@ -20,6 +20,8 @@ export default class Void3DScene extends Phaser.Scene {
   create() {
     this.setupThreeJS();
     this.createGround();
+    this.createGridLines(); // Add floor grid lines
+    this.createWallGrid(); // Add wall grid lines
     this.createGrayson();
     this.setupLighting();
     
@@ -57,8 +59,8 @@ export default class Void3DScene extends Phaser.Scene {
     this.threeScene.background = new THREE.Color(0x003d4d); // Void background
     
     this.camera = new THREE.PerspectiveCamera(75, 320 / 180, 0.1, 1000);
-    this.camera.position.set(0, 3, 6); // Closer (was 8)
-    this.camera.lookAt(0, 1.5, 0);
+    this.camera.position.set(0, 1.8, 6); // Lower camera (at eye level)
+    this.camera.lookAt(0, 1.8, 0); // Look straight ahead (not down)
     
     this.threeRenderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
     this.threeRenderer.setSize(320, 180);
@@ -90,6 +92,88 @@ export default class Void3DScene extends Phaser.Scene {
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     this.threeScene.add(ground);
+  }
+
+  private createGridLines() {
+    // Add magenta grid lines on floor (like GameScene void)
+    const gridWidth = 120;
+    const gridDepth = 50;
+    const divisionsX = 60; // Vertical lines
+    const divisionsZ = 25; // Horizontal lines
+    
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: 0xff00ff, // Bright magenta (GameScene void color)
+      opacity: 0.6,
+      transparent: true
+    });
+    
+    const gridGroup = new THREE.Group();
+    
+    // Vertical lines (along Z axis)
+    for (let i = 0; i <= divisionsX; i++) {
+      const x = (i / divisionsX) * gridWidth - gridWidth / 2;
+      const geometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x, 0, -gridDepth / 2),
+        new THREE.Vector3(x, 0, gridDepth / 2)
+      ]);
+      const line = new THREE.Line(geometry, lineMaterial);
+      gridGroup.add(line);
+    }
+    
+    // Horizontal lines (along X axis)
+    for (let i = 0; i <= divisionsZ; i++) {
+      const z = (i / divisionsZ) * gridDepth - gridDepth / 2;
+      const geometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-gridWidth / 2, 0, z),
+        new THREE.Vector3(gridWidth / 2, 0, z)
+      ]);
+      const line = new THREE.Line(geometry, lineMaterial);
+      gridGroup.add(line);
+    }
+    
+    gridGroup.position.y = 0.01; // Slightly above ground to prevent z-fighting
+    this.threeScene.add(gridGroup);
+  }
+
+  private createWallGrid() {
+    // Add magenta grid on vertical wall backdrop
+    const gridWidth = 120;
+    const wallHeight = 40;
+    const divisionsX = 60; // Vertical lines
+    const divisionsY = 20; // Horizontal lines
+    const wallZ = -25; // Back edge position
+    
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: 0xff00ff, // Bright magenta
+      opacity: 0.6,
+      transparent: true
+    });
+    
+    const wallGroup = new THREE.Group();
+    
+    // Vertical lines (going up the wall)
+    for (let i = 0; i <= divisionsX; i++) {
+      const x = (i / divisionsX) * gridWidth - gridWidth / 2;
+      const geometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x, 0, wallZ),
+        new THREE.Vector3(x, wallHeight, wallZ)
+      ]);
+      const line = new THREE.Line(geometry, lineMaterial);
+      wallGroup.add(line);
+    }
+    
+    // Horizontal lines (across the wall)
+    for (let i = 0; i <= divisionsY; i++) {
+      const y = (i / divisionsY) * wallHeight;
+      const geometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-gridWidth / 2, y, wallZ),
+        new THREE.Vector3(gridWidth / 2, y, wallZ)
+      ]);
+      const line = new THREE.Line(geometry, lineMaterial);
+      wallGroup.add(line);
+    }
+    
+    this.threeScene.add(wallGroup);
   }
 
   private createGrayson() {
