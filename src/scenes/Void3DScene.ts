@@ -50,7 +50,7 @@ export default class Void3DScene extends Phaser.Scene {
       if (instructionDiv.parentNode) {
         document.body.removeChild(instructionDiv);
       }
-      fadeToScene(this, "Camping", 1000);
+      this.animateCameraTransition();
     });
   }
 
@@ -224,6 +224,32 @@ export default class Void3DScene extends Phaser.Scene {
     this.threeScene.add(spotlight);
     this.threeScene.add(spotlight.target);
     spotlight.target.updateMatrixWorld();
+  }
+
+  private animateCameraTransition() {
+    // Animate camera moving from front view to camping scene angle
+    // Camping scene camera starts: angleH = π/3 (behind-right), at player position (-2, 0, 2)
+    const targetX = 0 ;//+ Math.sin(Math.PI / 3) * 6; // Behind player at angle
+    const targetY = 5; // Height in camping
+    const targetZ = 5 ;//+ Math.cos(Math.PI / 3) * 6;
+    
+    // Smooth camera movement (2 seconds)
+    this.tweens.add({
+      targets: this.camera.position,
+      x: targetX,
+      y: targetY,
+      z: targetZ,
+      duration: 2000,
+      ease: 'Power2.easeInOut',
+      onUpdate: () => {
+        // Keep looking at Grayson during movement
+        this.camera.lookAt(0, 1.5, 0);
+      },
+      onComplete: () => {
+        // Fade to camping scene
+        fadeToScene(this, "Camping", 1000);
+      }
+    });
   }
 
   update() {
