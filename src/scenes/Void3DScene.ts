@@ -206,14 +206,14 @@ export default class Void3DScene extends Phaser.Scene {
     const ambient = new THREE.AmbientLight(0x222222, 0.3); // Darker
     this.threeScene.add(ambient);
     
-    // Powerful spotlight from above
+    // Powerful spotlight from front-above
     const spotlight = new THREE.SpotLight(0xffffff, 95); // Much brighter!
-    spotlight.position.set(0, 25, 3); // High above, slightly front
-    spotlight.target.position.set(0, 0, 0); // Point at Grayson/floor
-    spotlight.angle = Math.PI / 24; // Focused beam
-    spotlight.penumbra = 0.2; // Soft edge for visible circle
+    spotlight.position.set(0, 15, 10); // More from the front (higher z)
+    spotlight.target.position.set(0, 1, 0); // Point at Grayson center
+    spotlight.angle = Math.PI / 12; // Focused beam
+    spotlight.penumbra = 0.8; // Soft edge for visible circle
     spotlight.distance = 0;
-    spotlight.decay = 1; // More falloff
+    spotlight.decay = 1.2; // More falloff
     spotlight.castShadow = true;
     
     // Sharp shadows
