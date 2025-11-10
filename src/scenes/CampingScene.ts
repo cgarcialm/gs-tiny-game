@@ -39,8 +39,7 @@ export default class CampingScene extends Phaser.Scene {
   private leftShoe!: THREE.Mesh;
   private rightShoe!: THREE.Mesh;
   
-  // Fire interaction
-  private ouchText?: Phaser.GameObjects.Text;
+  // Fire interaction (using DOM element instead)
   
   // Ceci NPC
   private ceci!: THREE.Group;
@@ -75,7 +74,6 @@ export default class CampingScene extends Phaser.Scene {
   
   // Intro sequence
   private introActive = true;
-  private hasMovedMouse = false;
   private introText?: HTMLDivElement;
 
   constructor() {

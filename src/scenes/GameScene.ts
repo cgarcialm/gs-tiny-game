@@ -1064,7 +1064,6 @@ export default class GameScene extends Phaser.Scene {
     // Keep Grayson visible
     
     // Create 4 card piece sprites with numbers
-    const spacing = 15;
     const topY = 50; // Top area for active cards
     const bottomY = 150; // Bottom area for solved cards
     const cardScale = 2.5; // Big cards!
@@ -1277,7 +1276,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
   
-  private shuffleCardsPhase(cards: any[], cardScale: number, onComplete: () => void) {
+  private shuffleCardsPhase(cards: any[], _cardScale: number, onComplete: () => void) {
     // Shuffle positions (fewer for easier tracking)
     const numSwaps = 10;
     this.time.addEvent({
@@ -1321,13 +1320,13 @@ export default class GameScene extends Phaser.Scene {
     console.log('=== Enabling card picking for', activeCards.length, 'cards, target:', targetNumber, '===');
     console.log('Active card IDs:', activeCards.map(c => c.id));
     console.log('Card positions (sprite.x, sprite.y):');
-    activeCards.forEach((card, i) => {
+    activeCards.forEach(card => {
       console.log(`  Card #${card.id}: x=${card.sprite.x.toFixed(1)}, y=${card.sprite.y.toFixed(1)}`);
     });
     console.log('Click inside a red box to select a card');
     
     // Enable input for active cards (already setInteractive at creation)
-    activeCards.forEach((card, index) => {
+    activeCards.forEach(card => {
       card.sprite.removeAllListeners(); // Clear old listeners
       
       // Use a proper closure to capture the correct card

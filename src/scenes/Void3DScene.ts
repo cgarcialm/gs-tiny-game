@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import * as THREE from "three";
-import { fadeToScene, fadeIn } from "../utils/sceneTransitions";
 import { create3DGrayson } from "../utils/create3DGrayson";
 
 /**
@@ -13,7 +12,6 @@ export default class Void3DScene extends Phaser.Scene {
   private grayson!: THREE.Group;
   private spotlight!: THREE.SpotLight;
   private sceneReady = false;
-  private transforming = true;
 
   constructor() {
     super("Void3D");
@@ -62,7 +60,6 @@ export default class Void3DScene extends Phaser.Scene {
     const graysonHeight = 20;
     const helixHeight = graysonHeight + 20;
     const startRadius = 30; // Start even wider
-    const endRadius = 0; // Shrink to nothing
     
     // Create spiral particles starting wide
     for (let i = 0; i < 200; i++) {
@@ -131,8 +128,6 @@ export default class Void3DScene extends Phaser.Scene {
         this.threeRenderer.domElement.style.opacity = '1';
       }
       
-      this.transforming = false;
-      
       // Auto-continue to camera transition after 2 seconds
       this.time.delayedCall(2000, () => {
         this.animateCameraTransition();
@@ -179,7 +174,7 @@ export default class Void3DScene extends Phaser.Scene {
     }
     
     // Animate particles expanding outward (no fading)
-    const spiralTime = this.time.addEvent({
+    this.time.addEvent({
       delay: 12,
       repeat: 180, // Match reveal spiral timing
       callback: () => {
