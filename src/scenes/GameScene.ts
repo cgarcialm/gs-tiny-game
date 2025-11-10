@@ -318,8 +318,8 @@ export default class GameScene extends Phaser.Scene {
         
       case 4:
         // Level 4: After Farmers Market - Final memory complete!
-        // Clean scene - only Grayson
-        this.player = createGraysonSprite(this, -30, 90);
+        // Clean scene - only Grayson (positioned lower for void transition)
+        this.player = createGraysonSprite(this, -30, 105);
         this.player.setScale(-1, 1); // Face right
         
         // No other NPCs or objects
@@ -341,7 +341,7 @@ export default class GameScene extends Phaser.Scene {
           
           this.tweens.add({
             targets: this.player,
-            x: 160,
+            x: 155,
             duration: 2000,
             ease: "Linear",
             onComplete: () => {
@@ -357,12 +357,12 @@ export default class GameScene extends Phaser.Scene {
                 this.time.delayedCall(800, () => {
                   this.dialogueManager.show("Grayson: Finally! I put the pieces together. I can get out of the void...");
                   
-                  // Wait for ENTER to transition to camping scene (no fade)
+                  // Wait for ENTER to transition to 3D void scene
                   const checkEnter = () => {
                     if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
                       this.events.off('update', checkEnter);
                       this.dialogueManager.hide();
-                      this.scene.start("Camping"); // Direct start for 2D→3D transition
+                      this.scene.start("Void3D"); // Go to intermediate 3D void scene first
                     }
                   };
                   this.events.on('update', checkEnter);
