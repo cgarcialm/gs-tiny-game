@@ -41,32 +41,6 @@ export default class Void3DScene extends Phaser.Scene {
     this.time.delayedCall(100, () => {
       this.sceneReady = true;
     });
-    
-    // Instruction
-    const instructionDiv = document.createElement('div');
-    instructionDiv.innerHTML = "Press ENTER to continue";
-    instructionDiv.style.position = 'fixed';
-    instructionDiv.style.bottom = '10%';
-    instructionDiv.style.left = '50%';
-    instructionDiv.style.transform = 'translateX(-50%)';
-    instructionDiv.style.fontSize = '18px';
-    instructionDiv.style.fontFamily = 'monospace';
-    instructionDiv.style.color = '#ffffff';
-    instructionDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-    instructionDiv.style.padding = '10px 20px';
-    instructionDiv.style.borderRadius = '5px';
-    instructionDiv.style.zIndex = '9999';
-    document.body.appendChild(instructionDiv);
-    
-    this.input.keyboard?.on('keydown-ENTER', () => {
-      // Don't allow transition during transformation
-      if (this.transforming) return;
-      
-      if (instructionDiv.parentNode) {
-        document.body.removeChild(instructionDiv);
-      }
-      this.animateCameraTransition();
-    });
   }
 
   private create2DGrayson() {
@@ -158,6 +132,11 @@ export default class Void3DScene extends Phaser.Scene {
       }
       
       this.transforming = false;
+      
+      // Auto-continue to camera transition after 2 seconds
+      this.time.delayedCall(2000, () => {
+        this.animateCameraTransition();
+      });
     });
   }
 

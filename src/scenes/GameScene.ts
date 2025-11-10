@@ -10,10 +10,9 @@ import { handleMenuInput } from "../utils/menuHandler";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
 import { DEBUG_START_LEVEL } from "../config/debug";
-import { PROMPT_TEXT_STYLE, HELP_HINT_TEXT_STYLE, COUNTER_TEXT_STYLE, FLOATING_MESSAGE_STYLE } from "../config/textStyles";
+import { PROMPT_TEXT_STYLE, HELP_HINT_TEXT_STYLE, FLOATING_MESSAGE_STYLE } from "../config/textStyles";
 import { spawnFloatingText } from "../utils/visualEffects";
 import { checkProximity } from "../utils/collectionHelpers";
-import { animateCounterUpdate } from "../utils/uiAnimations";
 
 type DialogueState = "idle" | "open";
 type ChaseState = "idle" | "chasing";
@@ -46,7 +45,7 @@ export default class GameScene extends Phaser.Scene {
 
   private speed = 80; // px/s
   private promptText!: Phaser.GameObjects.Text;
-  private cardCounterText!: Phaser.GameObjects.Text;
+  // Removed card counter (replaced with shuffle mini-game)
   private helpHintText!: Phaser.GameObjects.Text;
 
   // dialogue state
@@ -84,7 +83,6 @@ export default class GameScene extends Phaser.Scene {
   // Dialogue blocking (for auto-dismiss only dialogues)
   private isDialogueAutoOnly = false;
   private cardPiecesCollected = 0;
-  private totalCardPieces = 4;
   
   // Interaction tracking
   private hasInteractedWithEboshi = false;
@@ -154,10 +152,7 @@ export default class GameScene extends Phaser.Scene {
     // Set initial count based on completed levels
     this.cardPiecesCollected = this.completedLevels;
     
-    this.cardCounterText = this.add
-      .text(310, 8, `Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`, COUNTER_TEXT_STYLE)
-      .setOrigin(1, 0)
-      .setDepth(10);
+    // Removed memory counter display
     
     // Help hint (bottom-right corner) - shown after first Eboshi interaction in level 0
     this.helpHintText = this.add
@@ -351,24 +346,10 @@ export default class GameScene extends Phaser.Scene {
               this.time.delayedCall(500, () => {
                 // Update counter to 4/4
                 this.cardPiecesCollected++;
-                this.updateMemoryCounter();
                 
-                // Grayson reflects on all memories
+                // Start card shuffling mini-game
                 this.time.delayedCall(800, () => {
-                  this.dialogueManager.show("Grayson: Finally! I put the pieces together. I can get out of the void...");
-                  
-                  // Wait for ENTER to transition to 3D void scene
-                  const checkEnter = () => {
-                    if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
-                      console.log("ENTER pressed - transitioning to Void3D scene!");
-                      this.events.off('update', checkEnter);
-                      this.dialogueManager.hide();
-                      
-                      // Show 3D grid overlay effect before transition (like TitleScene)
-                      this.show3DGridTransition();
-                    }
-                  };
-                  this.events.on('update', checkEnter);
+                  this.startCardShuffleGame();
                 });
               });
             }
@@ -665,7 +646,6 @@ export default class GameScene extends Phaser.Scene {
     
     // Update counter with animation
     this.cardPiecesCollected++;
-    this.updateMemoryCounter();
     
     // Spawn celebration sparkles
     const sparkles = spawnCardPieceSparkles(this, this.cardPieceX, this.cardPieceY);
@@ -835,7 +815,6 @@ export default class GameScene extends Phaser.Scene {
         
         // Memory collection animation
         this.cardPiecesCollected++;
-        this.updateMemoryCounter();
         
         // "Memory collected!" message
         const pickupText = this.add.text(cardX, cardY, "Memory collected!", FLOATING_MESSAGE_STYLE)
@@ -1081,22 +1060,345 @@ export default class GameScene extends Phaser.Scene {
     });
   }
   
-  private updateMemoryCounter() {
-    // Update text
-    this.cardCounterText.setText(`Memories: ${this.cardPiecesCollected}/${this.totalCardPieces}`);
+  private startCardShuffleGame() {
+    // Keep Grayson visible
     
-    // Use shared animation utility for consistent polish
-    animateCounterUpdate(this, this.cardCounterText, {
-      scaleTo: 1.5,
-      scaleDuration: 400,
-      flashColor: "#ffffff",
-      flashDuration: 400,
-      addSparkles: true,
-      sparkleCount: 3,
-      addGlow: true,
-      glowScale: 2,
-      glowDuration: 1500,
-      ease: "Back.easeOut",
+    // Create 4 card piece sprites with numbers
+    const spacing = 15;
+    const topY = 50; // Top area for active cards
+    const bottomY = 150; // Bottom area for solved cards
+    const cardScale = 2.5; // Big cards!
+    
+    const allCards: any[] = [];
+    
+    // Create all 4 card pieces
+    for (let i = 0; i < 4; i++) {
+      const cardNum = i + 1;
+      const x = 160; // Start centered
+      
+      // Card piece sprite
+      const cardSprite = createCardPieceSprite(this, x, topY);
+      cardSprite.setScale(cardScale);
+      cardSprite.setDepth(50);
+      cardSprite.setVisible(false); // Hidden initially
+      
+      // Make graphics interactive with smaller hit area
+      const hitSize = 20 * cardScale; // Smaller hit area
+      cardSprite.setInteractive(
+        new Phaser.Geom.Rectangle(-hitSize/2, -hitSize/2, hitSize, hitSize),
+        Phaser.Geom.Rectangle.Contains
+      );
+      cardSprite.input!.cursor = 'pointer'; // Hand cursor
+      
+      // Store ID on the sprite for debugging
+      (cardSprite as any).cardId = cardNum;
+      
+      // DEBUG: Draw hit area box (smaller)
+      const debugBox = this.add.rectangle(x, topY, hitSize, hitSize);
+      debugBox.setStrokeStyle(3, 0xff0000, 0.8); // Thicker red outline
+      debugBox.setFillStyle(0xff0000, 0.2); // More visible fill
+      debugBox.setDepth(49); // Just below card
+      debugBox.setVisible(false); // Will show when card is active
+      (cardSprite as any).debugBox = debugBox;
+      
+      // Card number on top
+      const cardNumber = this.add.text(x, topY, cardNum.toString(), {
+        fontSize: '20px',
+        color: '#000000',
+        fontFamily: 'monospace',
+        fontStyle: 'bold'
+      });
+      cardNumber.setOrigin(0.5);
+      cardNumber.setDepth(51);
+      cardNumber.setVisible(false);
+      
+      allCards.push({
+        id: cardNum,
+        sprite: cardSprite,
+        number: cardNumber,
+        x: x,
+        y: topY,
+        solved: false
+      });
+    }
+    
+    // Start with phase 1 (find card #1)
+    this.startCardPhase(allCards, 1, topY, bottomY, cardScale);
+  }
+  
+  private startCardPhase(allCards: any[], targetNumber: number, topY: number, bottomY: number, cardScale: number) {
+    // Hide all debug boxes first
+    allCards.forEach(card => {
+      const debugBox = (card.sprite as any).debugBox;
+      if (debugBox) debugBox.setVisible(false);
+    });
+    
+    // Get remaining unsolved cards
+    const activeCards = allCards.filter(c => !c.solved);
+    const numCards = activeCards.length;
+    
+    if (numCards === 0) {
+      // All cards found! Victory
+      this.time.delayedCall(1000, () => {
+        this.dialogueManager.show("Grayson: Finally! I put the pieces together. I can get out of the void...");
+        
+        const checkEnter = () => {
+          if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+            this.events.off('update', checkEnter);
+            this.dialogueManager.hide();
+            this.show3DGridTransition();
+          }
+        };
+        this.events.on('update', checkEnter);
+      });
+      return;
+    }
+    
+    // Special case: if only 1 card left, auto-solve it
+    if (numCards === 1) {
+      const lastCard = activeCards[0];
+      const instruction = this.add.text(160, 20, `Last card: #${lastCard.id}!`, {
+        fontSize: '16px',
+        color: '#ffffff',
+        fontFamily: 'monospace'
+      });
+      instruction.setOrigin(0.5);
+      instruction.setDepth(60);
+      
+      lastCard.sprite.setPosition(160, topY);
+      lastCard.sprite.setVisible(true);
+      lastCard.number.setPosition(160, topY);
+      lastCard.number.setVisible(true);
+      lastCard.solved = true;
+      
+      // Calculate position in bottom pile
+      const bottomSpacing = 15;
+      const bottomTotalWidth = (32 * cardScale + bottomSpacing) * 4 - bottomSpacing;
+      const bottomStartX = (320 - bottomTotalWidth) / 2 + (32 * cardScale) / 2;
+      const bottomX = bottomStartX + (lastCard.id - 1) * (32 * cardScale + bottomSpacing);
+      
+      // Move to bottom after 1 second
+      this.time.delayedCall(1000, () => {
+        this.tweens.add({
+          targets: [lastCard.sprite, lastCard.number],
+          x: bottomX,
+          y: bottomY,
+          duration: 500,
+          ease: 'Power2.easeOut',
+          onComplete: () => {
+            instruction.destroy();
+            // All done! Show victory message
+            this.time.delayedCall(500, () => {
+              this.dialogueManager.show("Grayson: Finally! I put the pieces together. I can get out of the void...");
+              
+              const checkEnter = () => {
+                if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+                  this.events.off('update', checkEnter);
+                  this.dialogueManager.hide();
+                  this.show3DGridTransition();
+                }
+              };
+              this.events.on('update', checkEnter);
+            });
+          }
+        });
+      });
+      return;
+    }
+    
+    // Show instruction
+    const instruction = this.add.text(160, 20, `Follow card #${targetNumber}`, {
+      fontSize: '16px',
+      color: '#ffffff',
+      fontFamily: 'monospace'
+    });
+    instruction.setOrigin(0.5);
+    instruction.setDepth(60);
+    
+    // Position cards in top area
+    const spacing = 15;
+    const totalWidth = (32 * cardScale + spacing) * numCards - spacing;
+    const startX = (320 - totalWidth) / 2 + (32 * cardScale) / 2;
+    
+    activeCards.forEach((card, i) => {
+      const x = startX + i * (32 * cardScale + spacing);
+      card.x = x;
+      card.y = topY;
+      
+      card.sprite.setPosition(x, topY);
+      card.sprite.setVisible(true);
+      card.sprite.setScale(cardScale);
+      
+      // ALWAYS show numbers at start of new phase
+      card.number.setPosition(x, topY);
+      card.number.setVisible(true);
+      card.number.setScale(1); // Reset scale
+      
+      // Re-enable sprite (might have been disabled from previous phase)
+      card.sprite.setInteractive({ useHandCursor: true });
+      
+      // Show debug box
+      const debugBox = (card.sprite as any).debugBox;
+      if (debugBox) {
+        debugBox.setPosition(x, topY);
+        debugBox.setVisible(true);
+      }
+    });
+    
+    console.log('Phase', targetNumber, 'cards positioned and made interactive');
+    
+    // Show numbers for 2 seconds
+    this.time.delayedCall(2000, () => {
+      // Hide numbers (flip)
+      activeCards.forEach(card => {
+        this.tweens.add({
+          targets: card.sprite,
+          scaleX: 0,
+          duration: 200,
+          onComplete: () => {
+            card.number.setVisible(false);
+            this.tweens.add({
+              targets: card.sprite,
+              scaleX: cardScale,
+              duration: 200
+            });
+          }
+        });
+      });
+      
+      // Shuffle
+      this.time.delayedCall(600, () => {
+        this.shuffleCardsPhase(activeCards, cardScale, () => {
+          // After shuffle, enable picking
+          instruction.setText('Click the correct card!');
+          this.enableCardPicking(activeCards, allCards, targetNumber, instruction, topY, bottomY, cardScale);
+        });
+      });
+    });
+  }
+  
+  private shuffleCardsPhase(cards: any[], cardScale: number, onComplete: () => void) {
+    // Shuffle positions (fewer for easier tracking)
+    const numSwaps = 10;
+    this.time.addEvent({
+      delay: 400,
+      repeat: numSwaps - 1,
+      callback: () => {
+        // Swap two random cards
+        const i1 = Math.floor(Math.random() * cards.length);
+        const i2 = Math.floor(Math.random() * cards.length);
+        
+        if (i1 !== i2) {
+          const tempX = cards[i1].x;
+          cards[i1].x = cards[i2].x;
+          cards[i2].x = tempX;
+          
+          // Animate swap (including debug boxes)
+          const box1 = (cards[i1].sprite as any).debugBox;
+          const box2 = (cards[i2].sprite as any).debugBox;
+          
+          this.tweens.add({
+            targets: [cards[i1].sprite, cards[i1].number, box1],
+            x: cards[i1].x,
+            duration: 300,
+            ease: 'Power2.easeInOut'
+          });
+          this.tweens.add({
+            targets: [cards[i2].sprite, cards[i2].number, box2],
+            x: cards[i2].x,
+            duration: 300,
+            ease: 'Power2.easeInOut'
+          });
+        }
+      }
+    });
+    
+    // After shuffle, callback
+    this.time.delayedCall(numSwaps * 400 + 500, onComplete);
+  }
+  
+  private enableCardPicking(activeCards: any[], allCards: any[], targetNumber: number, instruction: Phaser.GameObjects.Text, topY: number, bottomY: number, cardScale: number) {
+    console.log('=== Enabling card picking for', activeCards.length, 'cards, target:', targetNumber, '===');
+    console.log('Active card IDs:', activeCards.map(c => c.id));
+    console.log('Card positions (sprite.x, sprite.y):');
+    activeCards.forEach((card, i) => {
+      console.log(`  Card #${card.id}: x=${card.sprite.x.toFixed(1)}, y=${card.sprite.y.toFixed(1)}`);
+    });
+    console.log('Click inside a red box to select a card');
+    
+    // Enable input for active cards (already setInteractive at creation)
+    activeCards.forEach((card, index) => {
+      card.sprite.removeAllListeners(); // Clear old listeners
+      
+      // Use a proper closure to capture the correct card
+      const clickedCard = card; // Capture in closure
+      card.sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        console.log('🖱️ CLICK at x:', pointer.x, 'y:', pointer.y);
+        console.log('   Card clicked:', clickedCard.id, 'Expected:', targetNumber);
+        console.log('   Card position:', clickedCard.sprite.x, clickedCard.sprite.y);
+        // Disable all other cards
+        activeCards.forEach(c => c.sprite.disableInteractive());
+        
+        // Flip to show if correct
+        this.tweens.add({
+          targets: clickedCard.sprite,
+          scaleX: 0,
+          duration: 200,
+          onComplete: () => {
+            clickedCard.number.setVisible(true);
+            this.tweens.add({
+              targets: clickedCard.sprite,
+              scaleX: cardScale,
+              duration: 200,
+              onComplete: () => {
+                // Check if correct
+                if (clickedCard.id === targetNumber) {
+                  // Correct! Move to bottom pile
+                  instruction.setText('Correct!');
+                  clickedCard.solved = true;
+                  
+                  // Calculate bottom position based on card ID (1=leftmost, 4=rightmost)
+                  const debugBox = (clickedCard.sprite as any).debugBox;
+                  const bottomSpacing = 15;
+                  const bottomTotalWidth = (32 * cardScale + bottomSpacing) * 4 - bottomSpacing;
+                  const bottomStartX = (320 - bottomTotalWidth) / 2 + (32 * cardScale) / 2;
+                  const bottomX = bottomStartX + (clickedCard.id - 1) * (32 * cardScale + bottomSpacing);
+                  
+                  this.tweens.add({
+                    targets: [clickedCard.sprite, clickedCard.number, debugBox],
+                    x: bottomX,
+                    y: bottomY,
+                    duration: 500,
+                    ease: 'Power2.easeOut',
+                    onComplete: () => {
+                      // Hide debug box for solved cards
+                      if (debugBox) debugBox.setVisible(false);
+                      instruction.destroy();
+                      
+                      // Continue to next phase
+                      this.time.delayedCall(500, () => {
+                        this.startCardPhase(allCards, targetNumber + 1, topY, bottomY, cardScale);
+                      });
+                    }
+                  });
+                } else {
+                  // Wrong! Show fail message and restart phase
+                  instruction.setText('Wrong! Try again...');
+                  
+                  this.time.delayedCall(1500, () => {
+                    // Hide number again
+                    clickedCard.number.setVisible(false);
+                    instruction.destroy();
+                    
+                    // Restart this phase
+                    this.startCardPhase(allCards, targetNumber, topY, bottomY, cardScale);
+                  });
+                }
+              }
+            });
+          }
+        });
+      });
     });
   }
   
@@ -1439,7 +1741,6 @@ export default class GameScene extends Phaser.Scene {
     
     // Update counter immediately as card appears
     this.cardPiecesCollected = 3; // Set to 3
-    this.updateMemoryCounter();
     
     // Animate it floating up to center for examination
     this.tweens.add({
