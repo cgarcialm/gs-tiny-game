@@ -83,7 +83,7 @@ export default class Void3DScene extends Phaser.Scene {
   private createGround() {
     // Wide ground plane covering horizontal area
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(120, 50), // Much wider!
+      new THREE.PlaneGeometry(120, 50, 3), // Much wider!
       new THREE.MeshPhongMaterial({ 
         color: 0x003d4d, // Teal/cyan void color
         shininess: 10
@@ -95,11 +95,12 @@ export default class Void3DScene extends Phaser.Scene {
   }
 
   private createGridLines() {
-    // Add magenta grid lines on floor (like GameScene void)
+    // Add magenta grid lines on floor (square cells!)
     const gridWidth = 120;
     const gridDepth = 50;
-    const divisionsX = 60; // Vertical lines
-    const divisionsZ = 25; // Horizontal lines
+    const cellSize = 2; // Square cells of 2 units
+    const divisionsX = gridWidth / cellSize; // 60 vertical lines
+    const divisionsZ = gridDepth / cellSize; // 25 horizontal lines (square cells!)
     
     const lineMaterial = new THREE.LineBasicMaterial({
       color: 0xff00ff, // Bright magenta (GameScene void color)
@@ -136,11 +137,11 @@ export default class Void3DScene extends Phaser.Scene {
   }
 
   private createWallGrid() {
-    // Add magenta grid on vertical wall backdrop
+    // Add magenta grid on vertical wall backdrop (20 squares wide)
     const gridWidth = 120;
     const wallHeight = 40;
-    const divisionsX = 60; // Vertical lines
-    const divisionsY = 20; // Horizontal lines
+    const divisionsX = 28; // 20 divisions = 20 squares horizontally
+    const divisionsY = 10; // 10 divisions vertically
     const wallZ = -25; // Back edge position
     
     const lineMaterial = new THREE.LineBasicMaterial({
