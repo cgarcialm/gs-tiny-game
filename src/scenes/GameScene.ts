@@ -363,7 +363,9 @@ export default class GameScene extends Phaser.Scene {
                       console.log("ENTER pressed - transitioning to Void3D scene!");
                       this.events.off('update', checkEnter);
                       this.dialogueManager.hide();
-                      this.scene.start("Void3D"); // Go to intermediate 3D void scene first
+                      
+                      // Show 3D grid overlay effect before transition (like TitleScene)
+                      this.show3DGridTransition();
                     }
                   };
                   this.events.on('update', checkEnter);
@@ -1497,6 +1499,38 @@ export default class GameScene extends Phaser.Scene {
           this.dialogueManager.hide();
           fadeToScene(this, "FarmersMarket", 1000);
         });
+    });
+  }
+
+  private show3DGridTransition() {
+    // Create grid overlay (matching Void3D magenta grid)
+    const gridGraphics = this.add.graphics();
+    gridGraphics.lineStyle(1, 0xff00ff, 0); // Magenta, start invisible
+    gridGraphics.setDepth(1000); // Above everything
+    
+    // Draw the grid (16px cells, matching original void)
+    const gridSize = 16;
+    const screenWidth = 320;
+    const screenHeight = 180;
+    for (let x = 0; x <= screenWidth; x += gridSize) {
+      gridGraphics.lineBetween(x, 0, x, screenHeight);
+    }
+    for (let y = 0; y <= screenHeight; y += gridSize) {
+      gridGraphics.lineBetween(0, y, screenWidth, y);
+    }
+    
+    // Fade in the 3D grid (faster)
+    this.tweens.add({
+      targets: gridGraphics,
+      alpha: 1,
+      duration: 1000,
+      ease: "Power2"
+    });
+    
+    // Launch Void3D as overlay immediately after grid starts
+    this.time.delayedCall(100, () => { // Start while grid is still fading in
+      this.scene.launch("Void3D");
+      this.scene.bringToTop("Void3D");
     });
   }
 }

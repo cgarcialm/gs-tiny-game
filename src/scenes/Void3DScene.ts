@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import * as THREE from "three";
-import { fadeToScene } from "../utils/sceneTransitions";
+import { fadeToScene, fadeIn } from "../utils/sceneTransitions";
 import { create3DGrayson } from "../utils/create3DGrayson";
 
 /**
@@ -13,12 +13,16 @@ export default class Void3DScene extends Phaser.Scene {
   private grayson!: THREE.Group;
   private spotlight!: THREE.SpotLight;
   private sceneReady = false;
+  private transforming = true;
 
   constructor() {
     super("Void3D");
   }
 
   create() {
+    // Don't fade in - show GameScene underneath during particle effect
+    this.cameras.main.setBackgroundColor('rgba(0, 0, 0, 0)'); // Transparent
+    
     this.setupThreeJS();
     this.createGround();
     this.createWall(); // Add physical wall
@@ -26,6 +30,12 @@ export default class Void3DScene extends Phaser.Scene {
     this.createWallGrid(); // Add wall grid lines
     this.createGrayson();
     this.setupLighting();
+    
+    // Create 2D Grayson sprite for transformation
+    this.create2DGrayson();
+    
+    // Start transformation immediately
+    this.startTransformation();
     
     // Mark ready
     this.time.delayedCall(100, () => {
@@ -49,10 +59,204 @@ export default class Void3DScene extends Phaser.Scene {
     document.body.appendChild(instructionDiv);
     
     this.input.keyboard?.on('keydown-ENTER', () => {
+      // Don't allow transition during transformation
+      if (this.transforming) return;
+      
       if (instructionDiv.parentNode) {
         document.body.removeChild(instructionDiv);
       }
       this.animateCameraTransition();
+    });
+  }
+
+  private create2DGrayson() {
+    // Don't create 2D sprite - just particles
+  }
+
+  private createRevealSpiral() {
+    console.log("Creating reveal spiral!");
+    
+    // Grayson's colors
+    const colors = [
+      0x90EE90, // Light green (shirt)
+      0x8B4513, // Brown (pants)
+      0x4169E1, // Blue (hair)
+      0xFFDAB9  // Peach (skin)
+    ];
+    
+    const revealParticles: any[] = [];
+    const graysonHeight = 20;
+    const helixHeight = graysonHeight + 20;
+    const startRadius = 30; // Start even wider
+    const endRadius = 0; // Shrink to nothing
+    
+    // Create spiral particles starting wide
+    for (let i = 0; i < 200; i++) {
+      const heightOffset = (i / 200) * helixHeight - helixHeight / 2;
+      const angle = (i / 200) * Math.PI * 10;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      const pixel = this.add.rectangle(
+        160 + Math.cos(angle) * startRadius,
+        120 + heightOffset, // Lower on screen (screen height is 180, center was 90)
+        6, 6, // Bigger pixels
+        color
+      );
+      pixel.setDepth(200); // Above 3D scene
+      pixel.setAlpha(1); // Fully visible
+      pixel.setVisible(true);
+      
+      revealParticles.push({
+        obj: pixel,
+        angle: angle,
+        heightOffset: heightOffset,
+        currentRadius: startRadius,
+        speed: 0.12 + Math.random() * 0.06,
+        shrinkSpeed: 0.1 + Math.random() * 0.3 // Shrink inward
+      });
+    }
+    
+    console.log(`Created ${revealParticles.length} reveal particles`);
+    
+    // Animate particles spiraling inward
+    this.time.addEvent({
+      delay: 12,
+      repeat: 180, // ~4 seconds (much longer!)
+      callback: () => {
+        revealParticles.forEach(p => {
+          // Rotate and shrink inward
+          p.angle += p.speed;
+          p.currentRadius -= p.shrinkSpeed;
+          
+          p.obj.x = 160 + Math.cos(p.angle) * p.currentRadius;
+          p.obj.y = 100 + p.heightOffset; // Match the initial y position
+          
+          // Fade as reaching center
+          if (p.currentRadius < 15) {
+            p.obj.alpha = p.currentRadius / 15;
+          }
+          
+          // Destroy when gone
+          if (p.currentRadius <= 0) {
+            p.obj.destroy();
+          }
+        });
+      }
+    });
+    
+    // After spiral completes, clean up and fully show 3D scene
+    this.time.delayedCall(2000, () => { // Match animation duration
+      revealParticles.forEach(p => {
+        if (p.obj && p.obj.active) {
+          p.obj.destroy();
+        }
+      });
+      
+      // Fully show 3D scene
+      if (this.threeRenderer && this.threeRenderer.domElement) {
+        this.threeRenderer.domElement.style.opacity = '1';
+      }
+      
+      this.transforming = false;
+    });
+  }
+
+  private startTransformation() {
+    // Grayson's colors
+    const colors = [
+      0x90EE90, // Light green (shirt)
+      0x8B4513, // Brown (pants)
+      0x4169E1, // Blue (hair)
+      0xFFDAB9  // Peach (skin)
+    ];
+    
+    const particles: any[] = [];
+    const graysonHeight = 20; // Grayson's approximate height
+    const helixHeight = graysonHeight + 2; // A bit taller
+    const startRadius = 1; // Start very thin
+    
+    // Create MORE vertical helix pixels
+    for (let i = 0; i < 300; i++) {
+      const heightOffset = (i / 200) * helixHeight - helixHeight / 2;
+      const angle = (i / 200) * Math.PI * 10; // More rotations
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      const pixel = this.add.rectangle(
+        160,
+        90 + heightOffset,
+        4, 4, // 4x4 pixels
+        color
+      );
+      pixel.setDepth(100);
+      
+      particles.push({
+        obj: pixel,
+        angle: angle,
+        heightOffset: heightOffset,
+        currentRadius: startRadius,
+        speed: 0.08 + Math.random() * 0.04, // Slower rotation
+        expandSpeed: 0.1 + Math.random() * 0.1 // Less expansion
+      });
+    }
+    
+    // Animate particles expanding outward (no fading)
+    const spiralTime = this.time.addEvent({
+      delay: 12,
+      repeat: 180, // Match reveal spiral timing
+      callback: () => {
+        particles.forEach(p => {
+          // Rotate and expand
+          p.angle += p.speed;
+          p.currentRadius += p.expandSpeed;
+          
+          p.obj.x = 160 + Math.cos(p.angle) * p.currentRadius;
+          p.obj.y = 90 + p.heightOffset;
+          
+          // Don't fade particles - keep them visible
+        });
+      }
+    });
+    
+    // Start fade DURING spiral animation
+    this.time.delayedCall(1200, () => { // Start later to see more spiral
+      // Fade out Phaser camera (fades particles + GameScene)
+      this.cameras.main.fadeOut(1400, 0, 0, 0); // Slower fade
+      
+      // After fade out completes, clean up and show 3D
+      this.time.delayedCall(800, () => {
+        // Clean up particles
+        particles.forEach(p => {
+          if (p.obj && p.obj.active) {
+            p.obj.destroy();
+          }
+        });
+        
+        // Stop GameScene
+        this.scene.stop("Game");
+        
+        // Stay black for 0.5 seconds
+        this.time.delayedCall(500, () => {
+          // Reset camera - make it transparent again and clear fade effect
+          this.cameras.main.resetFX();
+          this.cameras.main.setBackgroundColor('rgba(0, 0, 0, 0)'); // Transparent
+          
+          // Keep 3D scene invisible initially (particles need to be on top)
+          if (this.threeRenderer && this.threeRenderer.domElement) {
+            this.threeRenderer.domElement.style.opacity = '0';
+          }
+          
+          // Small delay to ensure everything is ready
+          this.time.delayedCall(100, () => {
+            // Start showing 3D scene gradually
+            if (this.threeRenderer && this.threeRenderer.domElement) {
+              this.threeRenderer.domElement.style.opacity = '0.3'; // Dim background
+            }
+            
+            // Create shrinking spiral to reveal Grayson
+            this.createRevealSpiral();
+          });
+        });
+      });
     });
   }
 
@@ -80,6 +284,9 @@ export default class Void3DScene extends Phaser.Scene {
     this.threeRenderer.domElement.style.zIndex = '1';
     
     document.body.appendChild(this.threeRenderer.domElement);
+    
+    // Keep Three.js renderer invisible during particle transformation
+    this.threeRenderer.domElement.style.opacity = '0';
   }
 
   private createGround() {
