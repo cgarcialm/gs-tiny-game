@@ -360,6 +360,7 @@ export default class GameScene extends Phaser.Scene {
                   // Wait for ENTER to transition to 3D void scene
                   const checkEnter = () => {
                     if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+                      console.log("ENTER pressed - transitioning to Void3D scene!");
                       this.events.off('update', checkEnter);
                       this.dialogueManager.hide();
                       this.scene.start("Void3D"); // Go to intermediate 3D void scene first

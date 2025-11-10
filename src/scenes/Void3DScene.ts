@@ -4,28 +4,31 @@ import { fadeToScene } from "../utils/sceneTransitions";
 import { create3DGrayson } from "../utils/create3DGrayson";
 
 /**
- * Void3DScene - Intermediate scene between 2D GameScene and 3D CampingScene
- * Shows 3D Grayson in a perspective void grid
+ * Void3DScene - Simple spotlight test
  */
 export default class Void3DScene extends Phaser.Scene {
-  // Three.js elements
   private threeScene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private threeRenderer!: THREE.WebGLRenderer;
-  private grayson3D!: THREE.Group;
+  private grayson!: THREE.Group;
+  private sceneReady = false;
 
   constructor() {
     super("Void3D");
   }
 
   create() {
-    // Set up Three.js scene
     this.setupThreeJS();
+    this.createGround();
+    this.createGrayson();
+    this.setupLighting();
     
-    // Create 3D Grayson (will import from CampingScene createPlayer method)
-    this.createGrayson3D();
+    // Mark ready
+    this.time.delayedCall(100, () => {
+      this.sceneReady = true;
+    });
     
-    // Show "Press ENTER to continue" instruction
+    // Instruction
     const instructionDiv = document.createElement('div');
     instructionDiv.innerHTML = "Press ENTER to continue";
     instructionDiv.style.position = 'fixed';
@@ -41,38 +44,26 @@ export default class Void3DScene extends Phaser.Scene {
     instructionDiv.style.zIndex = '9999';
     document.body.appendChild(instructionDiv);
     
-    // Listen for ENTER key
     this.input.keyboard?.on('keydown-ENTER', () => {
-      document.body.removeChild(instructionDiv);
+      if (instructionDiv.parentNode) {
+        document.body.removeChild(instructionDiv);
+      }
       fadeToScene(this, "Camping", 1000);
     });
   }
 
   private setupThreeJS() {
-    // Create Three.js scene
     this.threeScene = new THREE.Scene();
+    this.threeScene.background = new THREE.Color(0x003d4d); // Void background
     
-    // Void grid background (perspective grid like GameScene but 3D)
-    this.createVoidGrid();
+    this.camera = new THREE.PerspectiveCamera(75, 320 / 180, 0.1, 1000);
+    this.camera.position.set(0, 3, 6); // Closer (was 8)
+    this.camera.lookAt(0, 1.5, 0);
     
-    // Create camera (straight-on view)
-    this.camera = new THREE.PerspectiveCamera(
-      60, // Narrower FOV for less distortion
-      320 / 180,
-      0.1,
-      1000
-    );
-    this.camera.position.set(0, 1.8, 8); // Closer to Grayson's eye level, further back
-    this.camera.lookAt(0, 1.8, 0); // Look straight at Grayson's face
-    
-    // Create renderer
-    this.threeRenderer = new THREE.WebGLRenderer({ 
-      antialias: false,
-      alpha: true 
-    });
+    this.threeRenderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
     this.threeRenderer.setSize(320, 180);
+    this.threeRenderer.shadowMap.enabled = true;
     
-    // Position renderer over Phaser canvas
     const gameCanvas = this.game.canvas;
     const rect = gameCanvas.getBoundingClientRect();
     
@@ -85,113 +76,84 @@ export default class Void3DScene extends Phaser.Scene {
     this.threeRenderer.domElement.style.zIndex = '1';
     
     document.body.appendChild(this.threeRenderer.domElement);
-    
-    // Lighting
-    const ambient = new THREE.AmbientLight(0x404040, 1);
-    this.threeScene.add(ambient);
-    
-    const light = new THREE.DirectionalLight(0xffffff, 0.8);
-    light.position.set(5, 10, 5);
-    this.threeScene.add(light);
   }
 
-  private createVoidGrid() {
-    // Create custom rectangular grid (wide but not deep)
-    const gridWidth = 100; // Wide (horizontal)
-    const gridDepth = 40; // Less deep (vertical)
-    const divisionsX = 50; // Many vertical lines
-    const divisionsZ = 20; // Fewer horizontal lines
+  private createGround() {
+    // Wide ground plane covering horizontal area
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(120, 50), // Much wider!
+      new THREE.MeshPhongMaterial({ 
+        color: 0x003d4d, // Teal/cyan void color
+        shininess: 10
+      })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    this.threeScene.add(ground);
+  }
+
+  private createGrayson() {
+    const result = create3DGrayson();
+    this.grayson = result.group;
+    this.grayson.position.set(0, 0, 0);
     
-    const gridGroup = new THREE.Group();
-    const lineMaterial = new THREE.LineBasicMaterial({
-      color: 0xff00ff, // Bright magenta
-      opacity: 0.5,
-      transparent: true
+    // Enable shadows and use Phong material (better for lights)
+    this.grayson.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        mesh.castShadow = true;
+        if (mesh.material) {
+          // Convert to MeshPhongMaterial for better lighting
+          const oldMat = mesh.material as THREE.MeshStandardMaterial;
+          mesh.material = new THREE.MeshPhongMaterial({
+            color: oldMat.color,
+            emissive: new THREE.Color(0x000000),
+            shininess: 30
+          });
+        }
+      }
     });
     
-    // Create vertical lines (along Z axis)
-    for (let i = 0; i <= divisionsX; i++) {
-      const x = (i / divisionsX) * gridWidth - gridWidth / 2;
-      const geometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(x, 0, -gridDepth / 2),
-        new THREE.Vector3(x, 0, gridDepth / 2)
-      ]);
-      const line = new THREE.Line(geometry, lineMaterial);
-      gridGroup.add(line);
-    }
-    
-    // Create horizontal lines (along X axis)
-    for (let i = 0; i <= divisionsZ; i++) {
-      const z = (i / divisionsZ) * gridDepth - gridDepth / 2;
-      const geometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(-gridWidth / 2, 0, z),
-        new THREE.Vector3(gridWidth / 2, 0, z)
-      ]);
-      const line = new THREE.Line(geometry, lineMaterial);
-      gridGroup.add(line);
-    }
-    
-    gridGroup.rotation.x = 0; // Keep floor flat (no tilt for better wall alignment)
-    this.threeScene.add(gridGroup);
-    
-    // Create vertical wall backdrop with straight lines only
-    const wallGroup = new THREE.Group();
-    const wallHeight = 50;
-    const wallDivisionsX = 50; // Vertical lines
-    const wallDivisionsY = 25; // Horizontal lines
-    
-    // Vertical lines (going up the wall)
-    for (let i = 0; i <= wallDivisionsX; i++) {
-      const x = (i / wallDivisionsX) * gridWidth - gridWidth / 2;
-      const geometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(x, 0, -gridDepth / 2),
-        new THREE.Vector3(x, wallHeight, -gridDepth / 2)
-      ]);
-      const line = new THREE.Line(geometry, lineMaterial);
-      wallGroup.add(line);
-    }
-    
-    // Horizontal lines (across the wall)
-    for (let i = 0; i <= wallDivisionsY; i++) {
-      const y = (i / wallDivisionsY) * wallHeight;
-      const geometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(-gridWidth / 2, y, -gridDepth / 2),
-        new THREE.Vector3(gridWidth / 2, y, -gridDepth / 2)
-      ]);
-      const line = new THREE.Line(geometry, lineMaterial);
-      wallGroup.add(line);
-    }
-    
-    // wallGroup.rotation.x = 0; // ← CHANGE THIS to tilt wall (0 = vertical, -π/12 = lean back)
-    this.threeScene.add(wallGroup);
-    
-    // Dark cyan background (matches GameScene void)
-    this.threeScene.background = new THREE.Color(0x003d4d);
+    this.threeScene.add(this.grayson);
   }
 
-  private createGrayson3D() {
-    // Use shared 3D Grayson creation function
-    const result = create3DGrayson();
-    this.grayson3D = result.group;
-    this.grayson3D.position.set(0, 0, 0); // Center of scene
+  private setupLighting() {
+    // Dark ambient for dramatic contrast
+    const ambient = new THREE.AmbientLight(0x222222, 0.3); // Darker
+    this.threeScene.add(ambient);
     
-    this.threeScene.add(this.grayson3D);
+    // Powerful spotlight from above
+    const spotlight = new THREE.SpotLight(0xffffff, 95); // Much brighter!
+    spotlight.position.set(0, 25, 3); // High above, slightly front
+    spotlight.target.position.set(0, 0, 0); // Point at Grayson/floor
+    spotlight.angle = Math.PI / 24; // Focused beam
+    spotlight.penumbra = 0.2; // Soft edge for visible circle
+    spotlight.distance = 0;
+    spotlight.decay = 1; // More falloff
+    spotlight.castShadow = true;
+    
+    // Sharp shadows
+    spotlight.shadow.mapSize.width = 2048;
+    spotlight.shadow.mapSize.height = 2048;
+    
+    this.threeScene.add(spotlight);
+    this.threeScene.add(spotlight.target);
+    spotlight.target.updateMatrixWorld();
   }
 
   update() {
-    // Gentle rotation of Grayson
-    if (this.grayson3D) {
-      this.grayson3D.rotation.y += 0.01;
+    if (!this.sceneReady) return;
+    
+    if (this.grayson) {
+      this.grayson.rotation.y += 0.01;
     }
     
-    // Render Three.js scene
     if (this.threeRenderer && this.threeScene && this.camera) {
       this.threeRenderer.render(this.threeScene, this.camera);
     }
   }
 
   shutdown() {
-    // Clean up Three.js resources
     if (this.threeRenderer) {
       if (this.threeRenderer.domElement.parentNode) {
         this.threeRenderer.domElement.parentElement!.removeChild(this.threeRenderer.domElement);
@@ -200,4 +162,3 @@ export default class Void3DScene extends Phaser.Scene {
     }
   }
 }
-
