@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { initializeGameScene } from "../utils/sceneSetup";
-import { fadeToScene } from "../utils/sceneTransitions";
+import { fadeToScene, fadeIn } from "../utils/sceneTransitions";
 import { DEBUG_SHOW_GRID } from "../config/debug";
 import type { GameControls } from "../utils/controls";
 import type { HelpMenu } from "../utils/helpMenu";
@@ -83,6 +83,9 @@ export default class CampingScene extends Phaser.Scene {
   }
 
   create() {
+    // Fade in from black (2.5 seconds to match Void3D fade out)
+    fadeIn(this, 2500);
+    
     // Initialize common scene elements
     const setup = initializeGameScene(this);
     this.controls = setup.controls;
@@ -186,6 +189,21 @@ export default class CampingScene extends Phaser.Scene {
     
     // Add renderer to body
     document.body.appendChild(this.threeRenderer.domElement);
+    
+    // Start with opacity 0 and fade in (matches Void3D fade out)
+    this.threeRenderer.domElement.style.opacity = '0';
+    const fadeAnim = { opacity: 0 };
+    this.tweens.add({
+      targets: fadeAnim,
+      opacity: 1,
+      duration: 2500,
+      ease: 'Power2.easeInOut',
+      onUpdate: () => {
+        if (this.threeRenderer && this.threeRenderer.domElement) {
+          this.threeRenderer.domElement.style.opacity = fadeAnim.opacity.toString();
+        }
+      }
+    });
     
     // Sunset lighting
     const ambient = new THREE.AmbientLight(0xffa500, 0.8); // Warm orange ambient

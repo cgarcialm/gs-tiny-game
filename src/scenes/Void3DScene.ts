@@ -243,6 +243,28 @@ export default class Void3DScene extends Phaser.Scene {
     this.spotlight.target.updateMatrixWorld();
   }
 
+  private fadeOutToScene(duration: number) {
+    // Fade Phaser camera
+    this.cameras.main.fadeOut(duration, 0, 0, 0);
+    
+    // Fade Three.js renderer by animating its opacity
+    const fadeAnim = { opacity: 1 };
+    this.tweens.add({
+      targets: fadeAnim,
+      opacity: 0,
+      duration: duration,
+      ease: 'Power2.easeInOut',
+      onUpdate: () => {
+        if (this.threeRenderer && this.threeRenderer.domElement) {
+          this.threeRenderer.domElement.style.opacity = fadeAnim.opacity.toString();
+        }
+      },
+      onComplete: () => {
+        this.scene.start("Camping");
+      }
+    });
+  }
+
   private animateCameraTransition() {
     const targetX = 0;
     const targetY = 5;
@@ -273,7 +295,8 @@ export default class Void3DScene extends Phaser.Scene {
         this.camera.lookAt(0, 1.5, 0);
       },
       onComplete: () => {
-        fadeToScene(this, "Camping", 1000);
+        // Custom fade that includes Three.js renderer
+        this.fadeOutToScene(2500);
       }
     });
   }
