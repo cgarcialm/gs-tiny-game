@@ -11,6 +11,7 @@ export default class Void3DScene extends Phaser.Scene {
   private camera!: THREE.PerspectiveCamera;
   private threeRenderer!: THREE.WebGLRenderer;
   private grayson!: THREE.Group;
+  private spotlight!: THREE.SpotLight;
   private sceneReady = false;
 
   constructor() {
@@ -20,6 +21,7 @@ export default class Void3DScene extends Phaser.Scene {
   create() {
     this.setupThreeJS();
     this.createGround();
+    this.createWall(); // Add physical wall
     this.createGridLines(); // Add floor grid lines
     this.createWallGrid(); // Add wall grid lines
     this.createGrayson();
@@ -83,7 +85,7 @@ export default class Void3DScene extends Phaser.Scene {
   private createGround() {
     // Wide ground plane covering horizontal area
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(120, 50, 3), // Much wider!
+      new THREE.PlaneGeometry(120, 50, 3),
       new THREE.MeshPhongMaterial({ 
         color: 0x003d4d, // Teal/cyan void color
         shininess: 10
@@ -92,6 +94,21 @@ export default class Void3DScene extends Phaser.Scene {
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     this.threeScene.add(ground);
+  }
+
+  private createWall() {
+    // Physical wall backdrop to receive light
+    const wall = new THREE.Mesh(
+      new THREE.PlaneGeometry(120, 40),
+      new THREE.MeshPhongMaterial({
+        color: 0x003d4d, // Same teal as floor
+        shininess: 10
+      })
+    );
+    wall.position.z = -25; // At back
+    wall.position.y = 20; // Lift up so it sits on ground (height 40, so center at y=20)
+    wall.receiveShadow = true; // Receives spotlight!
+    this.threeScene.add(wall);
   }
 
   private createGridLines() {
@@ -204,49 +221,58 @@ export default class Void3DScene extends Phaser.Scene {
 
   private setupLighting() {
     // Dark ambient for dramatic contrast
-    const ambient = new THREE.AmbientLight(0x222222, 0.3); // Darker
+    const ambient = new THREE.AmbientLight(0x222222, 0.3);
     this.threeScene.add(ambient);
     
-    // Powerful spotlight from front-above
-    const spotlight = new THREE.SpotLight(0xffffff, 95); // Much brighter!
-    spotlight.position.set(0, 15, 10); // More from the front (higher z)
-    spotlight.target.position.set(0, 1, 0); // Point at Grayson center
-    spotlight.angle = Math.PI / 12; // Focused beam
-    spotlight.penumbra = 0.8; // Soft edge for visible circle
-    spotlight.distance = 0;
-    spotlight.decay = 1.2; // More falloff
-    spotlight.castShadow = true;
+    // Powerful spotlight - starts WIDE to illuminate whole floor and wall
+    this.spotlight = new THREE.SpotLight(0xffffff, 95);
+    this.spotlight.position.set(0, 20, 10); // Higher position to cover wall
+    this.spotlight.target.position.set(0, 2, 0); // Point at Grayson (head height)
+    this.spotlight.angle = Math.PI / 2; // WIDE angle (90°) - covers everything!
+    this.spotlight.penumbra = 0.8;
+    this.spotlight.distance = 0;
+    this.spotlight.decay = 1.2;
+    this.spotlight.castShadow = true;
     
     // Sharp shadows
-    spotlight.shadow.mapSize.width = 2048;
-    spotlight.shadow.mapSize.height = 2048;
+    this.spotlight.shadow.mapSize.width = 2048;
+    this.spotlight.shadow.mapSize.height = 2048;
     
-    this.threeScene.add(spotlight);
-    this.threeScene.add(spotlight.target);
-    spotlight.target.updateMatrixWorld();
+    this.threeScene.add(this.spotlight);
+    this.threeScene.add(this.spotlight.target);
+    this.spotlight.target.updateMatrixWorld();
   }
 
   private animateCameraTransition() {
-    // Animate camera moving from front view to camping scene angle
-    // Camping scene camera starts: angleH = π/3 (behind-right), at player position (-2, 0, 2)
-    const targetX = 0 ;//+ Math.sin(Math.PI / 3) * 6; // Behind player at angle
-    const targetY = 5; // Height in camping
-    const targetZ = 5 ;//+ Math.cos(Math.PI / 3) * 6;
+    const targetX = 0;
+    const targetY = 5;
+    const targetZ = 5;
+    const transitionDuration = 3500; // Longer transition (3.5 seconds)
     
-    // Smooth camera movement (2 seconds)
+    // Animate spotlight narrowing (from wide to focused)
+    const spotlightAnim = { angle: this.spotlight.angle }; // Start: π/2
+    this.tweens.add({
+      targets: spotlightAnim,
+      angle: Math.PI / 12, // End: narrow focused beam
+      duration: transitionDuration,
+      ease: 'Power2.easeInOut',
+      onUpdate: () => {
+        this.spotlight.angle = spotlightAnim.angle;
+      }
+    });
+    
+    // Animate camera movement (simultaneously)
     this.tweens.add({
       targets: this.camera.position,
       x: targetX,
       y: targetY,
       z: targetZ,
-      duration: 2000,
+      duration: transitionDuration,
       ease: 'Power2.easeInOut',
       onUpdate: () => {
-        // Keep looking at Grayson during movement
         this.camera.lookAt(0, 1.5, 0);
       },
       onComplete: () => {
-        // Fade to camping scene
         fadeToScene(this, "Camping", 1000);
       }
     });
