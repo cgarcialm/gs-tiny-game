@@ -10,9 +10,10 @@ import { handleMenuInput } from "../utils/menuHandler";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
 import { DEBUG_START_LEVEL } from "../config/debug";
-import { PROMPT_TEXT_STYLE, HELP_HINT_TEXT_STYLE, FLOATING_MESSAGE_STYLE } from "../config/textStyles";
+import { PROMPT_TEXT_STYLE, HELP_HINT_TEXT_STYLE, FLOATING_MESSAGE_STYLE, COUNTER_TEXT_STYLE } from "../config/textStyles";
 import { spawnFloatingText } from "../utils/visualEffects";
 import { checkProximity } from "../utils/collectionHelpers";
+import { animateCounterUpdate } from "../utils/uiAnimations";
 
 type DialogueState = "idle" | "open";
 type ChaseState = "idle" | "chasing";
@@ -45,7 +46,7 @@ export default class GameScene extends Phaser.Scene {
 
   private speed = 80; // px/s
   private promptText!: Phaser.GameObjects.Text;
-  // Removed card counter (replaced with shuffle mini-game)
+  private cardCounterText!: Phaser.GameObjects.Text;
   private helpHintText!: Phaser.GameObjects.Text;
 
   // dialogue state
@@ -149,16 +150,31 @@ export default class GameScene extends Phaser.Scene {
       .setVisible(false);
 
     // Card piece counter at top right of screen
-    // Set initial count based on completed levels
-    this.cardPiecesCollected = this.completedLevels;
+    // Set initial count based on actual memories collected
+    // Level 0 (Eboshi) = 1st, Level 1 (Ceci) = 2nd, Level 3 (Smush) = 3rd, Level 4 (Shuffle) = 4th
+    if (this.completedLevels === 0) {
+      this.cardPiecesCollected = 0; // Haven't collected any yet
+    } else if (this.completedLevels === 1) {
+      this.cardPiecesCollected = 1; // Collected from Eboshi
+    } else if (this.completedLevels === 2) {
+      this.cardPiecesCollected = 2; // Collected Eboshi + Ceci
+    } else if (this.completedLevels === 3) {
+      this.cardPiecesCollected = 2; // Same (level 2 has no memory)
+    } else {
+      this.cardPiecesCollected = 3; // Level 4: Have Eboshi + Ceci + Smush
+    }
     
-    // Removed memory counter display
-    
-    // Help hint (bottom-right corner) - shown after first Eboshi interaction in level 0
-    this.helpHintText = this.add
-      .text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
-      .setOrigin(1, 1)
+    // Memory counter at top right
+    this.cardCounterText = this.add
+      .text(310, 8, `Memories: ${this.cardPiecesCollected}/4`, COUNTER_TEXT_STYLE)
+      .setOrigin(1, 0)
       .setDepth(10);
+  
+  // Help hint (bottom-right corner) - shown after first Eboshi interaction in level 0
+  this.helpHintText = this.add
+    .text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
+    .setOrigin(1, 1)
+    .setDepth(10);
     
     // Only show after Eboshi interaction (level 0), or if already unlocked
     const showHelpHint = this.registry.get('showHelpHint') || false;
@@ -342,12 +358,9 @@ export default class GameScene extends Phaser.Scene {
             onComplete: () => {
               walkTimer.destroy();
               
-              // After walking in, final memory appears
+              // After walking in, start shuffle game (don't increment counter yet)
               this.time.delayedCall(500, () => {
-                // Update counter to 4/4
-                this.cardPiecesCollected++;
-                
-                // Start card shuffling mini-game
+                // Start card shuffling mini-game (winning this gives the 4th memory)
                 this.time.delayedCall(800, () => {
                   this.startCardShuffleGame();
                 });
@@ -646,6 +659,7 @@ export default class GameScene extends Phaser.Scene {
     
     // Update counter with animation
     this.cardPiecesCollected++;
+    this.updateMemoryCounter();
     
     // Spawn celebration sparkles
     const sparkles = spawnCardPieceSparkles(this, this.cardPieceX, this.cardPieceY);
@@ -815,6 +829,7 @@ export default class GameScene extends Phaser.Scene {
         
         // Memory collection animation
         this.cardPiecesCollected++;
+        this.updateMemoryCounter();
         
         // "Memory collected!" message
         const pickupText = this.add.text(cardX, cardY, "Memory collected!", FLOATING_MESSAGE_STYLE)
@@ -1060,6 +1075,24 @@ export default class GameScene extends Phaser.Scene {
     });
   }
   
+  private updateMemoryCounter() {
+    this.cardCounterText.setText(`Memories: ${this.cardPiecesCollected}/4`);
+    
+    // Use original fancy animation
+    animateCounterUpdate(this, this.cardCounterText, {
+      scaleTo: 1.5,
+      scaleDuration: 400,
+      flashColor: "#ffffff",
+      flashDuration: 400,
+      addSparkles: true,
+      sparkleCount: 3,
+      addGlow: true,
+      glowScale: 2,
+      glowDuration: 1500,
+      ease: "Back.easeOut",
+    });
+  }
+
   private mergeCardsAnimation(allCards: any[], onComplete: () => void) {
     console.log('Starting merge animation with', allCards.length, 'cards');
     
@@ -1127,6 +1160,10 @@ export default class GameScene extends Phaser.Scene {
       fullCard.arc(heartSize/4, 0, heartSize/2, 0, Math.PI * 2);
       fullCard.fillPath();
       fullCard.fillTriangle(-heartSize/2, heartSize/4, heartSize/2, heartSize/4, 0, heartSize);
+      
+      // Update counter to 4/4 when full card appears!
+      this.cardPiecesCollected = 4;
+      this.updateMemoryCounter();
       
       // Fade in and scale full card
       this.tweens.add({
@@ -1902,6 +1939,7 @@ export default class GameScene extends Phaser.Scene {
     
     // Update counter immediately as card appears
     this.cardPiecesCollected = 3; // Set to 3
+    this.updateMemoryCounter();
     
     // Animate it floating up to center for examination
     this.tweens.add({
