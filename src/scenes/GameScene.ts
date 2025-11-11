@@ -1277,10 +1277,10 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private shuffleCardsPhase(cards: any[], _cardScale: number, onComplete: () => void) {
-    // Shuffle positions (fewer for easier tracking)
+    // Shuffle positions (faster!)
     const numSwaps = 10;
     this.time.addEvent({
-      delay: 400,
+      delay: 250, // Faster (was 400)
       repeat: numSwaps - 1,
       callback: () => {
         // Swap two random cards
@@ -1299,21 +1299,21 @@ export default class GameScene extends Phaser.Scene {
           this.tweens.add({
             targets: [cards[i1].sprite, cards[i1].number, box1],
             x: cards[i1].x,
-            duration: 300,
+            duration: 200, // Faster
             ease: 'Power2.easeInOut'
           });
           this.tweens.add({
             targets: [cards[i2].sprite, cards[i2].number, box2],
             x: cards[i2].x,
-            duration: 300,
+            duration: 200, // Faster
             ease: 'Power2.easeInOut'
           });
         }
       }
     });
     
-    // After shuffle, callback
-    this.time.delayedCall(numSwaps * 400 + 500, onComplete);
+    // After shuffle, callback (adjusted for faster timing)
+    this.time.delayedCall(numSwaps * 250 + 300, onComplete);
   }
   
   private enableCardPicking(activeCards: any[], allCards: any[], targetNumber: number, instruction: Phaser.GameObjects.Text, topY: number, bottomY: number, cardScale: number) {
@@ -1381,16 +1381,21 @@ export default class GameScene extends Phaser.Scene {
                     }
                   });
                 } else {
-                  // Wrong! Show fail message and restart phase
-                  instruction.setText('Wrong! Try again...');
+                  // Wrong! Restart from beginning (card 1)
+                  instruction.setText('Wrong! Starting over from card #1...');
                   
-                  this.time.delayedCall(1500, () => {
-                    // Hide number again
-                    clickedCard.number.setVisible(false);
+                  this.time.delayedCall(2000, () => {
                     instruction.destroy();
                     
-                    // Restart this phase
-                    this.startCardPhase(allCards, targetNumber, topY, bottomY, cardScale);
+                    // Reset all cards to unsolved
+                    allCards.forEach(card => {
+                      card.solved = false;
+                      card.number.setVisible(false);
+                      card.sprite.setVisible(false);
+                    });
+                    
+                    // Restart from card 1
+                    this.startCardPhase(allCards, 1, topY, bottomY, cardScale);
                   });
                 }
               }
