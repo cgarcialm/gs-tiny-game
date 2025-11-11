@@ -1121,8 +1121,47 @@ export default class GameScene extends Phaser.Scene {
       });
     }
     
-    // Start with phase 1 (find card #1)
-    this.startCardPhase(allCards, 1, topY, bottomY, cardScale);
+    // Show all cards with numbers first
+    const spacing = 15;
+    const totalWidth = (32 * cardScale + spacing) * 4 - spacing;
+    const startX = (320 - totalWidth) / 2 + (32 * cardScale) / 2;
+    
+    allCards.forEach((card, i) => {
+      const x = startX + i * (32 * cardScale + spacing);
+      card.sprite.setPosition(x, topY);
+      card.sprite.setVisible(true);
+      card.number.setPosition(x, topY);
+      card.number.setVisible(true);
+    });
+    
+    // Show "Press ENTER to play" instruction
+    const readyPrompt = this.add.text(160, 120, "Press ENTER to start", {
+      fontSize: '14px',
+      color: '#ffffff',
+      fontFamily: 'monospace',
+      backgroundColor: '#000000',
+      padding: { x: 8, y: 4 }
+    });
+    readyPrompt.setOrigin(0.5);
+    readyPrompt.setDepth(100);
+    
+    // Wait for ENTER
+    const startGame = () => {
+      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+        this.events.off('update', startGame);
+        readyPrompt.destroy();
+        
+        // Hide all cards before starting phase 1
+        allCards.forEach(card => {
+          card.sprite.setVisible(false);
+          card.number.setVisible(false);
+        });
+        
+        // Start phase 1
+        this.startCardPhase(allCards, 1, topY, bottomY, cardScale);
+      }
+    };
+    this.events.on('update', startGame);
   }
   
   private startCardPhase(allCards: any[], targetNumber: number, topY: number, bottomY: number, cardScale: number) {
@@ -1137,8 +1176,9 @@ export default class GameScene extends Phaser.Scene {
     const numCards = activeCards.length;
     
     if (numCards === 0) {
-      // All cards found! Victory
-      this.time.delayedCall(1000, () => {
+      // All cards found! Merge animation
+      this.mergeCardsAnimation(allCards, () => {
+        // After merge, show dialogue
         this.dialogueManager.show("Grayson: Finally! I put the pieces together. I can get out of the void...");
         
         const checkEnter = () => {
@@ -1157,9 +1197,11 @@ export default class GameScene extends Phaser.Scene {
     if (numCards === 1) {
       const lastCard = activeCards[0];
       const instruction = this.add.text(160, 20, `Last card: #${lastCard.id}!`, {
-        fontSize: '16px',
+        fontSize: '12px',
         color: '#ffffff',
-        fontFamily: 'monospace'
+        fontFamily: 'monospace',
+        backgroundColor: '#000000',
+        padding: { x: 6, y: 3 }
       });
       instruction.setOrigin(0.5);
       instruction.setDepth(60);
@@ -1207,9 +1249,11 @@ export default class GameScene extends Phaser.Scene {
     
     // Show instruction
     const instruction = this.add.text(160, 20, `Follow card #${targetNumber}`, {
-      fontSize: '16px',
+      fontSize: '12px',
       color: '#ffffff',
-      fontFamily: 'monospace'
+      fontFamily: 'monospace',
+      backgroundColor: '#000000',
+      padding: { x: 6, y: 3 }
     });
     instruction.setOrigin(0.5);
     instruction.setDepth(60);
@@ -1233,8 +1277,8 @@ export default class GameScene extends Phaser.Scene {
       card.number.setVisible(true);
       card.number.setScale(1); // Reset scale
       
-      // Re-enable sprite (might have been disabled from previous phase)
-      card.sprite.setInteractive({ useHandCursor: true });
+      // Disable interaction initially (will be enabled after shuffle)
+      card.sprite.disableInteractive();
       
       // Show debug box
       const debugBox = (card.sprite as any).debugBox;
@@ -1325,9 +1369,10 @@ export default class GameScene extends Phaser.Scene {
     });
     console.log('Click inside a red box to select a card');
     
-    // Enable input for active cards (already setInteractive at creation)
+    // Enable input for active cards
     activeCards.forEach(card => {
       card.sprite.removeAllListeners(); // Clear old listeners
+      card.sprite.setInteractive({ useHandCursor: true }); // Re-enable interaction
       
       // Use a proper closure to capture the correct card
       const clickedCard = card; // Capture in closure
@@ -1382,7 +1427,7 @@ export default class GameScene extends Phaser.Scene {
                   });
                 } else {
                   // Wrong! Restart from beginning (card 1)
-                  instruction.setText('Wrong! Starting over from card #1...');
+                  instruction.setText('Wrong! Starting over...');
                   
                   this.time.delayedCall(2000, () => {
                     instruction.destroy();
