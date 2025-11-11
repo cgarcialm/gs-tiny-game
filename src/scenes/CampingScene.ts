@@ -292,36 +292,65 @@ export default class CampingScene extends Phaser.Scene {
   }
   
   private createFlowerSparkles(x: number, z: number) {
-    // Create bright, noticeable sparkles at flower location
-    // Convert 3D position to 2D screen coordinates
-    const worldPos = new THREE.Vector3(x, 0.2, z);
-    const screenPos = worldPos.project(this.camera);
-    
-    const screenX = (screenPos.x + 1) / 2 * 320;
-    const screenY = (1 - screenPos.y) / 2 * 180;
-    
-    // Create multiple sparkle particles
-    const colors = [0xffff00, 0xff69b4, 0x00ff00, 0xffffff]; // Yellow, pink, green, white
+    // Create 3D sparkles using small cubes rotated to look like stars
+    const sparkleColors = [
+      0xffd700, // Gold
+      0xffa500, // Orange
+      0xffff00, // Yellow
+      0xc0c0c0, // Silver
+      0xffffff, // White
+      0xffdf00  // Golden yellow
+    ];
     
     for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const radius = 15;
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      
-      const sparkle = this.add.circle(screenX, screenY, 3, color);
-      sparkle.setDepth(1000); // Above everything
-      
-      // Animate outward and fade
-      this.tweens.add({
-        targets: sparkle,
-        x: screenX + Math.cos(angle) * radius,
-        y: screenY + Math.sin(angle) * radius - 10, // Float up a bit
-        alpha: 0,
-        scale: 1.5,
-        duration: 600,
-        ease: 'Power2.easeOut',
-        onComplete: () => sparkle.destroy()
+      // Create tiny cube sparkle
+      const sparkleGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08); // Smaller!
+      const sparkleMat = new THREE.MeshBasicMaterial({ 
+        color: sparkleColors[Math.floor(Math.random() * sparkleColors.length)],
+        transparent: true,
+        opacity: 1
       });
+      const sparkle = new THREE.Mesh(sparkleGeo, sparkleMat);
+      
+      // Position at flower location in a circle
+      const angle = (i / 8) * Math.PI * 2;
+      const radius = 0.3;
+      sparkle.position.set(
+        x + Math.cos(angle) * radius,
+        0.2,
+        z + Math.sin(angle) * radius
+      );
+      
+      // Rotate at 45 degrees to look like a star/diamond
+      sparkle.rotation.x = Math.PI / 4;
+      sparkle.rotation.y = Math.PI / 4;
+      sparkle.rotation.z = Math.random() * Math.PI;
+      
+      this.threeScene.add(sparkle);
+      
+      // Animate up, rotate, and fade
+      const targetY = 1.2 + Math.random() * 0.8;
+      const duration = 1200;
+      const startTime = Date.now();
+      const startRotation = sparkle.rotation.y;
+      
+      const animateSparkle = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+        
+        if (progress < 1 && sparkle.parent) {
+          sparkle.position.y = 0.1 + progress * targetY;
+          sparkle.rotation.y = startRotation + progress * Math.PI * 4; // Spin!
+          sparkleMat.opacity = 1 - progress;
+          requestAnimationFrame(animateSparkle);
+        } else {
+          this.threeScene.remove(sparkle);
+          sparkleGeo.dispose();
+          sparkleMat.dispose();
+        }
+      };
+      
+      animateSparkle();
     }
   }
   
