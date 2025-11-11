@@ -291,6 +291,40 @@ export default class CampingScene extends Phaser.Scene {
     console.log("Stars created - look up to see them!");
   }
   
+  private createFlowerSparkles(x: number, z: number) {
+    // Create bright, noticeable sparkles at flower location
+    // Convert 3D position to 2D screen coordinates
+    const worldPos = new THREE.Vector3(x, 0.2, z);
+    const screenPos = worldPos.project(this.camera);
+    
+    const screenX = (screenPos.x + 1) / 2 * 320;
+    const screenY = (1 - screenPos.y) / 2 * 180;
+    
+    // Create multiple sparkle particles
+    const colors = [0xffff00, 0xff69b4, 0x00ff00, 0xffffff]; // Yellow, pink, green, white
+    
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const radius = 15;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      const sparkle = this.add.circle(screenX, screenY, 3, color);
+      sparkle.setDepth(1000); // Above everything
+      
+      // Animate outward and fade
+      this.tweens.add({
+        targets: sparkle,
+        x: screenX + Math.cos(angle) * radius,
+        y: screenY + Math.sin(angle) * radius - 10, // Float up a bit
+        alpha: 0,
+        scale: 1.5,
+        duration: 600,
+        ease: 'Power2.easeOut',
+        onComplete: () => sparkle.destroy()
+      });
+    }
+  }
+  
   private createCeci() {
     // Create Ceci standing between fire and rocks, watching the city
     this.ceci = new THREE.Group() as any;
@@ -1802,6 +1836,9 @@ export default class CampingScene extends Phaser.Scene {
           flower.scale.set(scale, scale, scale);
           flower.rotation.y = Math.random() * Math.PI * 2;
           this.threeScene.add(flower);
+          
+          // Add visible sparkle effect when flower is planted!
+          this.createFlowerSparkles(this.player.position.x, this.player.position.z);
           
           // Update last flower position
           this.lastFlowerPosition.set(this.player.position.x, this.player.position.z);
