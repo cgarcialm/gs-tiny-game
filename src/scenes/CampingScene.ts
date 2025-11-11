@@ -289,16 +289,42 @@ export default class CampingScene extends Phaser.Scene {
     sun.position.copy(position);
     this.threeScene.add(sun);
     
-    // Add glow effect around sun
-    const glowGeometry = new THREE.SphereGeometry(4, 32, 32);
-    const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffdd88,
-      transparent: true,
-      opacity: 0.3
-    });
-    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-    glow.position.copy(position); // Use shared position
-    this.threeScene.add(glow);
+    // Add multiple glow layers for more dramatic effect
+    // Inner glow (bright)
+    const innerGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(5, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xffcc66,
+        transparent: true,
+        opacity: 0.3
+      })
+    );
+    innerGlow.position.copy(position);
+    this.threeScene.add(innerGlow);
+    
+    // Outer glow (larger, softer)
+    const outerGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(7, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xffdd88,
+        transparent: true,
+        opacity: 0.15
+      })
+    );
+    outerGlow.position.copy(position);
+    this.threeScene.add(outerGlow);
+    
+    // Far glow (very large, very soft)
+    const farGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(10, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xffeeaa,
+        transparent: true,
+        opacity: 0.05
+      })
+    );
+    farGlow.position.copy(position);
+    this.threeScene.add(farGlow);
   }
 
   private createStars() {
