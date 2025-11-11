@@ -207,9 +207,18 @@ export default class CampingScene extends Phaser.Scene {
     const ambient = new THREE.AmbientLight(0xffa500, 0.8); // Warm orange ambient
     this.threeScene.add(ambient);
     
+    // Sun position (change this one value to move both sun and light!)
+    const sunPosition = new THREE.Vector3(90, 15, -50);
+    
     const sunlight = new THREE.DirectionalLight(0xff6b35, 1.2); // Warm sunset light
-    sunlight.position.set(20, 4, -25); // Opposite x (was -10, now +10)
+    sunlight.position.copy(sunPosition); // Use shared position
+    // Make light point toward the camping area center
+    sunlight.target.position.set(0, 0, 0); // Point at origin (camping center)
     this.threeScene.add(sunlight);
+    this.threeScene.add(sunlight.target); // Must add target to scene!
+    
+    // Create visible sun in the sky
+    this.createSun(sunPosition);
     
     // Add stars in the sky
     this.createStars();
@@ -266,6 +275,32 @@ export default class CampingScene extends Phaser.Scene {
     );
   }
   
+  private createSun(position: THREE.Vector3) {
+    // Create visible sun sphere in the sky
+    const sunGeometry = new THREE.SphereGeometry(3, 32, 32); // Large sphere
+    const sunMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffaa00, // Orange-yellow sunset color
+      emissive: 0xffaa00,
+      emissiveIntensity: 1
+    });
+    const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+    
+    // Use shared position
+    sun.position.copy(position);
+    this.threeScene.add(sun);
+    
+    // Add glow effect around sun
+    const glowGeometry = new THREE.SphereGeometry(4, 32, 32);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffdd88,
+      transparent: true,
+      opacity: 0.3
+    });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    glow.position.copy(position); // Use shared position
+    this.threeScene.add(glow);
+  }
+
   private createStars() {
     // Create many bright stars scattered across the sky
     const starCount = 400;
