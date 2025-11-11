@@ -1847,15 +1847,17 @@ export default class CampingScene extends Phaser.Scene {
         if (distSinceLastFlower >= this.flowerSpacing) {
           const flower = this.flowerModel.clone();
           
-          // Preserve original flower colors
+          // Keep StandardMaterial but reduce light influence
           flower.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
               const mesh = child as THREE.Mesh;
               if (mesh.material) {
                 const mat = mesh.material as THREE.MeshStandardMaterial;
-                const originalColor = mat.color.clone();
-                mat.emissive = originalColor;
-                mat.emissiveIntensity = 0.01; // Subtle - just resist sunset tint
+                // Don't use emissive - instead adjust material properties
+                mat.metalness = 0;
+                mat.roughness = 1;
+                // Make material less affected by lighting
+                mat.envMapIntensity = 0;
               }
             }
           });
