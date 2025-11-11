@@ -1060,6 +1060,115 @@ export default class GameScene extends Phaser.Scene {
     });
   }
   
+  private mergeCardsAnimation(allCards: any[], onComplete: () => void) {
+    console.log('Starting merge animation with', allCards.length, 'cards');
+    
+    // Move all 4 cards to right side of screen (away from Grayson)
+    const centerX = 240; // Right side
+    const centerY = 90; // Middle height
+    
+    allCards.forEach((card, i) => {
+      console.log(`Card ${card.id} at position (${card.sprite.x}, ${card.sprite.y})`);
+      // Stagger the movement - cards fly in
+      this.tweens.add({
+        targets: [card.sprite, card.number],
+        x: centerX,
+        y: centerY,
+        scale: { from: card.sprite.scaleX, to: 0 }, // Shrink to nothing
+        duration: 600,
+        delay: i * 80, // Quick stagger
+        ease: 'Power2.easeIn'
+      });
+    });
+    
+    // After all cards merge, create full card
+    this.time.delayedCall(1000, () => {
+      // Destroy card pieces
+      allCards.forEach(card => {
+        card.sprite.destroy();
+        card.number.destroy();
+        const debugBox = (card.sprite as any).debugBox;
+        if (debugBox) debugBox.destroy();
+      });
+      
+      // Flash effect (like title scene)
+      const flash = this.add.rectangle(160, 90, 320, 180, 0xffffff, 0.8);
+      flash.setDepth(99);
+      this.tweens.add({
+        targets: flash,
+        alpha: 0,
+        duration: 400,
+        onComplete: () => flash.destroy()
+      });
+      
+      // Create full anniversary card (smaller)
+      const fullCard = this.add.graphics();
+      fullCard.setPosition(centerX, centerY);
+      fullCard.setDepth(100);
+      fullCard.setAlpha(0);
+      
+      // Draw anniversary card (smaller than title scene)
+      const cardWidth = 30;
+      const cardHeight = 40;
+      
+      // Card body (golden/orange)
+      fullCard.fillStyle(0xffaa00, 1.0);
+      fullCard.fillRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight);
+      
+      // Card border
+      fullCard.lineStyle(1.5, 0xffdd88, 1.0);
+      fullCard.strokeRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight);
+      
+      // Small red heart in center
+      fullCard.fillStyle(0xff0000, 1.0);
+      const heartSize = 6;
+      fullCard.beginPath();
+      fullCard.arc(-heartSize/4, 0, heartSize/2, 0, Math.PI * 2);
+      fullCard.arc(heartSize/4, 0, heartSize/2, 0, Math.PI * 2);
+      fullCard.fillPath();
+      fullCard.fillTriangle(-heartSize/2, heartSize/4, heartSize/2, heartSize/4, 0, heartSize);
+      
+      // Fade in and scale full card
+      this.tweens.add({
+        targets: fullCard,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 600,
+        ease: 'Back.easeOut',
+        onComplete: () => {
+          // Sparkles
+          spawnCardPieceSparkles(this, centerX, centerY);
+          
+          // Move to Grayson's hand (player position)
+          this.time.delayedCall(800, () => {
+            this.tweens.add({
+              targets: fullCard,
+              x: this.player.x,
+              y: this.player.y - 10, // Above head/in hand
+              scaleX: 0.8,
+              scaleY: 0.8,
+              duration: 800,
+              ease: 'Power2.easeInOut',
+              onComplete: () => {
+                // Fade out and callback
+                this.tweens.add({
+                  targets: fullCard,
+                  alpha: 0,
+                  duration: 600,
+                  onComplete: () => {
+                    fullCard.destroy();
+                    onComplete();
+                  }
+                });
+              }
+            });
+          });
+        }
+      });
+    });
+  }
+
   private startCardShuffleGame() {
     // Keep Grayson visible
     
@@ -1228,18 +1337,21 @@ export default class GameScene extends Phaser.Scene {
           ease: 'Power2.easeOut',
           onComplete: () => {
             instruction.destroy();
-            // All done! Show victory message
+            // All done! Trigger merge animation
             this.time.delayedCall(500, () => {
-              this.dialogueManager.show("Grayson: Finally! I put the pieces together. I can get out of the void...");
-              
-              const checkEnter = () => {
-                if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
-                  this.events.off('update', checkEnter);
-                  this.dialogueManager.hide();
-                  this.show3DGridTransition();
-                }
-              };
-              this.events.on('update', checkEnter);
+              this.mergeCardsAnimation(allCards, () => {
+                // After merge, show dialogue
+                this.dialogueManager.show("Grayson: Finally! I put the pieces together. I can get out of the void...");
+                
+                const checkEnter = () => {
+                  if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+                    this.events.off('update', checkEnter);
+                    this.dialogueManager.hide();
+                    this.show3DGridTransition();
+                  }
+                };
+                this.events.on('update', checkEnter);
+              });
             });
           }
         });
