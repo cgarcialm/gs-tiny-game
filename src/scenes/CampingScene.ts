@@ -1912,7 +1912,7 @@ export default class CampingScene extends Phaser.Scene {
             
             // Show dialogue via DOM
             const dialogueDiv = document.createElement('div');
-            dialogueDiv.innerHTML = "Ceci: Do you want to plant some flowers with me?<br>Let's walk around :)";
+            dialogueDiv.innerHTML = "Ceci: You made it! No more games... but if you want to<br>plant some flowers with me, let's walk around :)";
             dialogueDiv.style.position = 'fixed';
             dialogueDiv.style.bottom = '10%';
             dialogueDiv.style.left = '50%';
@@ -1924,11 +1924,12 @@ export default class CampingScene extends Phaser.Scene {
             dialogueDiv.style.padding = '15px 25px';
             dialogueDiv.style.borderRadius = '8px';
             dialogueDiv.style.zIndex = '9999';
+            dialogueDiv.style.minWidth = '70%';
             dialogueDiv.style.maxWidth = '80%';
             dialogueDiv.style.textAlign = 'center';
             document.body.appendChild(dialogueDiv);
             
-            // Remove after 4 seconds or on ENTER
+            // Close with ENTER or movement keys
             let dialogueClosed = false;
             const removeDialogue = () => {
               if (dialogueClosed) return; // Prevent double-removal
@@ -1945,21 +1946,16 @@ export default class CampingScene extends Phaser.Scene {
               console.log("Dialogue closed! Ceci following, planting activated!");
             };
             
-            // Auto-close after 4 seconds
-            const autoCloseTimer = setTimeout(() => {
-              removeDialogue();
-              document.removeEventListener('keydown', enterListener);
-            }, 4000);
-            
-            // Allow closing with ENTER
-            const enterListener = (e: KeyboardEvent) => {
-              if (e.key === 'Enter') {
-                clearTimeout(autoCloseTimer); // Cancel auto-close
+            // Close with ENTER or WASD/Arrow keys
+            const keyListener = (e: KeyboardEvent) => {
+              if (e.key === 'Enter' || 
+                  e.key === 'w' || e.key === 'a' || e.key === 's' || e.key === 'd' ||
+                  e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                 removeDialogue();
-                document.removeEventListener('keydown', enterListener);
+                document.removeEventListener('keydown', keyListener);
               }
             };
-            document.addEventListener('keydown', enterListener);
+            document.addEventListener('keydown', keyListener);
             
             // Hide prompt
             if (this.interactPromptDiv) {
