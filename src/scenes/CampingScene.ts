@@ -61,6 +61,20 @@ export default class CampingScene extends Phaser.Scene {
   private plantingFlowers = false;
   private lastFlowerPosition = new THREE.Vector2(0, 0);
   private flowerSpacing = 1.5; // Distance between flowers
+  private flowerCount = 0; // Track how many flowers planted
+  private activeCredits: Array<{ div: HTMLDivElement, worldPos: THREE.Vector3, startY: number, targetY: number, startTime: number, duration: number }> = [];
+  private credits = [
+    "Main Character: Grayson",
+    "Supporting Character: Ceci",
+    "Cat: Smush",
+    "Dog: Eboshi",
+    "Game Design: C. Garcia Lopez",
+    "Programming: Cecilia G. L. de M.",
+    "Art & Animation: Garcia, Cecilia",
+    "Story: C. Garcia Lopez de M.",
+    "Code: C. Garcia",
+    "User Testing: Eduardo Sousa"
+  ];
   
   // Camera controls
   private cameraAngleH = Math.PI; // Start facing player from front
@@ -352,6 +366,46 @@ export default class CampingScene extends Phaser.Scene {
     console.log("Stars created - look up to see them!");
   }
   
+  private showFlowerCredit(x: number, z: number) {
+    // Get next credit from the list (cycle through)
+    const creditText = this.credits[this.flowerCount % this.credits.length];
+    this.flowerCount++;
+    
+    console.log(`Showing credit #${this.flowerCount}: "${creditText}" at (${x}, ${z})`);
+    
+    // Create DOM element (like "Ouch!" text - always crisp!)
+    const creditDiv = document.createElement('div');
+    creditDiv.innerHTML = creditText;
+    creditDiv.style.position = 'fixed';
+    creditDiv.style.fontSize = '14px';
+    creditDiv.style.fontFamily = 'monospace';
+    creditDiv.style.fontWeight = 'bold';
+    creditDiv.style.color = '#ffd700'; // Gold
+    creditDiv.style.textShadow = '2px 2px 4px #000000, -1px -1px 2px #000000'; // Strong outline
+    creditDiv.style.textAlign = 'center';
+    creditDiv.style.whiteSpace = 'nowrap';
+    creditDiv.style.zIndex = '10000';
+    creditDiv.style.pointerEvents = 'none';
+    creditDiv.style.transform = 'translate(-50%, -50%)';
+    document.body.appendChild(creditDiv);
+    
+    // Store credit info for position tracking
+    const worldPos = new THREE.Vector3(x, 0.5, z);
+    const startY = 0.5;
+    const targetY = 2.5;
+    const startTime = Date.now();
+    const duration = 3500;
+    
+    this.activeCredits.push({
+      div: creditDiv,
+      worldPos: worldPos,
+      startY: startY,
+      targetY: targetY,
+      startTime: startTime,
+      duration: duration
+    });
+  }
+
   private createFlowerSparkles(x: number, z: number) {
     // Create 3D sparkles using small cubes rotated to look like stars
     const sparkleColors = [
@@ -1932,6 +1986,9 @@ export default class CampingScene extends Phaser.Scene {
           // Add visible sparkle effect when flower is planted!
           this.createFlowerSparkles(this.player.position.x, this.player.position.z);
           
+          // Show credit with this flower
+          this.showFlowerCredit(this.player.position.x, this.player.position.z);
+          
           // Update last flower position
           this.lastFlowerPosition.set(this.player.position.x, this.player.position.z);
         }
@@ -2182,6 +2239,9 @@ export default class CampingScene extends Phaser.Scene {
       });
     }
     
+    // Update active credit positions (project 3D to screen each frame)
+    this.updateActiveCredits();
+    
     // Render Three.js scene
     if (this.threeRenderer && this.threeScene && this.camera) {
       this.threeRenderer.render(this.threeScene, this.camera);
@@ -2195,6 +2255,49 @@ export default class CampingScene extends Phaser.Scene {
     }
   }
   
+  private updateActiveCredits() {
+    const now = Date.now();
+    const gameCanvas = this.game.canvas;
+    const rect = gameCanvas.getBoundingClientRect();
+    
+    // Update each active credit
+    for (let i = this.activeCredits.length - 1; i >= 0; i--) {
+      const credit = this.activeCredits[i];
+      const elapsed = now - credit.startTime;
+      const progress = elapsed / credit.duration;
+      
+      if (progress >= 1) {
+        // Credit expired - remove it
+        if (credit.div.parentNode) {
+          document.body.removeChild(credit.div);
+        }
+        this.activeCredits.splice(i, 1);
+        continue;
+      }
+      
+      // Update Y position in 3D world (float up)
+      credit.worldPos.y = credit.startY + (credit.targetY - credit.startY) * progress;
+      
+      // Project 3D position to screen
+      const projected = credit.worldPos.clone().project(this.camera);
+      const screenX = (projected.x + 1) / 2 * rect.width + rect.left;
+      const screenY = (1 - projected.y) / 2 * rect.height + rect.top;
+      
+      // Update DOM position
+      credit.div.style.left = screenX + 'px';
+      credit.div.style.top = screenY + 'px';
+      
+      // Update opacity (fade in/out)
+      let opacity = 1;
+      if (progress < 0.2) {
+        opacity = progress / 0.2;
+      } else if (progress > 0.7) {
+        opacity = (1 - progress) / 0.3;
+      }
+      credit.div.style.opacity = opacity.toString();
+    }
+  }
+
   private updateCameraPosition() {
     if (!this.player) return;
     
