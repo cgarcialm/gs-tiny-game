@@ -1120,8 +1120,6 @@ export default class GameScene extends Phaser.Scene {
       allCards.forEach(card => {
         card.sprite.destroy();
         card.number.destroy();
-        const debugBox = (card.sprite as any).debugBox;
-        if (debugBox) debugBox.destroy();
       });
       
       // Flash effect (like title scene)
@@ -1238,14 +1236,6 @@ export default class GameScene extends Phaser.Scene {
       // Store ID on the sprite for debugging
       (cardSprite as any).cardId = cardNum;
       
-      // DEBUG: Draw hit area box (smaller)
-      const debugBox = this.add.rectangle(x, topY, hitSize, hitSize);
-      debugBox.setStrokeStyle(3, 0xff0000, 0.8); // Thicker red outline
-      debugBox.setFillStyle(0xff0000, 0.2); // More visible fill
-      debugBox.setDepth(49); // Just below card
-      debugBox.setVisible(false); // Will show when card is active
-      (cardSprite as any).debugBox = debugBox;
-      
       // Card number on top
       const cardNumber = this.add.text(x, topY, cardNum.toString(), {
         fontSize: '20px',
@@ -1311,12 +1301,6 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private startCardPhase(allCards: any[], targetNumber: number, topY: number, bottomY: number, cardScale: number) {
-    // Hide all debug boxes first
-    allCards.forEach(card => {
-      const debugBox = (card.sprite as any).debugBox;
-      if (debugBox) debugBox.setVisible(false);
-    });
-    
     // Get remaining unsolved cards
     const activeCards = allCards.filter(c => !c.solved);
     const numCards = activeCards.length;
@@ -1428,13 +1412,6 @@ export default class GameScene extends Phaser.Scene {
       
       // Disable interaction initially (will be enabled after shuffle)
       card.sprite.disableInteractive();
-      
-      // Show debug box
-      const debugBox = (card.sprite as any).debugBox;
-      if (debugBox) {
-        debugBox.setPosition(x, topY);
-        debugBox.setVisible(true);
-      }
     });
     
     console.log('Phase', targetNumber, 'cards positioned and made interactive');
@@ -1485,20 +1462,17 @@ export default class GameScene extends Phaser.Scene {
           cards[i1].x = cards[i2].x;
           cards[i2].x = tempX;
           
-          // Animate swap (including debug boxes)
-          const box1 = (cards[i1].sprite as any).debugBox;
-          const box2 = (cards[i2].sprite as any).debugBox;
-          
+          // Animate swap
           this.tweens.add({
-            targets: [cards[i1].sprite, cards[i1].number, box1],
+            targets: [cards[i1].sprite, cards[i1].number],
             x: cards[i1].x,
-            duration: 200, // Faster
+            duration: 200,
             ease: 'Power2.easeInOut'
           });
           this.tweens.add({
-            targets: [cards[i2].sprite, cards[i2].number, box2],
+            targets: [cards[i2].sprite, cards[i2].number],
             x: cards[i2].x,
-            duration: 200, // Faster
+            duration: 200,
             ease: 'Power2.easeInOut'
           });
         }
@@ -1516,7 +1490,6 @@ export default class GameScene extends Phaser.Scene {
     activeCards.forEach(card => {
       console.log(`  Card #${card.id}: x=${card.sprite.x.toFixed(1)}, y=${card.sprite.y.toFixed(1)}`);
     });
-    console.log('Click inside a red box to select a card');
     
     // Enable input for active cards
     activeCards.forEach(card => {
@@ -1551,21 +1524,18 @@ export default class GameScene extends Phaser.Scene {
                   clickedCard.solved = true;
                   
                   // Calculate bottom position based on card ID (1=leftmost, 4=rightmost)
-                  const debugBox = (clickedCard.sprite as any).debugBox;
                   const bottomSpacing = 15;
                   const bottomTotalWidth = (32 * cardScale + bottomSpacing) * 4 - bottomSpacing;
                   const bottomStartX = (320 - bottomTotalWidth) / 2 + (32 * cardScale) / 2;
                   const bottomX = bottomStartX + (clickedCard.id - 1) * (32 * cardScale + bottomSpacing);
                   
                   this.tweens.add({
-                    targets: [clickedCard.sprite, clickedCard.number, debugBox],
+                    targets: [clickedCard.sprite, clickedCard.number],
                     x: bottomX,
                     y: bottomY,
                     duration: 500,
                     ease: 'Power2.easeOut',
                     onComplete: () => {
-                      // Hide debug box for solved cards
-                      if (debugBox) debugBox.setVisible(false);
                       instruction.destroy();
                       
                       // Continue to next phase
