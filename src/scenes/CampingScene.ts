@@ -95,9 +95,21 @@ export default class CampingScene extends Phaser.Scene {
     super("Camping");
   }
 
+  preload() {
+    // Load soundtrack
+    this.load.audio('skylineEchoes', 'Skyline Echoes.mp3');
+  }
+
   create() {
     // Fade in from black (2.5 seconds to match Void3D fade out)
     fadeIn(this, 2500);
+    
+    // Start soundtrack
+    const music = this.sound.add('skylineEchoes', {
+      loop: true,
+      volume: 0.6
+    });
+    music.play();
     
     // Initialize common scene elements
     const setup = initializeGameScene(this);
