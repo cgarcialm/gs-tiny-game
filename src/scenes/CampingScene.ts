@@ -294,9 +294,7 @@ export default class CampingScene extends Phaser.Scene {
     // Create visible sun sphere in the sky
     const sunGeometry = new THREE.SphereGeometry(3, 32, 32); // Large sphere
     const sunMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffaa00, // Orange-yellow sunset color
-      emissive: 0xffaa00,
-      emissiveIntensity: 1
+      color: 0xffaa00 // Orange-yellow sunset color (BasicMaterial is always bright)
     });
     const sun = new THREE.Mesh(sunGeometry, sunMaterial);
     
