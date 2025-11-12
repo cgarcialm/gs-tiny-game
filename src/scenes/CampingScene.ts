@@ -186,7 +186,7 @@ export default class CampingScene extends Phaser.Scene {
     // Create camera - will be controlled by player
     this.camera = new THREE.PerspectiveCamera(
       75, // FOV
-      320 / 180, // Aspect ratio
+      640 / 360, // Aspect ratio (matches renderer size)
       0.1, // Near
       1000 // Far
     );
@@ -195,10 +195,10 @@ export default class CampingScene extends Phaser.Scene {
     
     // Create renderer
     this.threeRenderer = new THREE.WebGLRenderer({ 
-      antialias: false,
+      antialias: true, // Enable antialiasing for smoother edges!
       alpha: true 
     });
-    this.threeRenderer.setSize(320, 180);
+    this.threeRenderer.setSize(640, 360); // 2x resolution (was 320x180)
     
     // Position renderer to overlay Phaser canvas exactly
     const gameCanvas = this.game.canvas;
