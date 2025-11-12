@@ -45,8 +45,44 @@ export default class Void3DScene extends Phaser.Scene {
     // Don't create 2D sprite - just particles
   }
 
+  private addGlitchEffect() {
+    // Random screen flickers during transformation
+    const flickerCount = 8;
+    
+    for (let i = 0; i < flickerCount; i++) {
+      this.time.delayedCall(100 + i * 200, () => {
+        // Quick white flash
+        this.cameras.main.flash(50, 255, 255, 255, false, undefined, 0.3);
+        
+        // Random glitch rectangles
+        const glitchGraphics = this.add.graphics();
+        glitchGraphics.setDepth(150);
+        
+        // Draw random glitchy rectangles
+        for (let j = 0; j < 5; j++) {
+          const x = Math.random() * 320;
+          const y = Math.random() * 180;
+          const w = 10 + Math.random() * 40;
+          const h = 2 + Math.random() * 10;
+          const color = Math.random() > 0.5 ? 0xffffff : 0x000000;
+          
+          glitchGraphics.fillStyle(color, 0.7);
+          glitchGraphics.fillRect(x, y, w, h);
+        }
+        
+        // Remove glitch after brief moment
+        this.time.delayedCall(80, () => {
+          glitchGraphics.destroy();
+        });
+      });
+    }
+  }
+
   private createRevealSpiral() {
     console.log("Creating reveal spiral!");
+    
+    // Add glitch effect during reveal
+    this.addGlitchEffect();
     
     // Grayson's colors
     const colors = [
@@ -136,6 +172,9 @@ export default class Void3DScene extends Phaser.Scene {
   }
 
   private startTransformation() {
+    // Add glitch effect during transformation
+    this.addGlitchEffect();
+    
     // Grayson's colors
     const colors = [
       0x90EE90, // Light green (shirt)

@@ -15,7 +15,7 @@
  * "SeattleTraffic" = Skip to Seattle Traffic scene
  * "FarmersMarket" = Skip to Farmers Market Pac-Man scene
  */
-export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "SeattleTraffic" | "FarmersMarket" | "Camping" = "Camping";
+export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "SeattleTraffic" | "FarmersMarket" | "Camping" = "Game";
 
 /**
  * Set to desired level number to skip ahead in GameScene (only applies if starting in "Game")
