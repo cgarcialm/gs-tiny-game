@@ -61,7 +61,8 @@ export default class CampingScene extends Phaser.Scene {
   private plantingFlowers = false;
   private lastFlowerPosition = new THREE.Vector2(0, 0);
   private flowerSpacing = 1.5; // Distance between flowers
-  private flowerCount = 0; // Track how many flowers planted
+  private totalFlowersPlanted = 0; // Track all flowers
+  private flowerCount = 0; // Track credits shown
   private activeCredits: Array<{ div: HTMLDivElement, worldPos: THREE.Vector3, startY: number, targetY: number, startTime: number, duration: number }> = [];
   private credits = [
     "Main Character: Grayson",
@@ -69,11 +70,11 @@ export default class CampingScene extends Phaser.Scene {
     "Cat: Smush",
     "Dog: Eboshi",
     "Game Design: C. Garcia Lopez",
-    "Programming: Cecilia G. L. de M.",
+    "Game Tester: Eduardo Sousa",
+    "Visual Effects: Cecilia G. L. de M.",
     "Art & Animation: Garcia, Cecilia",
     "Story: C. Garcia Lopez de M.",
-    "Code: C. Garcia",
-    "User Testing: Eduardo Sousa"
+    "Developer: C. Garcia",
   ];
   
   // Camera controls
@@ -1983,11 +1984,15 @@ export default class CampingScene extends Phaser.Scene {
           flower.rotation.y = Math.random() * Math.PI * 2;
           this.threeScene.add(flower);
           
+          this.totalFlowersPlanted++;
+          
           // Add visible sparkle effect when flower is planted!
           this.createFlowerSparkles(this.player.position.x, this.player.position.z);
           
-          // Show credit with this flower
-          this.showFlowerCredit(this.player.position.x, this.player.position.z);
+          // Show credit only every 3rd flower
+          if (this.totalFlowersPlanted % 3 === 0) {
+            this.showFlowerCredit(this.player.position.x, this.player.position.z);
+          }
           
           // Update last flower position
           this.lastFlowerPosition.set(this.player.position.x, this.player.position.z);
