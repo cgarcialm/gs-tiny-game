@@ -37,6 +37,7 @@ export default class IceHockeyScene extends Phaser.Scene {
   private healthDisplay!: Phaser.GameObjects.Container; // Container with hearts
   private scoreDisplay!: Phaser.GameObjects.Text;
   private stickDisplay!: Phaser.GameObjects.Container; // Container for equipment icons
+  private promptText!: Phaser.GameObjects.Text; // "E to pick up" prompt
   private enemiesDefeated = 0;
   private totalEnemies = 3;
   private enemies: Phaser.GameObjects.Container[] = [];
@@ -130,6 +131,18 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Create visual sidebar UI (RotMG style)
     this.createMinimap();
     this.createVisualSidebar();
+    
+    // Create prompt text for pickups
+    this.promptText = this.add.text(0, 0, "E to pick up", {
+      fontSize: '12px',
+      fontFamily: 'monospace',
+      color: '#ffffff',
+      backgroundColor: '#000000',
+      padding: { x: 4, y: 2 }
+    });
+    this.promptText.setOrigin(0.5);
+    this.promptText.setDepth(50);
+    this.promptText.setVisible(false);
     
     // Spawn skates and hockey stick on the ice
     this.spawnSkates();
@@ -993,57 +1006,87 @@ export default class IceHockeyScene extends Phaser.Scene {
   private checkSkatesCollection() {
     if (!this.skates) return;
     
-    // Check proximity using utility
-    if (checkProximity(this.playerPhysics, this.skates, 20) && 
-        Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
-      // Collect skates!
-      this.hasSkates = true;
-      this.skates.destroy();
-      this.skates = undefined;
+    // Show prompt when near
+    const isNear = checkProximity(this.playerPhysics, this.skates, 35);
+    
+    if (isNear) {
+      // Show prompt
+      this.promptText.setPosition(this.skates.x, this.skates.y - 20);
+      this.promptText.setText("E to pick up");
+      this.promptText.setVisible(true);
       
-      // Increase movement speed
-      this.speed = this.skateSpeed;
-      
-      // Update equipment display
-      this.updateEquipmentDisplay();
-      
-      // Show temporary message
-      this.showDialog("Ice skates equipped! You move faster now!");
-      
-      this.time.delayedCall(2500, () => {
-        if (this.dialogueManager.isVisible()) {
-          this.hideDialog();
-        }
-      });
+      // Check for E press
+      if (Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+        // Collect skates!
+        this.hasSkates = true;
+        this.skates.destroy();
+        this.skates = undefined;
+        this.promptText.setVisible(false);
+        
+        // Increase movement speed
+        this.speed = this.skateSpeed;
+        
+        // Update equipment display
+        this.updateEquipmentDisplay();
+        
+        // Show temporary message
+        this.showDialog("Ice skates equipped! You move faster now!");
+        
+        this.time.delayedCall(2500, () => {
+          if (this.dialogueManager.isVisible()) {
+            this.hideDialog();
+          }
+        });
+      }
+    } else {
+      // Hide prompt when not near (but don't interfere with stick prompt)
+      if (this.promptText && this.promptText.text === "E to pick up" && (!this.hockeyStick || !checkProximity(this.playerPhysics, this.hockeyStick, 35))) {
+        this.promptText.setVisible(false);
+      }
     }
   }
   
   private checkStickCollection() {
     if (!this.hockeyStick) return;
     
-    // Check proximity using utility
-    if (checkProximity(this.playerPhysics, this.hockeyStick, 20) && 
-        Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
-      // Collect stick!
-      this.hasStick = true;
-      this.hockeyStick.destroy();
-      this.hockeyStick = undefined;
+    // Show "E to pick up" prompt when near
+    const isNear = checkProximity(this.playerPhysics, this.hockeyStick, 35);
+    
+    if (isNear) {
+      // Show prompt
+      this.promptText.setPosition(this.hockeyStick.x, this.hockeyStick.y - 20);
+      this.promptText.setText("E to pick up");
+      this.promptText.setVisible(true);
       
-      // Add stick to Grayson's sprite
-      this.addStickToPlayer();
-      
-      // Update equipment display
-      this.updateEquipmentDisplay();
-      
-      // Show temporary message (non-blocking, auto-dismisses)
-      this.showDialog("Hockey stick acquired! Press SPACE to shoot pucks!");
-      
-      // Auto-hide after 2.5 seconds
-      this.time.delayedCall(2500, () => {
-        if (this.dialogueManager.isVisible()) {
-          this.hideDialog();
-        }
-      });
+      // Check for E press
+      if (Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+        // Collect stick!
+        this.hasStick = true;
+        this.hockeyStick.destroy();
+        this.hockeyStick = undefined;
+        this.promptText.setVisible(false);
+        
+        // Add stick to Grayson's sprite
+        this.addStickToPlayer();
+        
+        // Update equipment display
+        this.updateEquipmentDisplay();
+        
+        // Show temporary message (non-blocking, auto-dismisses)
+        this.showDialog("Hockey stick acquired! Press SPACE to shoot pucks!");
+        
+        // Auto-hide after 2.5 seconds
+        this.time.delayedCall(2500, () => {
+          if (this.dialogueManager.isVisible()) {
+            this.hideDialog();
+          }
+        });
+      }
+    } else {
+      // Hide prompt when not near
+      if (this.promptText && this.promptText.text === "E to pick up") {
+        this.promptText.setVisible(false);
+      }
     }
   }
   
@@ -1103,8 +1146,8 @@ export default class IceHockeyScene extends Phaser.Scene {
     const distance = getDistance(this.playerPhysics, this.memoryFragment);
     console.log('Distance to memory:', distance);
     
-    // Debug: log distance when near (using proximity utility)
-    if (checkProximity(this.playerPhysics, this.memoryFragment, 30)) {
+    // Debug: log distance when near (using proximity utility - larger hitbox)
+    if (checkProximity(this.playerPhysics, this.memoryFragment, 35)) {
       console.log('Near memory! Press E to collect');
       
       if (Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
