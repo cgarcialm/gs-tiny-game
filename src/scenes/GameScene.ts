@@ -273,12 +273,30 @@ export default class GameScene extends Phaser.Scene {
             onComplete: () => {
               walkTimer.destroy();
               
-              // Dialogue about Seattle traffic memory
+              // Show skip button (unimplemented level)
               this.time.delayedCall(500, () => {
-                this.dialogueManager.show("Grayson: That hiking trip...");
+                const skipText = this.add.text(160, 90, "Level in progress...\nPress ENTER to skip to next level", {
+                  fontSize: '14px',
+                  fontFamily: 'monospace',
+                  color: '#ffffff',
+                  backgroundColor: '#000000',
+                  padding: { x: 10, y: 8 },
+                  align: 'center'
+                });
+                skipText.setOrigin(0.5);
+                skipText.setDepth(100);
                 
-                // Set flag to transition when dialogue closes
-                this.waitingForSeattleTrafficTransition = true;
+                // Wait for ENTER
+                const skipCheck = () => {
+                  if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+                    this.events.off('update', skipCheck);
+                    skipText.destroy();
+                    fadeToScene(this, "Game", 1000);
+                    // Set level to 3 so next time it's Smush level
+                    this.registry.set('completedLevels', 3);
+                  }
+                };
+                this.events.on('update', skipCheck);
               });
             }
           });

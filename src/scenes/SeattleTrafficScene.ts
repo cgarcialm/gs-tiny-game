@@ -77,7 +77,27 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Create UI
     this.createUI();
     
-    // Start intro sequence
+    // Add skip button (level in development)
+    const skipText = this.add.text(160, 90, "Seattle Traffic level in progress...\nPress ENTER to skip to next level", {
+      fontSize: '14px',
+      fontFamily: 'monospace',
+      color: '#ffffff',
+      backgroundColor: '#000000',
+      padding: { x: 10, y: 8 },
+      align: 'center'
+    });
+    skipText.setOrigin(0.5);
+    skipText.setDepth(1000);
+    
+    // Wait for ENTER to skip
+    this.input.keyboard?.on('keydown-ENTER', () => {
+      skipText.destroy();
+      // Progress to level 3 (Smush)
+      this.registry.set('completedLevels', 3);
+      fadeToScene(this, "Game", 1000);
+    });
+    
+    // Start intro sequence (can still be implemented later)
     this.startIntroSequence();
   }
 
