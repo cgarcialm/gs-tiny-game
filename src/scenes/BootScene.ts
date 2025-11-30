@@ -26,6 +26,10 @@ export default class BootScene extends Phaser.Scene {
     
     this.load.image('grayson-photo', 'hinge-screenshot.png');
     this.load.image('hockey-chat', 'ice-hockey-chat.png');
+    
+    // Load music
+    this.load.audio('skyline-8bit', 'Skyline Echoes (8 bit).mp3');
+    this.load.audio('skyline-full', 'Skyline Echoes.mp3');
   }
 
   create() {

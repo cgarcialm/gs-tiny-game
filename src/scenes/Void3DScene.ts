@@ -21,6 +21,17 @@ export default class Void3DScene extends Phaser.Scene {
     // Don't fade in - show GameScene underneath during particle effect
     this.cameras.main.setBackgroundColor('rgba(0, 0, 0, 0)'); // Transparent
     
+    // Stop 8-bit music and start full version
+    const currentMusic = this.registry.get('currentMusic');
+    if (currentMusic) {
+      currentMusic.stop();
+    }
+    
+    // Start full version (looping, persists to camping scene)
+    const fullMusic = this.sound.add('skyline-full', { loop: true, volume: 0.6 });
+    fullMusic.play();
+    this.registry.set('currentMusic', fullMusic);
+    
     this.setupThreeJS();
     this.createGround();
     this.createWall(); // Add physical wall

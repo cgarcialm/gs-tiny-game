@@ -121,21 +121,29 @@ export default class GameScene extends Phaser.Scene {
     
     // Get completed levels
     const registryLevel = this.registry.get('completedLevels');
+    const fromTitleScene = this.registry.get('fromTitleScene');
     const isProduction = import.meta.env.PROD;
+    
+    // Clear the fromTitleScene flag after reading it
+    if (fromTitleScene) {
+      this.registry.set('fromTitleScene', false);
+    }
     
     if (isProduction) {
       // Production: Always use registry or 0
       this.completedLevels = registryLevel !== undefined && registryLevel !== null ? registryLevel : 0;
     } else {
-      // Development: DEBUG_START_LEVEL only applies if registry is empty/0
+      // Development: DEBUG_START_LEVEL only applies if registry is empty/0 AND not coming from TitleScene
       // Once you start progressing, registry takes over
-      if ((registryLevel === undefined || registryLevel === null || registryLevel === 0) && DEBUG_START_LEVEL) {
+      if ((registryLevel === undefined || registryLevel === null || registryLevel === 0) && DEBUG_START_LEVEL && !fromTitleScene) {
         this.completedLevels = DEBUG_START_LEVEL;
         console.log(`[DEBUG] Starting at level ${DEBUG_START_LEVEL} (initial load)`);
       } else {
         this.completedLevels = registryLevel || 0;
-        if (registryLevel) {
+        if (registryLevel && !fromTitleScene) {
           console.log(`[DEBUG] Using registry level ${registryLevel} (progression)`);
+        } else if (fromTitleScene) {
+          console.log(`[DEBUG] Starting from Title scene at level 0`);
         }
       }
     }

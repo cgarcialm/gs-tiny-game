@@ -104,12 +104,17 @@ export default class CampingScene extends Phaser.Scene {
     // Fade in from black (2.5 seconds to match Void3D fade out)
     fadeIn(this, 2500);
     
-    // Start soundtrack
-    const music = this.sound.add('skylineEchoes', {
-      loop: true,
-      volume: 0.6
-    });
-    music.play();
+    // Check if music is already playing from previous scene (Void3D)
+    // If not (e.g., debug skip to this scene), start it
+    const currentMusic = this.registry.get('currentMusic');
+    if (!currentMusic || !currentMusic.isPlaying) {
+      const music = this.sound.add('skylineEchoes', {
+        loop: true,
+        volume: 0.6
+      });
+      music.play();
+      this.registry.set('currentMusic', music);
+    }
     
     // Initialize common scene elements
     const setup = initializeGameScene(this);

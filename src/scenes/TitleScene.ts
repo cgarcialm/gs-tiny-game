@@ -428,6 +428,13 @@ export default class TitleScene extends Phaser.Scene {
     this.sceneState = "transforming";
     this.transformationTime = 0;
     
+    // Start 8-bit music (looping, persists across scenes)
+    const music = this.sound.add('skyline-8bit', { loop: true, volume: 0.6 });
+    music.play();
+    
+    // Store in registry so it can be accessed/stopped later
+    this.registry.set('currentMusic', music);
+    
     // Create pixel version at Grayson's position (now using static import)
     this.pixelGrayson = createGraysonSprite(this, this.grayson.x, this.grayson.y);
     this.pixelGrayson.setAlpha(0);
@@ -494,6 +501,11 @@ export default class TitleScene extends Phaser.Scene {
   
   private enterVoid() {
     this.sceneState = "void_entry";
+    
+    // Reset game progress - always start from level 0 when coming from title
+    this.registry.set('completedLevels', 0);
+    // Set flag to ignore DEBUG_START_LEVEL (this is a proper story start)
+    this.registry.set('fromTitleScene', true);
     
     // Big dramatic text
     this.voidText = this.add.text(SCREEN_CENTER_X, SCREEN_CENTER_Y, "ENTERING THE VOID...", {

@@ -166,16 +166,31 @@ export class CheatConsole {
   }
 
   private jumpToLevel(level: number): void {
+    const currentMusic = this.scene.registry.get('currentMusic');
+    
     if (level === 5) {
-      // Jump directly to the 3D void transition and camping scene
+      // Jump to 3D void transition - stop current music (Void3D will start full version)
+      if (currentMusic) {
+        currentMusic.stop();
+        this.scene.registry.set('currentMusic', null);
+      }
+      
       // Set all memories collected
       this.scene.registry.set('completedLevels', 4);
       
       // Launch Void3D scene which then transitions to Camping
       this.scene.scene.start('Void3D');
     } else {
+      // Jumping to void levels 0-4 - ensure 8-bit music is playing
+      if (!currentMusic || !currentMusic.isPlaying) {
+        // Start 8-bit music if not already playing
+        const music = this.scene.sound.add('skyline-8bit', { loop: true, volume: 0.6 });
+        music.play();
+        this.scene.registry.set('currentMusic', music);
+      }
+      // If 8-bit is already playing, keep it going
+      
       // Set the completed levels registry to the desired level
-      // This will make GameScene start at the correct intro
       this.scene.registry.set('completedLevels', level);
       
       // Start or restart the GameScene (void)
