@@ -1423,6 +1423,12 @@ export default class GameScene extends Phaser.Scene {
     const startX = (320 - totalWidth) / 2 + (32 * cardScale) / 2;
     
     activeCards.forEach((card, i) => {
+      // Safety check: ensure sprite and number exist and are active
+      if (!card.sprite || !card.sprite.active || !card.number || !card.number.active) {
+        console.warn('Card sprite or number is invalid:', card.id);
+        return;
+      }
+      
       const x = startX + i * (32 * cardScale + spacing);
       card.x = x;
       card.y = topY;
@@ -1446,17 +1452,26 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(2000, () => {
       // Hide numbers (flip)
       activeCards.forEach(card => {
+        // Safety check
+        if (!card.sprite || !card.sprite.active || !card.number || !card.number.active) {
+          return;
+        }
+        
         this.tweens.add({
           targets: card.sprite,
           scaleX: 0,
           duration: 200,
           onComplete: () => {
-            card.number.setVisible(false);
-            this.tweens.add({
-              targets: card.sprite,
-              scaleX: cardScale,
-              duration: 200
-            });
+            if (card.number && card.number.active) {
+              card.number.setVisible(false);
+            }
+            if (card.sprite && card.sprite.active) {
+              this.tweens.add({
+                targets: card.sprite,
+                scaleX: cardScale,
+                duration: 200
+              });
+            }
           }
         });
       });
@@ -1484,6 +1499,14 @@ export default class GameScene extends Phaser.Scene {
         const i2 = Math.floor(Math.random() * cards.length);
         
         if (i1 !== i2) {
+          // Safety check: ensure both cards are valid
+          const card1Valid = cards[i1] && cards[i1].sprite && cards[i1].sprite.active;
+          const card2Valid = cards[i2] && cards[i2].sprite && cards[i2].sprite.active;
+          
+          if (!card1Valid || !card2Valid) {
+            return; // Skip this swap if either card is invalid
+          }
+          
           const tempX = cards[i1].x;
           cards[i1].x = cards[i2].x;
           cards[i2].x = tempX;
@@ -1514,11 +1537,19 @@ export default class GameScene extends Phaser.Scene {
     console.log('Active card IDs:', activeCards.map(c => c.id));
     console.log('Card positions (sprite.x, sprite.y):');
     activeCards.forEach(card => {
-      console.log(`  Card #${card.id}: x=${card.sprite.x.toFixed(1)}, y=${card.sprite.y.toFixed(1)}`);
+      if (card.sprite && card.sprite.active) {
+        console.log(`  Card #${card.id}: x=${card.sprite.x.toFixed(1)}, y=${card.sprite.y.toFixed(1)}`);
+      }
     });
     
     // Enable input for active cards
     activeCards.forEach(card => {
+      // Safety check
+      if (!card.sprite || !card.sprite.active) {
+        console.warn('Cannot enable picking for invalid card:', card.id);
+        return;
+      }
+      
       card.sprite.removeAllListeners(); // Clear old listeners
       card.sprite.setInteractive({ useHandCursor: true }); // Re-enable interaction
       
