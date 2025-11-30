@@ -146,31 +146,41 @@ export class CheatConsole {
     if (klapauciusMatch) {
       const level = parseInt(klapauciusMatch[1], 10);
       
-      if (level >= 0 && level <= 4) {
-        console.log(`Cheat activated: Jumping to void level ${level}`);
+      if (level >= 0 && level <= 5) {
+        console.log(`Cheat activated: Jumping to level ${level}`);
         this.jumpToLevel(level);
       } else {
-        console.log('Invalid level. Use: klapaucius 0-4');
+        console.log('Invalid level. Use: klapaucius 0-5');
       }
     } else if (trimmedCommand === 'klapaucius') {
-      console.log('Usage: klapaucius <0-4>');
+      console.log('Usage: klapaucius <0-5>');
       console.log('  0: Eboshi encounter (first void visit)');
       console.log('  1: Ceci returns with memory');
       console.log('  2: Seattle Traffic intro');
       console.log('  3: Smush playing with memories');
       console.log('  4: Card shuffle game');
+      console.log('  5: 3D void transition & camping scene');
     } else if (trimmedCommand !== '') {
       console.log('Unknown cheat code');
     }
   }
 
   private jumpToLevel(level: number): void {
-    // Set the completed levels registry to the desired level
-    // This will make GameScene start at the correct intro
-    this.scene.registry.set('completedLevels', level);
-    
-    // Start or restart the GameScene (void)
-    this.scene.scene.start('Game');
+    if (level === 5) {
+      // Jump directly to the 3D void transition and camping scene
+      // Set all memories collected
+      this.scene.registry.set('completedLevels', 4);
+      
+      // Launch Void3D scene which then transitions to Camping
+      this.scene.scene.start('Void3D');
+    } else {
+      // Set the completed levels registry to the desired level
+      // This will make GameScene start at the correct intro
+      this.scene.registry.set('completedLevels', level);
+      
+      // Start or restart the GameScene (void)
+      this.scene.scene.start('Game');
+    }
   }
 
   private cleanup(): void {
