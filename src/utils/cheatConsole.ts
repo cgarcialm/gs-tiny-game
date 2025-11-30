@@ -146,39 +146,31 @@ export class CheatConsole {
     if (klapauciusMatch) {
       const level = parseInt(klapauciusMatch[1], 10);
       
-      if (level >= 1 && level <= 4) {
-        console.log(`Cheat activated: Jumping to level ${level}`);
+      if (level >= 0 && level <= 4) {
+        console.log(`Cheat activated: Jumping to void level ${level}`);
         this.jumpToLevel(level);
       } else {
-        console.log('Invalid level. Use: klapaucius 1, 2, 3, or 4');
+        console.log('Invalid level. Use: klapaucius 0-4');
       }
     } else if (trimmedCommand === 'klapaucius') {
-      console.log('Usage: klapaucius <level> (1=Northgate, 2=IceHockey, 3=SeattleTraffic, 4=FarmersMarket)');
+      console.log('Usage: klapaucius <0-4>');
+      console.log('  0: Eboshi encounter (first void visit)');
+      console.log('  1: Ceci returns with memory');
+      console.log('  2: Seattle Traffic intro');
+      console.log('  3: Smush playing with memories');
+      console.log('  4: Card shuffle game');
     } else if (trimmedCommand !== '') {
       console.log('Unknown cheat code');
     }
   }
 
   private jumpToLevel(level: number): void {
-    // Map level numbers to appropriate scenes/states
-    switch (level) {
-      case 1:
-        // Jump to level 1 - Northgate train station
-        this.scene.scene.start('Northgate');
-        break;
-      case 2:
-        // Jump to level 2 - Ice Hockey scene
-        this.scene.scene.start('IceHockey');
-        break;
-      case 3:
-        // Jump to level 3 - Seattle Traffic scene
-        this.scene.scene.start('SeattleTraffic');
-        break;
-      case 4:
-        // Jump to level 4 - Farmers Market scene
-        this.scene.scene.start('FarmersMarket');
-        break;
-    }
+    // Set the completed levels registry to the desired level
+    // This will make GameScene start at the correct intro
+    this.scene.registry.set('completedLevels', level);
+    
+    // Start or restart the GameScene (void)
+    this.scene.scene.start('Game');
   }
 
   private cleanup(): void {

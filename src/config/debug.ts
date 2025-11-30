@@ -15,7 +15,7 @@
  * "SeattleTraffic" = Skip to Seattle Traffic scene
  * "FarmersMarket" = Skip to Farmers Market Pac-Man scene
  */
-export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "SeattleTraffic" | "FarmersMarket" | "Camping" = "IceHockey";
+export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "SeattleTraffic" | "FarmersMarket" | "Camping" = "Game";
 
 /**
  * Set to desired level number to skip ahead in GameScene (only applies if starting in "Game")
@@ -28,7 +28,7 @@ export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "
  * NOTE: This only applies when there's NO registry value (fresh start).
  * Registry values from completed levels always take priority.
  */
-export const DEBUG_START_LEVEL = 4;
+export const DEBUG_START_LEVEL = 0;
 
 /**
  * Show debug grid and axes in 3D camping scene
