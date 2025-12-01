@@ -11,8 +11,11 @@ import { fadeToScene, fadeIn } from "../utils/sceneTransitions";
 import { PROMPT_TEXT_STYLE, HELP_HINT_TEXT_STYLE, STATION_SIGN_STYLE, SMALL_LABEL_STYLE, THOUGHT_BUBBLE_STYLE } from "../config/textStyles";
 import { createDizzyStars } from "../utils/visualEffects";
 import { checkProximity } from "../utils/collectionHelpers";
+import { GameStateManager } from "../managers/GameStateManager";
+import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 
 export default class NorthgateScene extends Phaser.Scene {
+  private gameState!: GameStateManager;
   private player!: Phaser.Physics.Arcade.Sprite;
   private playerSprite!: Phaser.GameObjects.Container;
   private controls!: GameControls;
@@ -62,6 +65,7 @@ export default class NorthgateScene extends Phaser.Scene {
     this.helpMenu = setup.helpMenu;
     this.pauseMenu = setup.pauseMenu;
     this.dialogueManager = setup.dialogueManager;
+    this.gameState = setup.gameState;
     // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
     this._cheatConsole = setup.cheatConsole;
     
@@ -555,10 +559,9 @@ export default class NorthgateScene extends Phaser.Scene {
         this.isDrugged = true; // Freeze player
         this.player.setVelocity(0, 0); // Stop movement
         
-        // Increment completed levels and transition back to GameScene
-        const currentLevels = this.registry.get('completedLevels') || 0;
-        this.registry.set('completedLevels', Math.max(currentLevels, 1));
-        fadeToScene(this, "Game", 1000);
+        // Complete Northgate level and transition back to void
+        this.gameState.completeLevel(VOID_LEVELS.AFTER_NORTHGATE);
+        fadeToScene(this, SCENES.GAME, 1000);
       }
     }
   }
