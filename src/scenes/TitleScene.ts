@@ -509,7 +509,7 @@ export default class TitleScene extends Phaser.Scene {
     // Reset game progress - always start from level 0 when coming from title
     // Note: Don't use resetProgress() here because it stops music, and we want to keep it playing
     this.gameState.setCompletedLevels(0);
-    this.registry.set('showHelpHint', false); // Reset help hint
+    this.gameState.resetHelpHint(); // Reset help hint for new game
     // Set flag to ignore DEBUG_START_LEVEL (this is a proper story start)
     this.gameState.markFromTitleScene();
     

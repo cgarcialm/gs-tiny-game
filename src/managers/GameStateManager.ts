@@ -127,6 +127,14 @@ export class GameStateManager {
       this.log('Help hint unlocked');
     }
   }
+  
+  /**
+   * Reset the help hint (hide it)
+   */
+  resetHelpHint(): void {
+    this.registry.set('showHelpHint', false);
+    this.log('Help hint reset');
+  }
 
   // ============================================================================
   // SCENE TRANSITION FLAGS
