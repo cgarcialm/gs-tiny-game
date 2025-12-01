@@ -194,6 +194,14 @@ export default class FarmersMarketScene extends Phaser.Scene {
         this.dialogueManager.show("Grayson: Smush! These are MY pies!");
       });
     });
+    
+    // Help hint (bottom-right corner)
+    this.add.text(312, 172, "H for Help", {
+      fontSize: "9px",
+      fontFamily: "monospace",
+      color: "#888888",
+      resolution: 1,
+    }).setOrigin(1, 1).setDepth(100);
   }
 
   private createWalls() {
@@ -573,6 +581,11 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.dotsNeeded = Math.ceil(this.totalDots * 0.51); // Grayson needs 51%
   }
   update() {
+    // Handle help menu
+    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
+      this.helpMenu.toggle();
+    }
+    
     // Handle menus
     if (this.pauseMenu.isVisible() || this.helpMenu.isVisible()) {
       return;

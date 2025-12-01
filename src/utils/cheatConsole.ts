@@ -193,10 +193,16 @@ export class CheatConsole {
       // Set the completed levels to the desired level (force=true allows going backwards)
       gameState.setCompletedLevels(level, true);
       
-      // Mark as "from title" to prevent DEBUG_START_LEVEL from overriding our cheat
-      gameState.markFromTitleScene();
+      // Only mark as "from title" for level 0 to prevent DEBUG_START_LEVEL override
+      // For other levels, we want the exact level we set
+      if (level === 0) {
+        gameState.markFromTitleScene();
+      }
       
-      // Start or restart the GameScene (void)
+      // Properly restart GameScene - stop it first if running, then start fresh
+      if (this.scene.scene.isActive(SCENES.GAME)) {
+        this.scene.scene.stop(SCENES.GAME);
+      }
       this.scene.scene.start(SCENES.GAME);
     }
   }

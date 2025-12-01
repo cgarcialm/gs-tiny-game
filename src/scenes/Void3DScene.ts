@@ -3,12 +3,19 @@ import * as THREE from "three";
 import { create3DGrayson } from "../utils/create3DGrayson";
 import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES } from "../config/sceneConstants";
+import { initializeGameScene } from "../utils/sceneSetup";
+import type { GameControls } from "../utils/controls";
+import type { HelpMenu } from "../utils/helpMenu";
+import type { PauseMenu } from "../utils/pauseMenu";
 
 /**
  * Void3DScene - Simple spotlight test
  */
 export default class Void3DScene extends Phaser.Scene {
   private gameState!: GameStateManager;
+  private controls!: GameControls;
+  private helpMenu!: HelpMenu;
+  private pauseMenu!: PauseMenu;
   private threeScene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private threeRenderer!: THREE.WebGLRenderer;
@@ -21,8 +28,12 @@ export default class Void3DScene extends Phaser.Scene {
   }
 
   create() {
-    // Initialize game state manager
-    this.gameState = new GameStateManager(this.registry, !import.meta.env.PROD);
+    // Initialize common scene elements
+    const setup = initializeGameScene(this);
+    this.controls = setup.controls;
+    this.helpMenu = setup.helpMenu;
+    this.pauseMenu = setup.pauseMenu;
+    this.gameState = setup.gameState;
     
     // Don't fade in - show GameScene underneath during particle effect
     this.cameras.main.setBackgroundColor('rgba(0, 0, 0, 0)'); // Transparent
@@ -34,6 +45,14 @@ export default class Void3DScene extends Phaser.Scene {
     const fullMusic = this.sound.add('skyline-full', { loop: true, volume: 0.6 });
     fullMusic.play();
     this.gameState.setCurrentMusic(fullMusic);
+    
+    // Help hint (bottom-right corner)
+    this.add.text(312, 172, "H for Help", {
+      fontSize: "9px",
+      fontFamily: "monospace",
+      color: "#888888",
+      resolution: 1,
+    }).setOrigin(1, 1).setDepth(100);
     
     this.setupThreeJS();
     this.createGround();
@@ -537,6 +556,16 @@ export default class Void3DScene extends Phaser.Scene {
 
   update() {
     if (!this.sceneReady) return;
+    
+    // Handle help menu
+    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
+      this.helpMenu.toggle();
+    }
+    
+    // Don't update 3D if menu is open
+    if (this.helpMenu.isVisible() || this.pauseMenu.isVisible()) {
+      return;
+    }
     
     if (this.grayson) {
       this.grayson.rotation.y += 0.01;

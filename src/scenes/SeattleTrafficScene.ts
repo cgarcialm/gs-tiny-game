@@ -48,6 +48,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   // Card piece (on win)
   private cardPiece: Phaser.GameObjects.Graphics | null = null;
+  
+  // Event handler reference for cleanup
+  private skipHandler?: () => void;
 
   constructor() {
     super("SeattleTraffic");
@@ -81,6 +84,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Create UI
     this.createUI();
     
+    // Help hint (bottom-right corner)
+    this.add.text(312, 172, "H for Help", {
+      fontSize: "9px",
+      fontFamily: "monospace",
+      color: "#888888",
+      resolution: 1,
+    }).setOrigin(1, 1).setDepth(10);
+    
     // Add skip button (level in development)
     const skipText = this.add.text(160, 90, "Seattle Traffic level in progress...\nPress ENTER to skip to next level", {
       fontSize: '14px',
@@ -94,18 +105,24 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     skipText.setDepth(1000);
     
     // Wait for ENTER to skip
-    this.input.keyboard?.on('keydown-ENTER', () => {
+    this.skipHandler = () => {
       skipText.destroy();
       // Progress to level 3 (Smush)
       this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
       fadeToScene(this, SCENES.GAME, 1000);
-    });
+    };
+    this.input.keyboard?.on('keydown-ENTER', this.skipHandler);
     
     // Start intro sequence (can still be implemented later)
     this.startIntroSequence();
   }
 
   update() {
+    // Handle help menu
+    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
+      this.helpMenu.toggle();
+    }
+    
     // Handle menus
     if (this.pauseMenu.isVisible() || this.helpMenu.isVisible()) {
       return;
@@ -541,6 +558,13 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       }
       
       distanceText.setText(`→ ${target}: ${Math.max(0, Math.floor(remaining))}m`);
+    }
+  }
+  
+  shutdown() {
+    // Remove keyboard listener to prevent it from firing after scene restart
+    if (this.skipHandler && this.input.keyboard) {
+      this.input.keyboard.off('keydown-ENTER', this.skipHandler);
     }
   }
 }

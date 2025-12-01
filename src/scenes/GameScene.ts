@@ -40,6 +40,7 @@ export default class GameScene extends Phaser.Scene {
   private playerBaseY = 0;
   
   private completedLevels = 0; // 0 = none, 1 = Northgate, 2 = Level2, etc.
+  private sceneGeneration = 0; // Incremented on each create() to invalidate old listeners
   
   // Stadium transformation
   private isTransformingToStadium = false;
@@ -106,6 +107,25 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // Increment scene generation to invalidate old event listeners
+    this.sceneGeneration++;
+    
+    // Clean up any leftover HTML overlays from previous runs
+    if (this.photoOverlay && this.photoOverlay.parentElement) {
+      this.photoOverlay.remove();
+      this.photoOverlay = undefined;
+    }
+    if (this.hockeyOverlay && this.hockeyOverlay.parentElement) {
+      this.hockeyOverlay.remove();
+      this.hockeyOverlay = undefined;
+    }
+    
+    // Clear arrays of game objects (they'll be recreated)
+    this.cardSparkles = [];
+    this.meowTexts = [];
+    this.crowdPeople = [];
+    this.stadiumElements = [];
+    
     // Initialize common scene elements (camera, controls, menus, dialogue, cheat console)
     const setup = initializeGameScene(this);
     this.controls = setup.controls;
@@ -116,8 +136,19 @@ export default class GameScene extends Phaser.Scene {
     // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
     this._cheatConsole = setup.cheatConsole;
     
-    // Reset transition flags
+    // Reset transition flags and dialogue state
     this.waitingForSeattleTrafficTransition = false;
+    this.isDialogueAutoOnly = false;
+    this.dialogState = "idle";
+    this.chaseState = "idle";
+    this.catHasAppeared = false;
+    this.hasInteractedWithEboshi = false;
+    this.cardPieceCollected = false;
+    this.ceciGaveMemory = false;
+    this.ceciCardPieceShown = false;
+    this.popupVisible = false;
+    this.isTransformingToStadium = false;
+    this.transformationTime = 0;
 
     // Pixel grid background (procedural)
     // More intense blue background with bright green thin grid lines
@@ -183,8 +214,13 @@ export default class GameScene extends Phaser.Scene {
     .setOrigin(1, 1)
     .setDepth(10);
     
-    // Only show after Eboshi interaction (level 0), or if already unlocked
-    const showHelpHint = this.gameState.isHelpHintUnlocked();
+    // Auto-unlock help hint if at level 1+ (must have completed level 0)
+    if (this.completedLevels >= 1 && !this.gameState.isHelpHintUnlocked()) {
+      this.gameState.unlockHelpHint();
+    }
+    
+    // Show help hint: Always show in levels 1+, or if unlocked in level 0
+    const showHelpHint = this.completedLevels >= 1 || this.gameState.isHelpHintUnlocked();
     this.helpHintText.setVisible(showHelpHint);
     
     // Create image popup (hidden initially)
@@ -294,7 +330,12 @@ export default class GameScene extends Phaser.Scene {
                 skipText.setDepth(100);
                 
                 // Wait for ENTER
+                const generation = this.sceneGeneration; // Capture current generation
                 const skipCheck = () => {
+                  if (generation !== this.sceneGeneration) {
+                    this.events.off('update', skipCheck); // Scene restarted, stop listening
+                    return;
+                  }
                   if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
                     this.events.off('update', skipCheck);
                     skipText.destroy();
@@ -835,9 +876,14 @@ export default class GameScene extends Phaser.Scene {
     // Player knows they can interact from previous levels
     
     let hasCollected = false; // Prevent double collection
+    const generation = this.sceneGeneration; // Capture current generation
     
     // Check for E press in update
     const checkPickup = () => {
+      if (generation !== this.sceneGeneration) {
+        this.events.off('update', checkPickup); // Scene restarted, stop listening
+        return;
+      }
       if (hasCollected) return; // Already collected
       
       // Check proximity using utility
@@ -1307,7 +1353,12 @@ export default class GameScene extends Phaser.Scene {
     readyPrompt.setDepth(100);
     
     // Wait for ENTER
+    const generation = this.sceneGeneration; // Capture current generation
     const startGame = () => {
+      if (generation !== this.sceneGeneration) {
+        this.events.off('update', startGame); // Scene restarted, stop listening
+        return;
+      }
       if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
         this.events.off('update', startGame);
         readyPrompt.destroy();
@@ -1336,7 +1387,12 @@ export default class GameScene extends Phaser.Scene {
         // After merge, show dialogue
         this.dialogueManager.show("Grayson: Finally! I put the pieces together. I can get out of the void...");
         
+        const generation = this.sceneGeneration; // Capture current generation
         const checkEnter = () => {
+          if (generation !== this.sceneGeneration) {
+            this.events.off('update', checkEnter); // Scene restarted, stop listening
+            return;
+          }
           if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
             this.events.off('update', checkEnter);
             this.dialogueManager.hide();
@@ -1389,7 +1445,12 @@ export default class GameScene extends Phaser.Scene {
                 // After merge, show dialogue
                 this.dialogueManager.show("Grayson: Finally! I put the pieces together. I can get out of the void...");
                 
+                const generation = this.sceneGeneration; // Capture current generation
                 const checkEnter = () => {
+                  if (generation !== this.sceneGeneration) {
+                    this.events.off('update', checkEnter); // Scene restarted, stop listening
+                    return;
+                  }
                   if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
                     this.events.off('update', checkEnter);
                     this.dialogueManager.hide();
@@ -2055,8 +2116,26 @@ export default class GameScene extends Phaser.Scene {
     
     // Launch Void3D as overlay immediately after grid starts
     this.time.delayedCall(100, () => { // Start while grid is still fading in
-      this.scene.launch("Void3D");
-      this.scene.bringToTop("Void3D");
+      this.scene.launch(SCENES.VOID_3D);
+      this.scene.bringToTop(SCENES.VOID_3D);
     });
+  }
+  
+  shutdown() {
+    // Clean up HTML overlays when scene stops
+    if (this.photoOverlay && this.photoOverlay.parentElement) {
+      this.photoOverlay.remove();
+      this.photoOverlay = undefined;
+    }
+    if (this.hockeyOverlay && this.hockeyOverlay.parentElement) {
+      this.hockeyOverlay.remove();
+      this.hockeyOverlay = undefined;
+    }
+    
+    // Clean up arrays
+    this.cardSparkles = [];
+    this.meowTexts = [];
+    this.crowdPeople = [];
+    this.stadiumElements = [];
   }
 }

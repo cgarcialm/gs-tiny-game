@@ -148,6 +148,14 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.promptText.setDepth(50);
     this.promptText.setVisible(false);
     
+    // Help hint (bottom-right corner)
+    this.add.text(312, 172, "H for Help", {
+      fontSize: "9px",
+      fontFamily: "monospace",
+      color: "#888888",
+      resolution: 1,
+    }).setOrigin(1, 1).setDepth(10);
+    
     // Spawn skates and hockey stick on the ice
     this.spawnSkates();
     this.spawnHockeyStick();
@@ -1182,8 +1190,8 @@ export default class IceHockeyScene extends Phaser.Scene {
       // Complete Ice Hockey level
       this.gameState.completeLevel(VOID_LEVELS.AFTER_ICE_HOCKEY);
       
-      // Use fadeToScene utility for clean transition
-      fadeToScene(this, SCENES.GAME, 1000);
+      // Transition directly to Seattle Traffic scene (skip GameScene level 2 placeholder)
+      fadeToScene(this, SCENES.SEATTLE_TRAFFIC, 1000);
     });
   }
   
