@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { GameStateManager } from '../managers/GameStateManager';
+import { SCENES, VOID_LEVELS } from '../config/sceneConstants';
 
 export class CheatConsole {
   private scene: Phaser.Scene;
@@ -154,47 +156,45 @@ export class CheatConsole {
       }
     } else if (trimmedCommand === 'klapaucius') {
       console.log('Usage: klapaucius <0-5>');
-      console.log('  0: Eboshi encounter (first void visit)');
-      console.log('  1: Ceci returns with memory');
-      console.log('  2: Seattle Traffic intro');
-      console.log('  3: Smush playing with memories');
-      console.log('  4: Card shuffle game');
-      console.log('  5: 3D void transition & camping scene');
+      console.log(`  ${VOID_LEVELS.EBOSHI_ENCOUNTER}: Eboshi encounter (first void visit)`);
+      console.log(`  ${VOID_LEVELS.AFTER_NORTHGATE}: Ceci returns with memory`);
+      console.log(`  ${VOID_LEVELS.AFTER_ICE_HOCKEY}: Seattle Traffic intro`);
+      console.log(`  ${VOID_LEVELS.AFTER_SEATTLE_TRAFFIC}: Smush playing with memories`);
+      console.log(`  ${VOID_LEVELS.AFTER_FARMERS_MARKET}: Card shuffle game`);
+      console.log(`  ${VOID_LEVELS.COMPLETE}: 3D void transition & camping scene`);
     } else if (trimmedCommand !== '') {
       console.log('Unknown cheat code');
     }
   }
 
   private jumpToLevel(level: number): void {
-    const currentMusic = this.scene.registry.get('currentMusic');
+    const gameState = new GameStateManager(this.scene.registry, true);
     
     if (level === 5) {
       // Jump to 3D void transition - stop current music (Void3D will start full version)
-      if (currentMusic) {
-        currentMusic.stop();
-        this.scene.registry.set('currentMusic', null);
-      }
+      gameState.stopMusic();
       
-      // Set all memories collected
-      this.scene.registry.set('completedLevels', 4);
+      // Set all memories collected (level 4 = after farmers market, ready for void3D)
+      gameState.setCompletedLevels(VOID_LEVELS.AFTER_FARMERS_MARKET, true);
       
       // Launch Void3D scene which then transitions to Camping
-      this.scene.scene.start('Void3D');
+      this.scene.scene.start(SCENES.VOID_3D);
     } else {
       // Jumping to void levels 0-4 - ensure 8-bit music is playing
+      const currentMusic = gameState.getCurrentMusic();
       if (!currentMusic || !currentMusic.isPlaying) {
         // Start 8-bit music if not already playing
         const music = this.scene.sound.add('skyline-8bit', { loop: true, volume: 0.6 });
         music.play();
-        this.scene.registry.set('currentMusic', music);
+        gameState.setCurrentMusic(music);
       }
       // If 8-bit is already playing, keep it going
       
-      // Set the completed levels registry to the desired level
-      this.scene.registry.set('completedLevels', level);
+      // Set the completed levels to the desired level (force=true allows going backwards)
+      gameState.setCompletedLevels(level, true);
       
       // Start or restart the GameScene (void)
-      this.scene.scene.start('Game');
+      this.scene.scene.start(SCENES.GAME);
     }
   }
 

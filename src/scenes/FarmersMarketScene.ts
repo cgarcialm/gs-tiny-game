@@ -9,12 +9,15 @@ import type { DialogueManager } from "../utils/dialogueManager";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
 import { checkProximity } from "../utils/collectionHelpers";
+import { GameStateManager } from "../managers/GameStateManager";
+import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 
 /**
  * Farmers Market Scene - Pac-Man Style
  * Grayson collects strawberry rhubarb pies while dodging excited Smushs
  */
 export default class FarmersMarketScene extends Phaser.Scene {
+  private gameState!: GameStateManager;
   private controls!: GameControls;
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
@@ -74,6 +77,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.helpMenu = setup.helpMenu;
     this.pauseMenu = setup.pauseMenu;
     this.dialogueManager = setup.dialogueManager;
+    this.gameState = setup.gameState;
     
     // Clear any previous dialogue
     this.dialogueManager.hide();
@@ -929,8 +933,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
       
       // Transition back to GameScene
       this.time.delayedCall(1500, () => {
-        this.registry.set('completedLevels', 4);
-        fadeToScene(this, "Game", 1000);
+        this.gameState.completeLevel(VOID_LEVELS.AFTER_FARMERS_MARKET);
+        fadeToScene(this, SCENES.GAME, 1000);
       });
     }
   }
@@ -950,7 +954,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.time.delayedCall(3000, () => {
       // Proper restart - stops current scene and starts fresh
       this.scene.stop();
-      this.scene.start("FarmersMarket");
+      this.scene.start(SCENES.FARMERS_MARKET);
     });
   }
   

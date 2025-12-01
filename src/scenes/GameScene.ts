@@ -14,11 +14,14 @@ import { PROMPT_TEXT_STYLE, HELP_HINT_TEXT_STYLE, FLOATING_MESSAGE_STYLE, COUNTE
 import { spawnFloatingText } from "../utils/visualEffects";
 import { checkProximity } from "../utils/collectionHelpers";
 import { animateCounterUpdate } from "../utils/uiAnimations";
+import { GameStateManager } from "../managers/GameStateManager";
+import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 
 type DialogueState = "idle" | "open";
 type ChaseState = "idle" | "chasing";
 
 export default class GameScene extends Phaser.Scene {
+  private gameState!: GameStateManager;
   private controls!: GameControls;
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
@@ -108,9 +111,10 @@ export default class GameScene extends Phaser.Scene {
     this.controls = setup.controls;
     this.helpMenu = setup.helpMenu;
     this.pauseMenu = setup.pauseMenu;
+    this.dialogueManager = setup.dialogueManager;
+    this.gameState = setup.gameState;
     // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
     this._cheatConsole = setup.cheatConsole;
-    this.dialogueManager = setup.dialogueManager;
     
     // Reset transition flags
     this.waitingForSeattleTrafficTransition = false;
@@ -120,14 +124,9 @@ export default class GameScene extends Phaser.Scene {
     this.createCustomGrid();
     
     // Get completed levels
-    const registryLevel = this.registry.get('completedLevels');
-    const fromTitleScene = this.registry.get('fromTitleScene');
+    const registryLevel = this.gameState.getCompletedLevels();
+    const fromTitleScene = this.gameState.isFromTitleScene(); // Auto-clears flag
     const isProduction = import.meta.env.PROD;
-    
-    // Clear the fromTitleScene flag after reading it
-    if (fromTitleScene) {
-      this.registry.set('fromTitleScene', false);
-    }
     
     if (isProduction) {
       // Production: Always use registry or 0
@@ -185,7 +184,7 @@ export default class GameScene extends Phaser.Scene {
     .setDepth(10);
     
     // Only show after Eboshi interaction (level 0), or if already unlocked
-    const showHelpHint = this.registry.get('showHelpHint') || false;
+    const showHelpHint = this.gameState.isHelpHintUnlocked();
     this.helpHintText.setVisible(showHelpHint);
     
     // Create image popup (hidden initially)
@@ -299,9 +298,9 @@ export default class GameScene extends Phaser.Scene {
                   if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
                     this.events.off('update', skipCheck);
                     skipText.destroy();
-                    fadeToScene(this, "Game", 1000);
                     // Set level to 3 so next time it's Smush level
-                    this.registry.set('completedLevels', 3);
+                    this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
+                    fadeToScene(this, SCENES.GAME, 1000);
                   }
                 };
                 this.events.on('update', skipCheck);
@@ -445,8 +444,8 @@ export default class GameScene extends Phaser.Scene {
     this.dialogueManager.hide();
     
     // Show help hint after first dialogue with Eboshi (level 0)
-    if (this.completedLevels === 0 && this.hasInteractedWithEboshi) {
-      this.registry.set('showHelpHint', true);
+    if (this.completedLevels === VOID_LEVELS.EBOSHI_ENCOUNTER && this.hasInteractedWithEboshi) {
+      this.gameState.unlockHelpHint();
       this.helpHintText.setVisible(true);
     }
   }
@@ -534,7 +533,7 @@ export default class GameScene extends Phaser.Scene {
         } else {
           // After second image, go to Northgate Station
           this.hideImagePopup();
-          this.scene.start("Northgate");
+          this.scene.start(SCENES.NORTHGATE);
         }
       }
       if (Phaser.Input.Keyboard.JustDown(this.controls.escape)) {
@@ -568,7 +567,7 @@ export default class GameScene extends Phaser.Scene {
           // Check if we should transition to Seattle Traffic (level 2)
           if (this.waitingForSeattleTrafficTransition) {
             this.waitingForSeattleTrafficTransition = false;
-            fadeToScene(this, "SeattleTraffic", 1000);
+            fadeToScene(this, SCENES.SEATTLE_TRAFFIC, 1000);
           }
         }
       }
@@ -1090,11 +1089,11 @@ export default class GameScene extends Phaser.Scene {
           duration: 3000,
           ease: "Linear",
           onComplete: () => {
-            // After Grayson exits, transition to Ice Hockey scene
-            this.time.delayedCall(1500, () => { // Short pause after exit
-              this.hideDialog();
-              fadeToScene(this, "IceHockey", 800);
-            });
+                      // After Grayson exits, transition to Ice Hockey scene
+                      this.time.delayedCall(1500, () => { // Short pause after exit
+                        this.hideDialog();
+                        fadeToScene(this, SCENES.ICE_HOCKEY, 800);
+                      });
           }
         });
       });
@@ -2024,7 +2023,7 @@ export default class GameScene extends Phaser.Scene {
         // Transition to farmers market level
         this.time.delayedCall(4000, () => {
           this.dialogueManager.hide();
-          fadeToScene(this, "FarmersMarket", 1000);
+          fadeToScene(this, SCENES.FARMERS_MARKET, 1000);
         });
     });
   }

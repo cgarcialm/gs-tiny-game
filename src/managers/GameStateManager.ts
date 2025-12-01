@@ -41,14 +41,15 @@ export class GameStateManager {
   /**
    * Set completed levels (always takes maximum to prevent going backwards)
    * @param level - The level number (0-4)
+   * @param force - If true, allows setting to a lower level (for debugging/cheats)
    */
-  setCompletedLevels(level: number): void {
+  setCompletedLevels(level: number, force: boolean = false): void {
     const current = this.getCompletedLevels();
-    const newLevel = Math.max(current, level);
+    const newLevel = force ? level : Math.max(current, level);
     
     if (newLevel !== current) {
       this.registry.set('completedLevels', newLevel);
-      this.log(`Completed levels: ${current} -> ${newLevel}`);
+      this.log(`Completed levels: ${current} -> ${newLevel}${force ? ' (forced)' : ''}`);
     }
   }
 
