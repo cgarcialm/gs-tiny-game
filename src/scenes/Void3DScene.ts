@@ -1,11 +1,14 @@
 import Phaser from "phaser";
 import * as THREE from "three";
 import { create3DGrayson } from "../utils/create3DGrayson";
+import { GameStateManager } from "../managers/GameStateManager";
+import { SCENES } from "../config/sceneConstants";
 
 /**
  * Void3DScene - Simple spotlight test
  */
 export default class Void3DScene extends Phaser.Scene {
+  private gameState!: GameStateManager;
   private threeScene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private threeRenderer!: THREE.WebGLRenderer;
@@ -18,19 +21,19 @@ export default class Void3DScene extends Phaser.Scene {
   }
 
   create() {
+    // Initialize game state manager
+    this.gameState = new GameStateManager(this.registry, !import.meta.env.PROD);
+    
     // Don't fade in - show GameScene underneath during particle effect
     this.cameras.main.setBackgroundColor('rgba(0, 0, 0, 0)'); // Transparent
     
     // Stop 8-bit music and start full version
-    const currentMusic = this.registry.get('currentMusic');
-    if (currentMusic) {
-      currentMusic.stop();
-    }
+    this.gameState.stopMusic();
     
     // Start full version (looping, persists to camping scene)
     const fullMusic = this.sound.add('skyline-full', { loop: true, volume: 0.6 });
     fullMusic.play();
-    this.registry.set('currentMusic', fullMusic);
+    this.gameState.setCurrentMusic(fullMusic);
     
     this.setupThreeJS();
     this.createGround();
@@ -491,7 +494,7 @@ export default class Void3DScene extends Phaser.Scene {
         }
       },
       onComplete: () => {
-        this.scene.start("Camping");
+        this.scene.start(SCENES.CAMPING);
       }
     });
   }

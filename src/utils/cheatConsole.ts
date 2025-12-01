@@ -193,6 +193,9 @@ export class CheatConsole {
       // Set the completed levels to the desired level (force=true allows going backwards)
       gameState.setCompletedLevels(level, true);
       
+      // Mark as "from title" to prevent DEBUG_START_LEVEL from overriding our cheat
+      gameState.markFromTitleScene();
+      
       // Start or restart the GameScene (void)
       this.scene.scene.start(SCENES.GAME);
     }

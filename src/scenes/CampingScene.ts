@@ -7,12 +7,15 @@ import { DEBUG_SHOW_GRID } from "../config/debug";
 import type { GameControls } from "../utils/controls";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
+import { GameStateManager } from "../managers/GameStateManager";
+import { SCENES } from "../config/sceneConstants";
 
 /**
  * Final Scene - 3D Camping Site with Space Needle View
  * All 4 memories collected - peaceful camping scene overlooking Seattle
  */
 export default class CampingScene extends Phaser.Scene {
+  private gameState!: GameStateManager;
   private controls!: GameControls;
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
@@ -104,23 +107,24 @@ export default class CampingScene extends Phaser.Scene {
     // Fade in from black (2.5 seconds to match Void3D fade out)
     fadeIn(this, 2500);
     
+    // Initialize common scene elements
+    const setup = initializeGameScene(this);
+    this.controls = setup.controls;
+    this.helpMenu = setup.helpMenu;
+    this.pauseMenu = setup.pauseMenu;
+    this.gameState = setup.gameState;
+    
     // Check if music is already playing from previous scene (Void3D)
     // If not (e.g., debug skip to this scene), start it
-    const currentMusic = this.registry.get('currentMusic');
+    const currentMusic = this.gameState.getCurrentMusic();
     if (!currentMusic || !currentMusic.isPlaying) {
       const music = this.sound.add('skylineEchoes', {
         loop: true,
         volume: 0.6
       });
       music.play();
-      this.registry.set('currentMusic', music);
+      this.gameState.setCurrentMusic(music);
     }
-    
-    // Initialize common scene elements
-    const setup = initializeGameScene(this);
-    this.controls = setup.controls;
-    this.helpMenu = setup.helpMenu;
-    this.pauseMenu = setup.pauseMenu;
     
     // Set up Three.js 3D scene
     this.setupThreeJS();
@@ -2271,7 +2275,7 @@ export default class CampingScene extends Phaser.Scene {
     const timeSinceDialogue = this.time.now - this.lastDialogueClose;
     if (Phaser.Input.Keyboard.JustDown(this.controls.advance) && timeSinceDialogue > 500) {
       // Fade back to title (game complete!)
-      fadeToScene(this, "Title", 2000);
+      fadeToScene(this, SCENES.TITLE, 2000);
     }
   }
   
