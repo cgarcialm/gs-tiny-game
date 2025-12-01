@@ -11,6 +11,8 @@ import type { PauseMenu } from "../utils/pauseMenu";
 import { checkProximity } from "../utils/collectionHelpers";
 import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
+import { HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
+import { HELP_HINT_TEXT_STYLE } from "../config/textStyles";
 
 /**
  * Farmers Market Scene - Pac-Man Style
@@ -195,13 +197,10 @@ export default class FarmersMarketScene extends Phaser.Scene {
       });
     });
     
-    // Help hint (bottom-right corner)
-    this.add.text(312, 172, "H for Help", {
-      fontSize: "9px",
-      fontFamily: "monospace",
-      color: "#888888",
-      resolution: 1,
-    }).setOrigin(1, 1).setDepth(100);
+    // Help hint (bottom-right corner with background)
+    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
+      .setOrigin(1, 1)
+      .setDepth(100);
   }
 
   private createWalls() {

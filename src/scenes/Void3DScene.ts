@@ -5,8 +5,10 @@ import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES } from "../config/sceneConstants";
 import { initializeGameScene } from "../utils/sceneSetup";
 import type { GameControls } from "../utils/controls";
+import { HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
+import { HELP_HINT_TEXT_STYLE } from "../config/textStyles";
 
 /**
  * Void3DScene - Simple spotlight test
@@ -47,12 +49,9 @@ export default class Void3DScene extends Phaser.Scene {
     this.gameState.setCurrentMusic(fullMusic);
     
     // Help hint (bottom-right corner)
-    this.add.text(312, 172, "H for Help", {
-      fontSize: "9px",
-      fontFamily: "monospace",
-      color: "#888888",
-      resolution: 1,
-    }).setOrigin(1, 1).setDepth(100);
+    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
+      .setOrigin(1, 1)
+      .setDepth(100);
     
     this.setupThreeJS();
     this.createGround();
