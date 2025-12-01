@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import { DEBUG_START_SCENE } from "../config/debug";
+import { GameStateManager } from "../managers/GameStateManager";
+import { SCENES } from "../config/sceneConstants";
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -36,9 +38,13 @@ export default class BootScene extends Phaser.Scene {
     // Set camera to respect pixel art settings
     this.cameras.main.setRoundPixels(true);
     
-    // Initialize registry for game progress
-    if (!this.registry.has('completedLevels')) {
-      this.registry.set('completedLevels', 0);
+    // Initialize game state manager
+    const gameState = new GameStateManager(this.registry, !import.meta.env.PROD);
+    
+    // Initialize registry for game progress (only if not already set)
+    if (gameState.getCompletedLevels() === 0 && !this.registry.has('completedLevels')) {
+      // First time initialization
+      gameState.setCompletedLevels(0);
     }
     
     // In production, ALWAYS start with Title (ignore debug config)
@@ -46,7 +52,7 @@ export default class BootScene extends Phaser.Scene {
     
     if (isProduction) {
       console.log("[PRODUCTION] Starting from Title scene");
-      this.scene.start("Title");
+      this.scene.start(SCENES.TITLE);
       return;
     }
     
@@ -58,6 +64,6 @@ export default class BootScene extends Phaser.Scene {
     }
     
     // Normal flow: start with title screen
-    this.scene.start("Title");
+    this.scene.start(SCENES.TITLE);
   }
 }

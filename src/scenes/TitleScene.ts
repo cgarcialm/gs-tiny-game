@@ -8,6 +8,8 @@ import { handleMenuInput } from "../utils/menuHandler";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
 import { createGraysonSprite } from "../utils/sprites";
+import { GameStateManager } from "../managers/GameStateManager";
+import { SCENES } from "../config/sceneConstants";
 
 const PLAYER_ASCII = String.raw`
    _---
@@ -107,6 +109,7 @@ type SceneState =
   | "intro_complete"; // Ready to start game
 
 export default class TitleScene extends Phaser.Scene {
+  private gameState!: GameStateManager;
   private controls!: GameControls;
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
@@ -140,6 +143,7 @@ export default class TitleScene extends Phaser.Scene {
     this.helpMenu = setup.helpMenu;
     this.pauseMenu = setup.pauseMenu;
     this.dialogueManager = setup.dialogueManager;
+    this.gameState = setup.gameState;
     // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
     this._cheatConsole = setup.cheatConsole;
 
@@ -432,8 +436,8 @@ export default class TitleScene extends Phaser.Scene {
     const music = this.sound.add('skyline-8bit', { loop: true, volume: 0.6 });
     music.play();
     
-    // Store in registry so it can be accessed/stopped later
-    this.registry.set('currentMusic', music);
+    // Store music using GameStateManager (automatically stops previous music if any)
+    this.gameState.setCurrentMusic(music);
     
     // Create pixel version at Grayson's position (now using static import)
     this.pixelGrayson = createGraysonSprite(this, this.grayson.x, this.grayson.y);
@@ -503,9 +507,11 @@ export default class TitleScene extends Phaser.Scene {
     this.sceneState = "void_entry";
     
     // Reset game progress - always start from level 0 when coming from title
-    this.registry.set('completedLevels', 0);
+    // Note: Don't use resetProgress() here because it stops music, and we want to keep it playing
+    this.gameState.setCompletedLevels(0);
+    this.registry.set('showHelpHint', false); // Reset help hint
     // Set flag to ignore DEBUG_START_LEVEL (this is a proper story start)
-    this.registry.set('fromTitleScene', true);
+    this.gameState.markFromTitleScene();
     
     // Big dramatic text
     this.voidText = this.add.text(SCREEN_CENTER_X, SCREEN_CENTER_Y, "ENTERING THE VOID...", {
@@ -549,7 +555,7 @@ export default class TitleScene extends Phaser.Scene {
     
     // Fade out and transition to game
     this.time.delayedCall(2000, () => {
-      fadeToScene(this, "Game", 1000);
+      fadeToScene(this, SCENES.GAME, 1000);
     });
   }
 }

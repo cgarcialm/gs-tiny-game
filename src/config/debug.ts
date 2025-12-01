@@ -1,3 +1,5 @@
+import { SCENES, type SceneName } from "./sceneConstants";
+
 /**
  * Debug configuration for testing
  * Change these values to skip to different parts of the game
@@ -14,8 +16,9 @@
  * "IceHockey" = Skip to Ice Hockey scene
  * "SeattleTraffic" = Skip to Seattle Traffic scene
  * "FarmersMarket" = Skip to Farmers Market Pac-Man scene
+ * "Camping" = Skip to Camping scene
  */
-export const DEBUG_START_SCENE: "Title" | "Game" | "Northgate" | "IceHockey" | "SeattleTraffic" | "FarmersMarket" | "Camping" = "Game";
+export const DEBUG_START_SCENE: SceneName = SCENES.TITLE;
 
 /**
  * Set to desired level number to skip ahead in GameScene (only applies if starting in "Game")

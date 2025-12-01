@@ -4,6 +4,7 @@ import { HelpMenu } from "./helpMenu";
 import { PauseMenu } from "./pauseMenu";
 import { DialogueManager } from "./dialogueManager";
 import { CheatConsole } from "./cheatConsole";
+import { GameStateManager } from "../managers/GameStateManager";
 
 /**
  * Common objects initialized for a game scene
@@ -14,6 +15,7 @@ export interface SceneSetup {
   pauseMenu: PauseMenu;
   dialogueManager: DialogueManager;
   cheatConsole: CheatConsole;
+  gameState: GameStateManager;
 }
 
 /**
@@ -22,6 +24,7 @@ export interface SceneSetup {
  * 
  * Sets up:
  * - Camera pixel art settings (rounded pixels)
+ * - Game state manager (centralized state access)
  * - Game controls (WASD, arrows, space, E, enter, ESC, H)
  * - Help menu (H key)
  * - Pause menu (ESC key)
@@ -34,12 +37,13 @@ export interface SceneSetup {
  * @example
  * ```typescript
  * create() {
- *   const { controls, helpMenu, pauseMenu, dialogueManager, cheatConsole } = initializeGameScene(this);
+ *   const { controls, helpMenu, pauseMenu, dialogueManager, cheatConsole, gameState } = initializeGameScene(this);
  *   this.controls = controls;
  *   this.helpMenu = helpMenu;
  *   this.pauseMenu = pauseMenu;
  *   this.dialogueManager = dialogueManager;
  *   this.cheatConsole = cheatConsole;
+ *   this.gameState = gameState;
  *   
  *   // ... rest of scene setup
  * }
@@ -48,6 +52,10 @@ export interface SceneSetup {
 export function initializeGameScene(scene: Phaser.Scene): SceneSetup {
   // Set camera to respect pixel art settings
   scene.cameras.main.setRoundPixels(true);
+  
+  // Create game state manager (debug mode enabled in development)
+  const isDebug = !import.meta.env.PROD;
+  const gameState = new GameStateManager(scene.registry, isDebug);
   
   // Setup standard controls (WASD + arrows, space, E, Enter, ESC, H)
   const controls = setupControls(scene);
@@ -70,6 +78,7 @@ export function initializeGameScene(scene: Phaser.Scene): SceneSetup {
     pauseMenu,
     dialogueManager,
     cheatConsole,
+    gameState,
   };
 }
 
