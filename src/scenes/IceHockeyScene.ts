@@ -11,12 +11,15 @@ import type { PauseMenu } from "../utils/pauseMenu";
 import { fadeToScene } from "../utils/sceneTransitions";
 import { spawnFloatingText, createParticleBurst } from "../utils/visualEffects";
 import { checkProximity, getDistance } from "../utils/collectionHelpers";
+import { GameStateManager } from "../managers/GameStateManager";
+import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 
 /**
  * Ice Hockey Game Scene - Everett Silvertips
  * Level 2: Find Ceci at the hockey game
  */
 export default class IceHockeyScene extends Phaser.Scene {
+  private gameState!: GameStateManager;
   private controls!: GameControls;
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
@@ -81,6 +84,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.helpMenu = setup.helpMenu;
     this.pauseMenu = setup.pauseMenu;
     this.dialogueManager = setup.dialogueManager;
+    this.gameState = setup.gameState;
     // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
     this._cheatConsole = setup.cheatConsole;
     
@@ -943,7 +947,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     if (this.pauseMenu.isVisible()) {
       if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
         this.pauseMenu.hide();
-        this.scene.start("Title");
+        this.scene.start(SCENES.TITLE);
       }
       return;
     }
@@ -1175,11 +1179,11 @@ export default class IceHockeyScene extends Phaser.Scene {
     
     // Small delay to show the card lighting up
     this.time.delayedCall(500, () => {
-      // Update registry: completed ice hockey (level 2)
-      this.registry.set('completedLevels', 2);
+      // Complete Ice Hockey level
+      this.gameState.completeLevel(VOID_LEVELS.AFTER_ICE_HOCKEY);
       
       // Use fadeToScene utility for clean transition
-      fadeToScene(this, "Game", 1000);
+      fadeToScene(this, SCENES.GAME, 1000);
     });
   }
   

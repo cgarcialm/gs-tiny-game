@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
+import { GameStateManager } from "../managers/GameStateManager";
+import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 import { createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 import type { GameControls } from "../utils/controls";
 import type { HelpMenu } from "../utils/helpMenu";
@@ -12,6 +14,7 @@ import type { PauseMenu } from "../utils/pauseMenu";
  * Story: Hiking trip with Ceci & Ebo - late start, wrong Starbucks, traffic nightmare
  */
 export default class SeattleTrafficScene extends Phaser.Scene {
+  private gameState!: GameStateManager;
   private controls!: GameControls;
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
@@ -56,6 +59,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.controls = setup.controls;
     this.helpMenu = setup.helpMenu;
     this.pauseMenu = setup.pauseMenu;
+    this.gameState = setup.gameState;
     
     // Reset state
     this.gamePhase = 'intro';
@@ -93,8 +97,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-ENTER', () => {
       skipText.destroy();
       // Progress to level 3 (Smush)
-      this.registry.set('completedLevels', 3);
-      fadeToScene(this, "Game", 1000);
+      this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
+      fadeToScene(this, SCENES.GAME, 1000);
     });
     
     // Start intro sequence (can still be implemented later)
@@ -464,8 +468,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       
       // Transition to next level
       this.time.delayedCall(500, () => {
-        this.registry.set('completedLevels', 3);
-        fadeToScene(this, "Game", 1000);
+        this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
+        fadeToScene(this, SCENES.GAME, 1000);
       });
     }
   }
