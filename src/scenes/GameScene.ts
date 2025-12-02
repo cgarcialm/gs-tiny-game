@@ -620,56 +620,58 @@ export default class GameScene extends Phaser.Scene {
       this.checkSmushPieceCollection();
     }
 
-    // Movement (WASD + arrow keys)
-    let vx = getHorizontalAxis(this, this.controls);
-    let vy = getVerticalAxis(this, this.controls);
+    // Movement (WASD + arrow keys) - disabled in level 4 (card shuffle game)
+    if (this.completedLevels !== 4) {
+      let vx = getHorizontalAxis(this, this.controls);
+      let vy = getVerticalAxis(this, this.controls);
 
-    const isMoving = vx !== 0 || vy !== 0;
-    
-    if (isMoving) {
-      const len = Math.hypot(vx, vy);
-      vx /= len;
-      vy /= len;
+      const isMoving = vx !== 0 || vy !== 0;
       
-      // Flip sprite based on horizontal movement direction
-      if (vx < 0) {
-        this.player.setScale(1, 1);  // Face left
-      } else if (vx > 0) {
-        this.player.setScale(-1, 1); // Face right
-      }
-    }
-    this.player.x += vx * this.speed * dt;
-    this.player.y += vy * this.speed * dt;
-    
-    // Jump/hop when space is pressed
-    if (Phaser.Input.Keyboard.JustDown(this.controls.jump) && !this.isJumping) {
-      this.isJumping = true;
-      this.playerBaseY = this.player.y;
-      
-      // Small hop animation
-      this.tweens.add({
-        targets: this.player,
-        y: this.player.y - 15, // Hop up 15 pixels
-        duration: 200,
-        ease: "Quad.easeOut",
-        yoyo: true,
-        onComplete: () => {
-          this.isJumping = false;
-          this.player.y = this.playerBaseY;
+      if (isMoving) {
+        const len = Math.hypot(vx, vy);
+        vx /= len;
+        vy /= len;
+        
+        // Flip sprite based on horizontal movement direction
+        if (vx < 0) {
+          this.player.setScale(1, 1);  // Face left
+        } else if (vx > 0) {
+          this.player.setScale(-1, 1); // Face right
         }
-      });
-    }
-    
-    // Round player position to prevent sub-pixel transparency issues
-    this.player.x = Math.round(this.player.x);
-    this.player.y = Math.round(this.player.y);
+      }
+      this.player.x += vx * this.speed * dt;
+      this.player.y += vy * this.speed * dt;
+      
+      // Jump/hop when space is pressed
+      if (Phaser.Input.Keyboard.JustDown(this.controls.jump) && !this.isJumping) {
+        this.isJumping = true;
+        this.playerBaseY = this.player.y;
+        
+        // Small hop animation
+        this.tweens.add({
+          targets: this.player,
+          y: this.player.y - 15, // Hop up 15 pixels
+          duration: 200,
+          ease: "Quad.easeOut",
+          yoyo: true,
+          onComplete: () => {
+            this.isJumping = false;
+            this.player.y = this.playerBaseY;
+          }
+        });
+      }
+      
+      // Round player position to prevent sub-pixel transparency issues
+      this.player.x = Math.round(this.player.x);
+      this.player.y = Math.round(this.player.y);
 
-    // Keep inside 320x180 play area (tiny padding)
-    this.player.x = Phaser.Math.Clamp(this.player.x, 6, 320 - 6);
-    this.player.y = Phaser.Math.Clamp(this.player.y, 6, 180 - 6);
-    
-    // Update walking animation
-    updateGraysonWalk(this.player, isMoving);
+      // Keep inside 320x180 play area (tiny padding)
+      this.player.x = Phaser.Math.Clamp(this.player.x, 6, 320 - 6);
+      this.player.y = Phaser.Math.Clamp(this.player.y, 6, 180 - 6);
+      
+      // Update walking animation
+      updateGraysonWalk(this.player, isMoving);
+    }
 
     // Level 0: Proximity check to NPC (Eboshi) - only on level 0
     if (this.completedLevels === 0 && this.npc && this.npc.visible) {
