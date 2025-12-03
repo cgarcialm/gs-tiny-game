@@ -32,6 +32,10 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private smushPhysics!: Phaser.Physics.Arcade.Sprite;
   private smushTargetChangeTimer = 0;
   private smushCurrentTarget: Phaser.GameObjects.Graphics | null = null;
+  private smushRecentTargets: Phaser.GameObjects.Graphics[] = []; // Remember last 3 targets to avoid
+  private smushWanderMode = false; // True when wandering randomly
+  private smushWanderTimer = 0; // How long to wander
+  private debugLine?: Phaser.GameObjects.Graphics; // Visual debug line
   
   private entranceComplete = false; // Don't sync during entrance animation
   private tutorialOverlay: Phaser.GameObjects.Container | null = null;
@@ -101,6 +105,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.fruitSpawnTimer = 0;
     this.smushTargetChangeTimer = 0;
     this.smushCurrentTarget = null;
+    this.smushRecentTargets = [];
+    this.smushWanderMode = false;
+    this.smushWanderTimer = 0;
     this.pies = [];
     this.fruits = [];
     this.validDotPositions = [];
@@ -534,8 +541,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Helper to check if position is under or too close to a wall block
     const isUnderWall = (x: number, y: number): boolean => {
-      // Add small buffer zone (3px) to prevent collecting through walls
-      const buffer = 3;
+      // Add small buffer zone (5px) - balance between filling corridors and Smush AI navigation
+      const buffer = 5;
       
       // Check all wall rectangles with buffer zone
       if ((x >= 22 - buffer && x <= 78 + buffer && y >= 42 - buffer && y <= 58 + buffer) ||  // Pink 1 left
@@ -580,10 +587,6 @@ export default class FarmersMarketScene extends Phaser.Scene {
     const reachableDots = this.pies.filter(p => !p.getData('isPieSlice')).length;
     this.totalDots = reachableDots;
     this.dotsNeeded = Math.ceil(this.totalDots * 0.51); // Grayson needs 51%
-    
-    console.log(`[Farmers Market] Total dots spawned: ${this.pies.length}`);
-    console.log(`[Farmers Market] Non-pie dots: ${reachableDots}`);
-    console.log(`[Farmers Market] Grayson needs: ${this.dotsNeeded} dots (51% of ${this.totalDots})`)
   }
   update() {
     // Handle help menu
@@ -632,13 +635,13 @@ export default class FarmersMarketScene extends Phaser.Scene {
     if (this.entranceComplete) {
       this.handlePlayerMovement();
       
-      // Smush AI (competitive - also tries to get pies)
+      // Smush AI (competitive - keeps moving even after Grayson wins)
       this.updateSmushAI();
       
       // Check tunnel wrapping (Pac-Man teleport)
       this.checkTunnelWrapping();
       
-      // Check pie collection for both
+      // Check pie collection for both (Smush can still eat even after Grayson wins)
       this.checkPieCollection();
       
       // Fruit spawning timer
@@ -673,6 +676,28 @@ export default class FarmersMarketScene extends Phaser.Scene {
       this.player.y = this.playerPhysics.y;
       this.smush.x = this.smushPhysics.x;
       this.smush.y = this.smushPhysics.y;
+      
+      // DEBUG: Draw line from Smush to target (only after Grayson gets 3 pies)
+      if (this.graysonPiesEaten >= 3) {
+        if (!this.debugLine) {
+          this.debugLine = this.add.graphics();
+          this.debugLine.setDepth(25);
+        }
+        
+        this.debugLine.clear();
+        
+        if (this.smushCurrentTarget) {
+          this.debugLine.lineStyle(2, 0xff00ff, 0.6); // Magenta line
+          this.debugLine.beginPath();
+          this.debugLine.moveTo(this.smushPhysics.x, this.smushPhysics.y);
+          this.debugLine.lineTo(this.smushCurrentTarget.x, this.smushCurrentTarget.y);
+          this.debugLine.strokePath();
+          
+          // Highlight target dot
+          this.debugLine.fillStyle(0xff00ff, 0.8);
+          this.debugLine.fillCircle(this.smushCurrentTarget.x, this.smushCurrentTarget.y, 4);
+        }
+      }
     }
   }
   
@@ -736,17 +761,66 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Strategic AI - simple and smooth
     this.smushTargetChangeTimer += this.game.loop.delta;
     
+    // If in wander mode, just wander for a while
+    if (this.smushWanderMode) {
+      this.smushWanderTimer += this.game.loop.delta;
+      
+      // Wander for 2 seconds before resuming normal targeting
+      if (this.smushWanderTimer > 2000) {
+        this.smushWanderMode = false;
+        this.smushWanderTimer = 0;
+        this.smushRecentTargets = []; // Clear history, fresh start
+        console.log(`[Smush] Wander complete - resuming normal targeting`);
+      }
+      return; // Skip normal targeting while wandering
+    }
+    
     const availableDots = this.pies.filter(p => 
-      !p.getData('collected') && p.alpha > 0.5
+      p.active && // Must be active (not destroyed)
+      !p.getData('collected') && 
+      p.alpha > 0.5
     );
     
     // Pick new target periodically or when collected
+    // More frequent retargeting helps navigate around obstacles
     if (!this.smushCurrentTarget || 
         this.smushCurrentTarget.getData('collected') ||
         !this.smushCurrentTarget.active ||
-        this.smushTargetChangeTimer > 3000) { // Slower retargeting - less jittery
+        this.smushTargetChangeTimer > 1500) { // Retarget every 1.5s (more frequent)
       
       this.smushTargetChangeTimer = 0;
+      
+      // Add current target to recent list (avoid immediately re-targeting)
+      if (this.smushCurrentTarget && !this.smushCurrentTarget.getData('collected')) {
+        this.smushRecentTargets.push(this.smushCurrentTarget);
+        
+        // If we have 3 targets and they keep repeating, we're stuck in a loop
+        if (this.smushRecentTargets.length >= 3) {
+          // Check if we're cycling through same dots
+          const positions = this.smushRecentTargets.map(t => `${Math.floor(t.x)},${Math.floor(t.y)}`);
+          const uniquePositions = new Set(positions).size;
+          
+          if (uniquePositions <= 3) {
+            // Cycling through same 3 or fewer dots - ENTER WANDER MODE!
+            console.log(`[Smush] STUCK IN LOOP - entering wander mode for 2 seconds`);
+            this.smushWanderMode = true;
+            this.smushWanderTimer = 0;
+            this.smushRecentTargets = []; // Clear list
+            this.smushCurrentTarget = null; // Clear target
+            return; // Skip normal targeting
+          }
+          
+          // Keep only last 3 targets
+          if (this.smushRecentTargets.length > 3) {
+            this.smushRecentTargets.shift(); // Remove oldest
+          }
+        }
+      }
+      
+      // If target was collected, clear recent targets (can go back to that area)
+      if (this.smushCurrentTarget && this.smushCurrentTarget.getData('collected')) {
+        this.smushRecentTargets = [];
+      }
       
       const pieSlices = availableDots.filter(p => p.getData('isPieSlice'));
       const dots = availableDots.filter(p => !p.getData('isPieSlice'));
@@ -755,12 +829,26 @@ export default class FarmersMarketScene extends Phaser.Scene {
       if (this.graysonPiesEaten < 3 && pieSlices.length > 0) {
         // Block Grayson - get pies!
         this.smushCurrentTarget = this.findClosest(pieSlices);
+        console.log(`[Smush] NEW TARGET: PIE at (${Math.floor(this.smushCurrentTarget?.x || 0)}, ${Math.floor(this.smushCurrentTarget?.y || 0)})`);
       } else if (dots.length > 0) {
         // Grayson has 3 pies - race for dots!
-        this.smushCurrentTarget = this.findClosest(dots);
+        // Clean up recent targets list (remove destroyed/collected dots)
+        this.smushRecentTargets = this.smushRecentTargets.filter(t => 
+          t.active && !t.getData('collected')
+        );
+        
+        // Exclude last 3 targets to avoid ping-ponging
+        const dotsExcludingRecent = dots.filter(d => !this.smushRecentTargets.includes(d));
+        const targetPool = dotsExcludingRecent.length > 0 ? dotsExcludingRecent : dots;
+        
+        // Use smart scoring (prefers same horizontal level)
+        this.smushCurrentTarget = this.findClosest(targetPool);
+        const yDiff = Math.abs(this.smushPhysics.y - (this.smushCurrentTarget?.y || 0));
+        console.log(`[Smush] NEW TARGET: DOT at (${Math.floor(this.smushCurrentTarget?.x || 0)}, ${Math.floor(this.smushCurrentTarget?.y || 0)}) | Y-diff: ${Math.floor(yDiff)} | Available: ${dots.length} | Excluded: ${this.smushRecentTargets.length}`);
       } else if (pieSlices.length > 0) {
         // Fallback to pies
         this.smushCurrentTarget = this.findClosest(pieSlices);
+        console.log(`[Smush] NEW TARGET: FALLBACK PIE at (${Math.floor(this.smushCurrentTarget?.x || 0)}, ${Math.floor(this.smushCurrentTarget?.y || 0)})`);
       }
     }
     
@@ -771,25 +859,64 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private findClosest(targets: Phaser.GameObjects.Graphics[]): Phaser.GameObjects.Graphics | null {
     if (targets.length === 0) return null;
     
-    let closest: Phaser.GameObjects.Graphics | null = null;
-    let closestDist = Infinity;
+    let best: Phaser.GameObjects.Graphics | null = null;
+    let bestScore = Infinity;
     
     targets.forEach(target => {
       const dist = Phaser.Math.Distance.Between(
         this.smushPhysics.x, this.smushPhysics.y,
         target.x, target.y
       );
-      if (dist < closestDist) {
-        closestDist = dist;
-        closest = target;
+      
+      // Prefer dots on same horizontal corridor (similar Y value)
+      const yDiff = Math.abs(this.smushPhysics.y - target.y);
+      
+      // Score = distance + moderate penalty for different Y levels
+      // Prefer horizontal but still allow vertical movement
+      const score = dist + (yDiff * 1.5); // 1.5x penalty for vertical distance
+      
+      if (score < bestScore) {
+        bestScore = score;
+        best = target;
       }
     });
     
-    return closest;
+    return best;
   }
   
   private moveSmushToTarget() {
+    // If in wander mode, move randomly
+    if (this.smushWanderMode) {
+      const body = this.smushPhysics.body as Phaser.Physics.Arcade.Body;
+      const openDirections: {vx: number, vy: number}[] = [];
+      
+      if (!body.blocked.up) openDirections.push({ vx: 0, vy: -this.smushSpeed });
+      if (!body.blocked.down) openDirections.push({ vx: 0, vy: this.smushSpeed });
+      if (!body.blocked.left) openDirections.push({ vx: -this.smushSpeed, vy: 0 });
+      if (!body.blocked.right) openDirections.push({ vx: this.smushSpeed, vy: 0 });
+      
+      if (openDirections.length > 0) {
+        // Pick a random direction every 300ms for variety
+        if (this.smushWanderTimer % 300 < 16) {
+          const randomDir = openDirections[Math.floor(Math.random() * openDirections.length)];
+          this.smushPhysics.setVelocity(randomDir.vx, randomDir.vy);
+          
+          // Flip sprite
+          if (randomDir.vx < 0) this.smush.setScale(-1, 1);
+          else if (randomDir.vx > 0) this.smush.setScale(1, 1);
+        }
+      }
+      return;
+    }
+    
     const target = this.smushCurrentTarget;
+    
+    // Validate target is still valid (active and not collected)
+    if (target && (!target.active || target.getData('collected'))) {
+      this.smushCurrentTarget = null; // Clear invalid target
+      this.smushPhysics.setVelocity(0, 0);
+      return;
+    }
     
     // Move toward target
     if (target) {
@@ -801,11 +928,13 @@ export default class FarmersMarketScene extends Phaser.Scene {
       let vx = Math.cos(angle) * this.smushSpeed;
       let vy = Math.sin(angle) * this.smushSpeed;
       
-      // If blocked (touching wall), reduce velocity in blocked direction
-      if (this.smushPhysics.body?.blocked.up && vy < 0) vy = 0;
-      if (this.smushPhysics.body?.blocked.down && vy > 0) vy = 0;
-      if (this.smushPhysics.body?.blocked.left && vx < 0) vx = 0;
-      if (this.smushPhysics.body?.blocked.right && vx > 0) vx = 0;
+      // If blocked, just zero out blocked directions (simple and smooth)
+      const body = this.smushPhysics.body as Phaser.Physics.Arcade.Body;
+      
+      if (body.blocked.up && vy < 0) vy = 0;
+      if (body.blocked.down && vy > 0) vy = 0;
+      if (body.blocked.left && vx < 0) vx = 0;
+      if (body.blocked.right && vx > 0) vx = 0;
       
       this.smushPhysics.setVelocity(vx, vy);
       
@@ -835,13 +964,11 @@ export default class FarmersMarketScene extends Phaser.Scene {
         // Check if it's a pie slice or just a dot
         if (isPieSlice) {
           this.graysonPiesEaten++;
-          console.log(`Grayson ate PIE (total pies: ${this.graysonPiesEaten})`);
           
           // Spawn new pie slice (if haven't reached max)
           this.spawnNewPieSlice();
         } else {
           this.graysonDotsEaten++;
-          console.log(`Grayson ate DOT (total dots: ${this.graysonDotsEaten})`);
         }
         
         // Update scoreboard
