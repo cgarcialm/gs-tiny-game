@@ -71,7 +71,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private baseSpeed = 100;
   private speed = 100; // Can be boosted by fruits
-  private smushSpeed = 110; // Faster than Grayson!
+  private smushSpeed = 140; // Much faster than Grayson to reach targets quickly!
   
   constructor() {
     super("FarmersMarket");
@@ -586,7 +586,11 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Only count reachable dots (not pies, not under walls)
     const reachableDots = this.pies.filter(p => !p.getData('isPieSlice')).length;
     this.totalDots = reachableDots;
-    this.dotsNeeded = Math.ceil(this.totalDots * 0.51); // Grayson needs 51%
+    this.dotsNeeded = Math.floor(this.totalDots * 0.5); // Grayson needs 50%
+    
+    console.log(`[Farmers Market] TOTAL DOTS: ${this.totalDots}`);
+    console.log(`[Farmers Market] Grayson needs: ${this.dotsNeeded} dots (50%)`);
+    console.log(`[Farmers Market] Smush wins if she gets: ${Math.floor(this.totalDots * 0.5) + 1} dots (50% + 1)`)
   }
   update() {
     // Handle help menu
@@ -1029,14 +1033,14 @@ export default class FarmersMarketScene extends Phaser.Scene {
         // Update scoreboard FIRST (before checking win)
         this.updateScoreboard();
         
-        // Check win conditions (Smush wins if 3 pies OR 51% of dots)
-        const smushDotsNeeded = Math.ceil(this.totalDots * 0.51); // Smush needs 51%
+        // Check win conditions (Smush wins if 3 pies OR 50%+1 of dots)
+        const smushDotsNeeded = Math.floor(this.totalDots * 0.5) + 1; // Smush needs 50% + 1
         
         if (this.smushPiesEaten >= 3) {
           // Smush ate 3 pies - Grayson can't win anymore!
           this.smushWins();
         } else if (this.smushDotsEaten >= smushDotsNeeded) {
-          // Smush ate 51% of dots
+          // Smush ate 50%+1 of dots
           this.smushWins();
         }
         return;
@@ -1139,8 +1143,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     if (this.smushPiesEaten >= 3) {
       reason = `(Got 3 pies!)`;
     } else {
-      const smushDotsNeeded = Math.ceil(this.totalDots * 0.51);
-      reason = `(Got ${this.smushDotsEaten}/${smushDotsNeeded} dots - 51%!)`;
+      const smushDotsNeeded = Math.floor(this.totalDots * 0.5) + 1;
+      reason = `(Got ${this.smushDotsEaten}/${smushDotsNeeded} dots - over 50%!)`;
     }
     
     this.dialogueManager.show(`Smush: *Meow meow!* (I win!) ${reason}\nGrayson: Okay okay, let's try again...\n\nPress ENTER to retry`);
@@ -1391,9 +1395,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Instructions (more compact)
     const instructions = [
-      `• Eat 3 PIE SLICES + ${this.dotsNeeded} dots (51%)`,
+      `• Eat 3 PIE SLICES + ${this.dotsNeeded} dots (50%)`,
       "",
-      "Smush wins with 3 pies OR 51% dots",
+      "Smush wins with 3 pies OR 50%+1 dots",
       "Grab FRUITS for speed boost",
       "Avoid SHOPPERS in aisles",
       "",
