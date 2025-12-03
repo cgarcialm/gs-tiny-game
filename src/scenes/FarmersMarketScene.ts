@@ -522,7 +522,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
       dot.fillStyle(dotColor, 1);
       dot.fillCircle(0, 0, 2);
       dot.setPosition(x, y);
-      dot.setDepth(20); // Above walls so we can see if any are hidden
+      dot.setDepth(3); // Below sprites but above floor
       dot.setData('isPie', true);
       dot.setData('collected', false);
       this.pies.push(dot);
@@ -534,8 +534,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Helper to check if position is under or too close to a wall block
     const isUnderWall = (x: number, y: number): boolean => {
-      // Add small buffer zone (6px) to prevent collecting through walls
-      const buffer = 6;
+      // Add small buffer zone (3px) to prevent collecting through walls
+      const buffer = 3;
       
       // Check all wall rectangles with buffer zone
       if ((x >= 22 - buffer && x <= 78 + buffer && y >= 42 - buffer && y <= 58 + buffer) ||  // Pink 1 left
@@ -798,8 +798,14 @@ export default class FarmersMarketScene extends Phaser.Scene {
         target.x, target.y
       );
       
-      const vx = Math.cos(angle) * this.smushSpeed;
-      const vy = Math.sin(angle) * this.smushSpeed;
+      let vx = Math.cos(angle) * this.smushSpeed;
+      let vy = Math.sin(angle) * this.smushSpeed;
+      
+      // If blocked (touching wall), reduce velocity in blocked direction
+      if (this.smushPhysics.body?.blocked.up && vy < 0) vy = 0;
+      if (this.smushPhysics.body?.blocked.down && vy > 0) vy = 0;
+      if (this.smushPhysics.body?.blocked.left && vx < 0) vx = 0;
+      if (this.smushPhysics.body?.blocked.right && vx > 0) vx = 0;
       
       this.smushPhysics.setVelocity(vx, vy);
       
