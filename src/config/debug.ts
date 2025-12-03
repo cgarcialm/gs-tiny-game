@@ -39,3 +39,10 @@ export const DEBUG_START_LEVEL = 3;
  * false = Hide debug visualizations (clean view)
  */
 export const DEBUG_SHOW_GRID = false;
+
+/**
+ * Show Smush AI debugging in Farmers Market
+ * true = Show magenta line to target, console logs
+ * false = Clean gameplay (no visual debugging)
+ */
+export const DEBUG_SHOW_SMUSH_AI = false;

@@ -13,6 +13,7 @@ import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 import { HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import { HELP_HINT_TEXT_STYLE } from "../config/textStyles";
+import { DEBUG_SHOW_SMUSH_AI } from "../config/debug";
 
 /**
  * Farmers Market Scene - Pac-Man Style
@@ -683,8 +684,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
       this.smush.x = this.smushPhysics.x;
       this.smush.y = this.smushPhysics.y;
       
-      // DEBUG: Draw line from Smush to target (only after Grayson gets 3 pies)
-      if (this.graysonPiesEaten >= 3) {
+      // DEBUG: Draw line from Smush to target (only in debug mode)
+      if (DEBUG_SHOW_SMUSH_AI) {
         if (!this.debugLine) {
           this.debugLine = this.add.graphics();
           this.debugLine.setDepth(25);
@@ -703,6 +704,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
           this.debugLine.fillStyle(0xff00ff, 0.8);
           this.debugLine.fillCircle(this.smushCurrentTarget.x, this.smushCurrentTarget.y, 4);
         }
+      } else if (this.debugLine) {
+        // Hide debug line if debug mode disabled
+        this.debugLine.clear();
       }
     }
   }
@@ -868,7 +872,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
         const targetPool = piesExcludingRecent.length > 0 ? piesExcludingRecent : pieSlices;
         
         this.smushCurrentTarget = this.findClosest(targetPool);
-        console.log(`[Smush] NEW TARGET: FALLBACK PIE at (${Math.floor(this.smushCurrentTarget?.x || 0)}, ${Math.floor(this.smushCurrentTarget?.y || 0)}) | Excluded: ${this.smushRecentTargets.length}`);
+        if (DEBUG_SHOW_SMUSH_AI) {
+          console.log(`[Smush] NEW TARGET: FALLBACK PIE at (${Math.floor(this.smushCurrentTarget?.x || 0)}, ${Math.floor(this.smushCurrentTarget?.y || 0)}) | Excluded: ${this.smushRecentTargets.length}`);
+        }
       }
     }
     
