@@ -790,33 +790,6 @@ export default class FarmersMarketScene extends Phaser.Scene {
       
       this.smushTargetChangeTimer = 0;
       
-      // Add current target to recent list (avoid immediately re-targeting)
-      if (this.smushCurrentTarget && !this.smushCurrentTarget.getData('collected')) {
-        this.smushRecentTargets.push(this.smushCurrentTarget);
-        
-        // If we have 3 targets and they keep repeating, we're stuck in a loop
-        if (this.smushRecentTargets.length >= 3) {
-          // Check if we're cycling through same dots
-          const positions = this.smushRecentTargets.map(t => `${Math.floor(t.x)},${Math.floor(t.y)}`);
-          const uniquePositions = new Set(positions).size;
-          
-          if (uniquePositions <= 3) {
-            // Cycling through same 3 or fewer dots - ENTER WANDER MODE!
-            console.log(`[Smush] STUCK IN LOOP - entering wander mode for 2 seconds`);
-            this.smushWanderMode = true;
-            this.smushWanderTimer = 0;
-            this.smushRecentTargets = []; // Clear list
-            this.smushCurrentTarget = null; // Clear target
-            return; // Skip normal targeting
-          }
-          
-          // Keep only last 3 targets
-          if (this.smushRecentTargets.length > 3) {
-            this.smushRecentTargets.shift(); // Remove oldest
-          }
-        }
-      }
-      
       // If target was collected, clear recent targets (can go back to that area)
       if (this.smushCurrentTarget && this.smushCurrentTarget.getData('collected')) {
         this.smushRecentTargets = [];
@@ -825,18 +798,42 @@ export default class FarmersMarketScene extends Phaser.Scene {
       const pieSlices = availableDots.filter(p => p.getData('isPieSlice'));
       const dots = availableDots.filter(p => !p.getData('isPieSlice'));
       
+      // Add current target to recent list first (before picking new one)
+      if (this.smushCurrentTarget && !this.smushCurrentTarget.getData('collected')) {
+        this.smushRecentTargets.push(this.smushCurrentTarget);
+        
+        // Check for loop (same logic for both pies and dots)
+        if (this.smushRecentTargets.length >= 3) {
+          const positions = this.smushRecentTargets.map(t => `${Math.floor(t.x)},${Math.floor(t.y)}`);
+          const uniquePositions = new Set(positions).size;
+          
+          if (uniquePositions <= 3) {
+            // Stuck in loop - enter wander mode
+            console.log(`[Smush] STUCK IN LOOP - entering wander mode for 2 seconds`);
+            this.smushWanderMode = true;
+            this.smushWanderTimer = 0;
+            this.smushRecentTargets = [];
+            this.smushCurrentTarget = null;
+            return;
+          }
+          
+          // Keep only last 3 targets
+          if (this.smushRecentTargets.length > 3) {
+            this.smushRecentTargets.shift();
+          }
+        }
+      }
+      
       // Strategy: Only go for pies until Grayson gets 3, then switch to dots
       if (this.graysonPiesEaten < 3 && pieSlices.length > 0) {
         // Block Grayson - get pies!
-        this.smushCurrentTarget = this.findClosest(pieSlices);
-        console.log(`[Smush] NEW TARGET: PIE at (${Math.floor(this.smushCurrentTarget?.x || 0)}, ${Math.floor(this.smushCurrentTarget?.y || 0)})`);
+        const piesExcludingRecent = pieSlices.filter(p => !this.smushRecentTargets.includes(p));
+        const targetPool = piesExcludingRecent.length > 0 ? piesExcludingRecent : pieSlices;
+        
+        this.smushCurrentTarget = this.findClosest(targetPool);
+        console.log(`[Smush] NEW TARGET: PIE at (${Math.floor(this.smushCurrentTarget?.x || 0)}, ${Math.floor(this.smushCurrentTarget?.y || 0)}) | Excluded: ${this.smushRecentTargets.length}`);
       } else if (dots.length > 0) {
         // Grayson has 3 pies - race for dots!
-        // Clean up recent targets list (remove destroyed/collected dots)
-        this.smushRecentTargets = this.smushRecentTargets.filter(t => 
-          t.active && !t.getData('collected')
-        );
-        
         // Exclude last 3 targets to avoid ping-ponging
         const dotsExcludingRecent = dots.filter(d => !this.smushRecentTargets.includes(d));
         const targetPool = dotsExcludingRecent.length > 0 ? dotsExcludingRecent : dots;
@@ -847,8 +844,11 @@ export default class FarmersMarketScene extends Phaser.Scene {
         console.log(`[Smush] NEW TARGET: DOT at (${Math.floor(this.smushCurrentTarget?.x || 0)}, ${Math.floor(this.smushCurrentTarget?.y || 0)}) | Y-diff: ${Math.floor(yDiff)} | Available: ${dots.length} | Excluded: ${this.smushRecentTargets.length}`);
       } else if (pieSlices.length > 0) {
         // Fallback to pies
-        this.smushCurrentTarget = this.findClosest(pieSlices);
-        console.log(`[Smush] NEW TARGET: FALLBACK PIE at (${Math.floor(this.smushCurrentTarget?.x || 0)}, ${Math.floor(this.smushCurrentTarget?.y || 0)})`);
+        const piesExcludingRecent = pieSlices.filter(p => !this.smushRecentTargets.includes(p));
+        const targetPool = piesExcludingRecent.length > 0 ? piesExcludingRecent : pieSlices;
+        
+        this.smushCurrentTarget = this.findClosest(targetPool);
+        console.log(`[Smush] NEW TARGET: FALLBACK PIE at (${Math.floor(this.smushCurrentTarget?.x || 0)}, ${Math.floor(this.smushCurrentTarget?.y || 0)}) | Excluded: ${this.smushRecentTargets.length}`);
       }
     }
     
@@ -885,19 +885,46 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
   
   private moveSmushToTarget() {
-    // If in wander mode, move randomly
+    // If in wander mode, navigate toward tunnels/edges to escape central area
     if (this.smushWanderMode) {
       const body = this.smushPhysics.body as Phaser.Physics.Arcade.Body;
-      const openDirections: {vx: number, vy: number}[] = [];
       
-      if (!body.blocked.up) openDirections.push({ vx: 0, vy: -this.smushSpeed });
-      if (!body.blocked.down) openDirections.push({ vx: 0, vy: this.smushSpeed });
-      if (!body.blocked.left) openDirections.push({ vx: -this.smushSpeed, vy: 0 });
-      if (!body.blocked.right) openDirections.push({ vx: this.smushSpeed, vy: 0 });
+      // Check if Smush is in central area (trapped by mint block and yellow walls)
+      const inCenterArea = this.smushPhysics.x > 95 && this.smushPhysics.x < 225;
       
-      if (openDirections.length > 0) {
-        // Pick a random direction every 300ms for variety
-        if (this.smushWanderTimer % 300 < 16) {
+      if (inCenterArea) {
+        // Trapped in center - navigate toward tunnels (top or bottom)
+        if (this.smushPhysics.y < 90) {
+          // Upper half - go up toward top tunnel (y~28)
+          if (!body.blocked.up) {
+            this.smushPhysics.setVelocity(0, -this.smushSpeed);
+            console.log(`[Smush] WANDER: Navigating to top tunnel`);
+          } else {
+            // Can't go up, try horizontal
+            if (!body.blocked.left) this.smushPhysics.setVelocity(-this.smushSpeed, 0);
+            else if (!body.blocked.right) this.smushPhysics.setVelocity(this.smushSpeed, 0);
+          }
+        } else {
+          // Lower half - go down toward bottom tunnel (y~172)
+          if (!body.blocked.down) {
+            this.smushPhysics.setVelocity(0, this.smushSpeed);
+            console.log(`[Smush] WANDER: Navigating to bottom tunnel`);
+          } else {
+            // Can't go down, try horizontal
+            if (!body.blocked.left) this.smushPhysics.setVelocity(-this.smushSpeed, 0);
+            else if (!body.blocked.right) this.smushPhysics.setVelocity(this.smushSpeed, 0);
+          }
+        }
+      } else {
+        // Outside center - normal random wander
+        const openDirections: {vx: number, vy: number}[] = [];
+        
+        if (!body.blocked.up) openDirections.push({ vx: 0, vy: -this.smushSpeed });
+        if (!body.blocked.down) openDirections.push({ vx: 0, vy: this.smushSpeed });
+        if (!body.blocked.left) openDirections.push({ vx: -this.smushSpeed, vy: 0 });
+        if (!body.blocked.right) openDirections.push({ vx: this.smushSpeed, vy: 0 });
+        
+        if (openDirections.length > 0 && this.smushWanderTimer % 300 < 16) {
           const randomDir = openDirections[Math.floor(Math.random() * openDirections.length)];
           this.smushPhysics.setVelocity(randomDir.vx, randomDir.vy);
           
@@ -1395,6 +1422,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.spawnShopper();
   }
 }
+
 
 
 
