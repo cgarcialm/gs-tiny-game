@@ -35,6 +35,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private smushRecentTargets: Phaser.GameObjects.Graphics[] = []; // Remember last 3 targets to avoid
   private smushWanderMode = false; // True when wandering randomly
   private smushWanderTimer = 0; // How long to wander
+  private smushBlockedFrames = 0; // Count consecutive frames being blocked
   private debugLine?: Phaser.GameObjects.Graphics; // Visual debug line
   
   private entranceComplete = false; // Don't sync during entrance animation
@@ -108,6 +109,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.smushRecentTargets = [];
     this.smushWanderMode = false;
     this.smushWanderTimer = 0;
+    this.smushBlockedFrames = 0;
     this.pies = [];
     this.fruits = [];
     this.validDotPositions = [];
@@ -765,18 +767,45 @@ export default class FarmersMarketScene extends Phaser.Scene {
     // Strategic AI - simple and smooth
     this.smushTargetChangeTimer += this.game.loop.delta;
     
+    // Check for stuck loop FIRST (before waiting for timer)
+    const targetingPies = this.graysonPiesEaten < 3;
+    const minTargetsForLoop = targetingPies ? 2 : 3;
+    
+    if (this.smushRecentTargets.length >= minTargetsForLoop && !this.smushWanderMode) {
+      const positions = this.smushRecentTargets.map(t => `${Math.floor(t.x)},${Math.floor(t.y)}`);
+      const uniquePositions = new Set(positions).size;
+      
+      if (uniquePositions <= minTargetsForLoop) {
+        // Stuck in loop - enter wander mode immediately!
+        console.log(`[Smush] LOOP DETECTED (${targetingPies ? 'PIES' : 'DOTS'}) - entering wander mode NOW`);
+        this.smushWanderMode = true;
+        this.smushWanderTimer = 0;
+        this.smushRecentTargets = [];
+        this.smushCurrentTarget = null;
+        this.smushBlockedFrames = 0;
+      }
+    }
+    
     // If in wander mode, just wander for a while
     if (this.smushWanderMode) {
       this.smushWanderTimer += this.game.loop.delta;
       
-      // Wander for 2 seconds before resuming normal targeting
-      if (this.smushWanderTimer > 2000) {
+      // Check if still trapped between yellow walls
+      const stillTrapped = this.smushPhysics.x > 95 && this.smushPhysics.x < 225 && 
+                           this.smushPhysics.y > 35 && this.smushPhysics.y < 165;
+      
+      // Only exit wander mode if: time is up AND escaped trapped area
+      if (this.smushWanderTimer > 3000 && !stillTrapped) {
         this.smushWanderMode = false;
         this.smushWanderTimer = 0;
         this.smushRecentTargets = []; // Clear history, fresh start
-        console.log(`[Smush] Wander complete - resuming normal targeting`);
+        console.log(`[Smush] Wander complete - escaped to free area`);
+      } else if (this.smushWanderTimer > 3000 && stillTrapped) {
+        // Still stuck after 3s - extend wander time
+        this.smushWanderTimer = 2500; // Keep wandering, almost done
+        console.log(`[Smush] Still trapped - extending wander time`);
       }
-      return; // Skip normal targeting while wandering
+      // Don't return - let moveSmushToTarget handle the wandering movement
     }
     
     const availableDots = this.pies.filter(p => 
@@ -785,14 +814,15 @@ export default class FarmersMarketScene extends Phaser.Scene {
       p.alpha > 0.5
     );
     
-    // Pick new target periodically or when collected
-    // More frequent retargeting helps navigate around obstacles
+    // Pick new target periodically, when collected, or when blocked too long
     if (!this.smushCurrentTarget || 
         this.smushCurrentTarget.getData('collected') ||
         !this.smushCurrentTarget.active ||
-        this.smushTargetChangeTimer > 1500) { // Retarget every 1.5s (more frequent)
+        this.smushTargetChangeTimer > 3000 || // Retarget every 3s normally
+        this.smushBlockedFrames > 5) { // Force retarget if blocked for 10 frames (~0.16s) - fast!
       
       this.smushTargetChangeTimer = 0;
+      this.smushBlockedFrames = 0; // Reset blocked counter when picking new target
       
       // If target was collected, clear recent targets (can go back to that area)
       if (this.smushCurrentTarget && this.smushCurrentTarget.getData('collected')) {
@@ -806,25 +836,11 @@ export default class FarmersMarketScene extends Phaser.Scene {
       if (this.smushCurrentTarget && !this.smushCurrentTarget.getData('collected')) {
         this.smushRecentTargets.push(this.smushCurrentTarget);
         
-        // Check for loop (same logic for both pies and dots)
-        if (this.smushRecentTargets.length >= 3) {
-          const positions = this.smushRecentTargets.map(t => `${Math.floor(t.x)},${Math.floor(t.y)}`);
-          const uniquePositions = new Set(positions).size;
-          
-          if (uniquePositions <= 3) {
-            // Stuck in loop - enter wander mode
-            console.log(`[Smush] STUCK IN LOOP - entering wander mode for 2 seconds`);
-            this.smushWanderMode = true;
-            this.smushWanderTimer = 0;
-            this.smushRecentTargets = [];
-            this.smushCurrentTarget = null;
-            return;
-          }
-          
-          // Keep only last 3 targets
-          if (this.smushRecentTargets.length > 3) {
-            this.smushRecentTargets.shift();
-          }
+        // Keep only last N targets (loop detection happens at top of updateSmushAI)
+        const targetingPies = this.graysonPiesEaten < 3;
+        const minTargetsForLoop = targetingPies ? 2 : 3;
+        if (this.smushRecentTargets.length > minTargetsForLoop) {
+          this.smushRecentTargets.shift();
         }
       }
       
@@ -893,30 +909,67 @@ export default class FarmersMarketScene extends Phaser.Scene {
     if (this.smushWanderMode) {
       const body = this.smushPhysics.body as Phaser.Physics.Arcade.Body;
       
-      // Check if Smush is in central area (trapped by mint block and yellow walls)
-      const inCenterArea = this.smushPhysics.x > 95 && this.smushPhysics.x < 225;
+      // Check if Smush is trapped between yellow walls (needs to use tunnels to escape)
+      // Yellow walls define a vertical cage from x~95 to x~225
+      // She should navigate to tunnels if she's in this area (but not already AT a tunnel)
+      const betweenYellowWalls = this.smushPhysics.x > 95 && this.smushPhysics.x < 225;
+      const notAtTunnel = this.smushPhysics.y > 35 && this.smushPhysics.y < 175;
+      const needsTunnelEscape = betweenYellowWalls && notAtTunnel;
       
-      if (inCenterArea) {
-        // Trapped in center - navigate toward tunnels (top or bottom)
-        if (this.smushPhysics.y < 90) {
-          // Upper half - go up toward top tunnel (y~28)
-          if (!body.blocked.up) {
-            this.smushPhysics.setVelocity(0, -this.smushSpeed);
-            console.log(`[Smush] WANDER: Navigating to top tunnel`);
+      console.log(`[Smush] WANDER at (${Math.floor(this.smushPhysics.x)}, ${Math.floor(this.smushPhysics.y)}) | NeedsTunnel: ${needsTunnelEscape}`);
+      
+      // Check if reached a tunnel entrance (CENTER of screen at top/bottom)
+      const atTopTunnel = this.smushPhysics.y < 35 && 
+                          this.smushPhysics.x > 150 && this.smushPhysics.x < 170; // Center X
+      const atBottomTunnel = this.smushPhysics.y > 165 && 
+                             this.smushPhysics.x > 150 && this.smushPhysics.x < 170; // Center X
+      
+      if (atTopTunnel || atBottomTunnel) {
+        // Reached tunnel entrance! Exit wander mode immediately
+        console.log(`[Smush] REACHED TUNNEL ENTRANCE - exiting wander mode`);
+        this.smushWanderMode = false;
+        this.smushWanderTimer = 0;
+        this.smushRecentTargets = [];
+        return;
+      }
+      
+      if (needsTunnelEscape) {
+        // Trapped between yellow walls - need to escape via tunnels
+        
+        // Trapped between yellow walls - navigate toward tunnel entrance
+        // Tunnels are at center X (150-170)
+        const needsHorizontalAlign = this.smushPhysics.x < 150 || this.smushPhysics.x > 170;
+        
+        if (needsHorizontalAlign) {
+          // First priority: Get to center X (tunnel entrance)
+          if (this.smushPhysics.x < 150 && !body.blocked.right) {
+            this.smushPhysics.setVelocity(this.smushSpeed, 0); // Move right to tunnel
+            console.log(`[Smush] WANDER: Moving right to align with tunnel`);
+          } else if (this.smushPhysics.x > 170 && !body.blocked.left) {
+            this.smushPhysics.setVelocity(-this.smushSpeed, 0); // Move left to tunnel
+            console.log(`[Smush] WANDER: Moving left to align with tunnel`);
           } else {
-            // Can't go up, try horizontal
-            if (!body.blocked.left) this.smushPhysics.setVelocity(-this.smushSpeed, 0);
-            else if (!body.blocked.right) this.smushPhysics.setVelocity(this.smushSpeed, 0);
+            // Blocked horizontally, try vertical
+            if (this.smushPhysics.y < 90 && !body.blocked.up) {
+              this.smushPhysics.setVelocity(0, -this.smushSpeed);
+            } else if (this.smushPhysics.y >= 90 && !body.blocked.down) {
+              this.smushPhysics.setVelocity(0, this.smushSpeed);
+            }
           }
         } else {
-          // Lower half - go down toward bottom tunnel (y~172)
-          if (!body.blocked.down) {
-            this.smushPhysics.setVelocity(0, this.smushSpeed);
-            console.log(`[Smush] WANDER: Navigating to bottom tunnel`);
+          // Aligned horizontally - now go vertical to tunnel
+          if (this.smushPhysics.y < 90) {
+            // Upper half - go up to top tunnel
+            if (!body.blocked.up) {
+              this.smushPhysics.setVelocity(0, -this.smushSpeed);
+              console.log(`[Smush] WANDER: Navigating UP to top tunnel`);
+            }
           } else {
-            // Can't go down, try horizontal
-            if (!body.blocked.left) this.smushPhysics.setVelocity(-this.smushSpeed, 0);
-            else if (!body.blocked.right) this.smushPhysics.setVelocity(this.smushSpeed, 0);
+            // Lower half - go down to bottom tunnel
+            if (!body.blocked.down) {
+              this.smushPhysics.setVelocity(0, this.smushSpeed);
+              console.log(`[Smush] WANDER: Navigating DOWN to bottom tunnel`);
+            }
           }
         }
       } else {
@@ -928,7 +981,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
         if (!body.blocked.left) openDirections.push({ vx: -this.smushSpeed, vy: 0 });
         if (!body.blocked.right) openDirections.push({ vx: this.smushSpeed, vy: 0 });
         
-        if (openDirections.length > 0 && this.smushWanderTimer % 300 < 16) {
+        if (openDirections.length > 0 && this.smushWanderTimer % 500 < 16) {
           const randomDir = openDirections[Math.floor(Math.random() * openDirections.length)];
           this.smushPhysics.setVelocity(randomDir.vx, randomDir.vy);
           
@@ -962,10 +1015,20 @@ export default class FarmersMarketScene extends Phaser.Scene {
       // If blocked, just zero out blocked directions (simple and smooth)
       const body = this.smushPhysics.body as Phaser.Physics.Arcade.Body;
       
-      if (body.blocked.up && vy < 0) vy = 0;
-      if (body.blocked.down && vy > 0) vy = 0;
-      if (body.blocked.left && vx < 0) vx = 0;
-      if (body.blocked.right && vx > 0) vx = 0;
+      let wasBlocked = false;
+      if (body.blocked.up && vy < 0) { vy = 0; wasBlocked = true; }
+      if (body.blocked.down && vy > 0) { vy = 0; wasBlocked = true; }
+      if (body.blocked.left && vx < 0) { vx = 0; wasBlocked = true; }
+      if (body.blocked.right && vx > 0) { vx = 0; wasBlocked = true; }
+      
+      // Track how long we've been blocked
+      if (wasBlocked && (vx === 0 && vy === 0)) {
+        // Completely blocked (can't move in any direction toward target)
+        this.smushBlockedFrames++;
+      } else {
+        // Either not blocked or can still move in some direction
+        this.smushBlockedFrames = 0;
+      }
       
       this.smushPhysics.setVelocity(vx, vy);
       
