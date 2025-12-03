@@ -40,6 +40,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private cardPiece: Phaser.GameObjects.Graphics | null = null;
   private hasWonConditions = false; // Met win conditions, waiting for card
+  private smushWon = false; // Smush won - freeze everything until restart
   
   private pies: Phaser.GameObjects.Graphics[] = []; // Collectible dots and pies
   private graysonDotsEaten = 0;
@@ -91,6 +92,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.tutorialShown = false;
     this.cardPiece = null;
     this.hasWonConditions = false;
+    this.smushWon = false;
     this.graysonDotsEaten = 0;
     this.smushDotsEaten = 0;
     this.graysonPiesEaten = 0;
@@ -520,7 +522,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
       dot.fillStyle(dotColor, 1);
       dot.fillCircle(0, 0, 2);
       dot.setPosition(x, y);
-      dot.setDepth(3);
+      dot.setDepth(20); // Above walls so we can see if any are hidden
       dot.setData('isPie', true);
       dot.setData('collected', false);
       this.pies.push(dot);
@@ -578,6 +580,10 @@ export default class FarmersMarketScene extends Phaser.Scene {
     const reachableDots = this.pies.filter(p => !p.getData('isPieSlice')).length;
     this.totalDots = reachableDots;
     this.dotsNeeded = Math.ceil(this.totalDots * 0.51); // Grayson needs 51%
+    
+    console.log(`[Farmers Market] Total dots spawned: ${this.pies.length}`);
+    console.log(`[Farmers Market] Non-pie dots: ${reachableDots}`);
+    console.log(`[Farmers Market] Grayson needs: ${this.dotsNeeded} dots (51% of ${this.totalDots})`)
   }
   update() {
     // Handle help menu
@@ -598,16 +604,28 @@ export default class FarmersMarketScene extends Phaser.Scene {
       return;
     }
     
-    // Handle dialogue - show tutorial after first close
+    // Handle dialogue - show tutorial after first close (unless Smush won)
     if (this.dialogueManager.isVisible()) {
       if (shouldCloseDialogue(this.controls)) {
         this.dialogueManager.hide();
+        
+        // If Smush won, restart immediately instead of just closing dialogue
+        if (this.smushWon) {
+          this.scene.restart();
+          return;
+        }
+        
         if (!this.tutorialShown) {
           // First dialogue closed - show tutorial
           this.showTutorialOverlay();
         }
       }
       return;
+    }
+    
+    // Freeze everything if Smush won (dialogue already handled above)
+    if (this.smushWon) {
+      return; // Freeze all movement
     }
     
     // Player movement (only after entrance)
@@ -799,7 +817,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private checkPieCollection() {
     // Check both Grayson and Smush for pie collection
     this.pies.forEach((pie) => {
-      if (pie.getData('collected')) return;
+      if (!pie.active || pie.getData('collected')) return; // Skip if already destroyed or collected
       
       // Check Grayson using proximity utility
       if (checkProximity(this.playerPhysics, pie, 12)) {
@@ -811,11 +829,13 @@ export default class FarmersMarketScene extends Phaser.Scene {
         // Check if it's a pie slice or just a dot
         if (isPieSlice) {
           this.graysonPiesEaten++;
+          console.log(`Grayson ate PIE (total pies: ${this.graysonPiesEaten})`);
           
           // Spawn new pie slice (if haven't reached max)
           this.spawnNewPieSlice();
         } else {
           this.graysonDotsEaten++;
+          console.log(`Grayson ate DOT (total dots: ${this.graysonDotsEaten})`);
         }
         
         // Update scoreboard
@@ -952,6 +972,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
   
   private smushWins() {
+    this.smushWon = true; // Freeze everything
+    
     // Determine why she won
     let reason = "";
     if (this.smushPiesEaten >= 3) {
@@ -961,13 +983,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
       reason = `(Got ${this.smushDotsEaten}/${smushDotsNeeded} dots - 51%!)`;
     }
     
-    this.dialogueManager.show(`Smush: *Meow meow!* (I win!) ${reason}\nGrayson: Okay okay, let's try again...`);
-    
-    this.time.delayedCall(3000, () => {
-      // Proper restart - stops current scene and starts fresh
-      this.scene.stop();
-      this.scene.start(SCENES.FARMERS_MARKET);
-    });
+    this.dialogueManager.show(`Smush: *Meow meow!* (I win!) ${reason}\nGrayson: Okay okay, let's try again...\n\nPress ENTER to retry`);
   }
   
   private spawnFruit() {
