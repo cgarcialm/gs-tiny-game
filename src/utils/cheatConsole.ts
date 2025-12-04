@@ -46,8 +46,9 @@ export class CheatConsole {
   private setupKeyboardListener(): void {
     // Listen for keydown on the document
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Ctrl+Shift+C to toggle console
-      if (event.ctrlKey && event.shiftKey && event.key === 'C') {
+      // Backtick (`) to toggle console - classic game console key
+      // Also keep Ctrl+Shift+C as backup (may not work in all browsers)
+      if (event.key === '`' || (event.ctrlKey && event.shiftKey && event.key === 'C')) {
         event.preventDefault();
         this.toggle();
       }
@@ -106,7 +107,7 @@ export class CheatConsole {
     document.body.appendChild(this.inputElement);
     this.inputElement.focus();
     
-    // Handle keyboard events - stop propagation to Phaser but handle Enter
+    // Handle keyboard events - stop propagation to Phaser but handle Enter/Escape
     this.inputElement.addEventListener('keydown', (e) => {
       // Always stop propagation to prevent game from receiving keys
       e.stopPropagation();
@@ -115,6 +116,11 @@ export class CheatConsole {
       // Handle Enter key to submit command
       if (e.key === 'Enter') {
         this.executeCommand(this.inputElement!.value);
+        this.close();
+      }
+      
+      // Handle Escape to close without executing
+      if (e.key === 'Escape') {
         this.close();
       }
     });

@@ -54,6 +54,12 @@ export default class Void3DScene extends Phaser.Scene {
       .setDepth(100);
     
     this.setupThreeJS();
+    
+    // If WebGL failed, setupThreeJS will handle the fallback
+    if (this.webglFailed) {
+      return;
+    }
+    
     this.createGround();
     this.createWall(); // Add physical wall
     this.createGridLines(); // Add floor grid lines
@@ -305,6 +311,8 @@ export default class Void3DScene extends Phaser.Scene {
     });
   }
 
+  private webglFailed = false;
+
   private setupThreeJS() {
     this.threeScene = new THREE.Scene();
     this.threeScene.background = new THREE.Color(0x003d4d); // Void background
@@ -313,25 +321,41 @@ export default class Void3DScene extends Phaser.Scene {
     this.camera.position.set(0, 1.8, 6); // Lower camera (at eye level)
     this.camera.lookAt(0, 1.8, 0); // Look straight ahead (not down)
     
-    this.threeRenderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
-    this.threeRenderer.setSize(320, 180);
-    this.threeRenderer.shadowMap.enabled = true;
-    
-    const gameCanvas = this.game.canvas;
-    const rect = gameCanvas.getBoundingClientRect();
-    
-    this.threeRenderer.domElement.style.position = 'absolute';
-    this.threeRenderer.domElement.style.top = rect.top + 'px';
-    this.threeRenderer.domElement.style.left = rect.left + 'px';
-    this.threeRenderer.domElement.style.width = rect.width + 'px';
-    this.threeRenderer.domElement.style.height = rect.height + 'px';
-    this.threeRenderer.domElement.style.pointerEvents = 'none';
-    this.threeRenderer.domElement.style.zIndex = '1';
-    
-    document.body.appendChild(this.threeRenderer.domElement);
-    
-    // Keep Three.js renderer invisible during particle transformation
-    this.threeRenderer.domElement.style.opacity = '0';
+    try {
+      // Check if WebGL is available before creating renderer
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (!gl) {
+        throw new Error('WebGL not supported');
+      }
+      
+      this.threeRenderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+      this.threeRenderer.setSize(320, 180);
+      this.threeRenderer.shadowMap.enabled = true;
+      
+      const gameCanvas = this.game.canvas;
+      const rect = gameCanvas.getBoundingClientRect();
+      
+      this.threeRenderer.domElement.style.position = 'absolute';
+      this.threeRenderer.domElement.style.top = rect.top + 'px';
+      this.threeRenderer.domElement.style.left = rect.left + 'px';
+      this.threeRenderer.domElement.style.width = rect.width + 'px';
+      this.threeRenderer.domElement.style.height = rect.height + 'px';
+      this.threeRenderer.domElement.style.pointerEvents = 'none';
+      this.threeRenderer.domElement.style.zIndex = '1';
+      
+      document.body.appendChild(this.threeRenderer.domElement);
+      
+      // Keep Three.js renderer invisible during particle transformation
+      this.threeRenderer.domElement.style.opacity = '0';
+    } catch (error) {
+      console.warn('WebGL not available, skipping 3D scene:', error);
+      this.webglFailed = true;
+      // Skip directly to camping scene after a brief delay
+      this.time.delayedCall(2000, () => {
+        this.scene.start(SCENES.CAMPING);
+      });
+    }
   }
 
   private createGround() {
@@ -554,7 +578,7 @@ export default class Void3DScene extends Phaser.Scene {
   }
 
   update() {
-    if (!this.sceneReady) return;
+    if (!this.sceneReady || this.webglFailed) return;
     
     // Handle help menu
     if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {

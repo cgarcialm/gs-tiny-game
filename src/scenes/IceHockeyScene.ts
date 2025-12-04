@@ -109,8 +109,13 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.speed = this.normalSpeed; // Reset to slow speed
     this.chaseEnemyTimer = 0;
     this.chasers = [];
-    this.isInvincible = false;
     this.enemiesDefeated = 0;
+    
+    // Start with brief invincibility to prevent race conditions during scene initialization
+    this.isInvincible = true;
+    this.time.delayedCall(500, () => {
+      this.isInvincible = false;
+    });
     
     console.log('Health after reset:', this.health);
     
@@ -918,7 +923,9 @@ export default class IceHockeyScene extends Phaser.Scene {
     const waitForRestart = () => {
       if (this.dialogueManager.isVisible() && Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
         console.log('ENTER pressed - restarting scene...');
-        this.scene.restart();
+        // Use scene.start instead of restart to get a completely fresh scene instance
+        // This prevents physics callbacks from the old scene firing during initialization
+        this.scene.start(SCENES.ICE_HOCKEY);
       } else {
         this.time.delayedCall(100, waitForRestart);
       }
