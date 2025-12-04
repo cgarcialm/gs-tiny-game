@@ -3,6 +3,7 @@ import { createGraysonPacManSprite, animateGraysonChomp, createSmushPacManSprite
 import { createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
+import { handleMenuInput } from "../utils/menuHandler";
 import { shouldCloseDialogue } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
 import type { DialogueManager } from "../utils/dialogueManager";
@@ -596,18 +597,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     console.log(`[Farmers Market] Smush wins if she gets: ${Math.floor(this.totalDots * 0.5) + 1} dots (50% + 1)`)
   }
   update() {
-    // Handle help menu
-    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
-      this.helpMenu.toggle();
-    }
-    
-    // Handle mute toggle
-    if (Phaser.Input.Keyboard.JustDown(this.controls.mute)) {
-      this.gameState.toggleMute();
-    }
-    
-    // Handle menus
-    if (this.pauseMenu.isVisible() || this.helpMenu.isVisible()) {
+    // Handle menu input (ESC for pause, H for help, M for mute)
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, undefined, this.gameState)) {
       return;
     }
     

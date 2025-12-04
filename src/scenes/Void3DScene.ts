@@ -4,6 +4,7 @@ import { create3DGrayson } from "../utils/create3DGrayson";
 import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES } from "../config/sceneConstants";
 import { initializeGameScene } from "../utils/sceneSetup";
+import { handleMenuInput } from "../utils/menuHandler";
 import type { GameControls } from "../utils/controls";
 import { HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import type { HelpMenu } from "../utils/helpMenu";
@@ -580,18 +581,8 @@ export default class Void3DScene extends Phaser.Scene {
   update() {
     if (!this.sceneReady || this.webglFailed) return;
     
-    // Handle help menu
-    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
-      this.helpMenu.toggle();
-    }
-    
-    // Handle mute toggle
-    if (Phaser.Input.Keyboard.JustDown(this.controls.mute)) {
-      this.gameState.toggleMute();
-    }
-    
-    // Don't update 3D if menu is open
-    if (this.helpMenu.isVisible() || this.pauseMenu.isVisible()) {
+    // Handle menu input (ESC for pause, H for help, M for mute)
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, undefined, this.gameState)) {
       return;
     }
     

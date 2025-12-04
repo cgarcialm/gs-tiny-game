@@ -9,6 +9,7 @@ import type { DialogueManager } from "../utils/dialogueManager";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
 import { fadeToScene } from "../utils/sceneTransitions";
+import { handleMenuInput } from "../utils/menuHandler";
 import { spawnFloatingText, createParticleBurst } from "../utils/visualEffects";
 import { checkProximity, getDistance } from "../utils/collectionHelpers";
 import { GameStateManager } from "../managers/GameStateManager";
@@ -953,30 +954,8 @@ export default class IceHockeyScene extends Phaser.Scene {
       return;
     }
     
-    // Handle pause menu
-    if (Phaser.Input.Keyboard.JustDown(this.controls.escape)) {
-      this.pauseMenu.toggle();
-    }
-    
-    if (this.pauseMenu.isVisible()) {
-      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
-        this.pauseMenu.hide();
-        this.scene.start(SCENES.TITLE);
-      }
-      return;
-    }
-    
-    // Handle help menu
-    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
-      this.helpMenu.toggle();
-    }
-    
-    // Handle mute toggle
-    if (Phaser.Input.Keyboard.JustDown(this.controls.mute)) {
-      this.gameState.toggleMute();
-    }
-    
-    if (this.helpMenu.isVisible()) {
+    // Handle menu input (ESC for pause, H for help, M for mute)
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, this._cheatConsole, this.gameState)) {
       return;
     }
     

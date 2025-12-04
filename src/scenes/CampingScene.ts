@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene, fadeIn } from "../utils/sceneTransitions";
+import { handleMenuInput } from "../utils/menuHandler";
 import { DEBUG_SHOW_GRID } from "../config/debug";
 import type { GameControls } from "../utils/controls";
 import type { HelpMenu } from "../utils/helpMenu";
@@ -1781,18 +1782,8 @@ export default class CampingScene extends Phaser.Scene {
   }
 
   update() {
-    // Handle help menu
-    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
-      this.helpMenu.toggle();
-    }
-    
-    // Handle mute toggle
-    if (Phaser.Input.Keyboard.JustDown(this.controls.mute)) {
-      this.gameState.toggleMute();
-    }
-    
-    // Handle menus
-    if (this.pauseMenu.isVisible() || this.helpMenu.isVisible()) {
+    // Handle menu input (ESC for pause, H for help, M for mute)
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, undefined, this.gameState)) {
       return;
     }
     
