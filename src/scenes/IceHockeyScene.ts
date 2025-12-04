@@ -1196,8 +1196,8 @@ export default class IceHockeyScene extends Phaser.Scene {
       // Complete Ice Hockey level
       this.gameState.completeLevel(VOID_LEVELS.AFTER_ICE_HOCKEY);
       
-      // Transition directly to Seattle Traffic scene (skip GameScene level 2 placeholder)
-      fadeToScene(this, SCENES.SEATTLE_TRAFFIC, 1000);
+      // Go back to GameScene level 2 (shows WIP placeholder)
+      fadeToScene(this, SCENES.GAME, 1000);
     });
   }
   
