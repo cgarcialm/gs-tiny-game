@@ -3,10 +3,11 @@ import type { GameControls } from "./controls";
 import { HelpMenu } from "./helpMenu";
 import { PauseMenu } from "./pauseMenu";
 import type { CheatConsole } from "./cheatConsole";
+import { GameStateManager } from "../managers/GameStateManager";
 
 /**
  * Handle menu input (pause menu and help menu) for a scene
- * This centralizes the common pattern of handling ESC and H keys
+ * This centralizes the common pattern of handling ESC, H, and M keys
  * 
  * @param scene - The current Phaser scene
  * @param controls - The game controls object
@@ -14,6 +15,7 @@ import type { CheatConsole } from "./cheatConsole";
  * @param pauseMenu - The pause menu instance
  * @param onExitToTitle - Optional callback when player chooses to exit to title
  * @param cheatConsole - Optional cheat console instance to check if it's open
+ * @param gameState - Optional game state manager for mute functionality
  * @returns true if menus are active (block game input), false if game should process input
  */
 export function handleMenuInput(
@@ -22,11 +24,17 @@ export function handleMenuInput(
   helpMenu: HelpMenu,
   pauseMenu: PauseMenu,
   onExitToTitle?: () => void,
-  cheatConsole?: CheatConsole
+  cheatConsole?: CheatConsole,
+  gameState?: GameStateManager
 ): boolean {
   // If cheat console is open, block all game input
   if (cheatConsole?.consoleOpen) {
     return true;
+  }
+  
+  // Handle mute toggle (M key) - works even when menus are open
+  if (gameState && Phaser.Input.Keyboard.JustDown(controls.mute)) {
+    gameState.toggleMute();
   }
   
   // Handle pause menu toggle (ESC key)

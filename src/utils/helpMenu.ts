@@ -16,11 +16,11 @@ export class HelpMenu {
     this.container.setDepth(1000);
     
     // Semi-transparent background
-    this.background = scene.add.rectangle(0, 0, 280, 150, 0x000000, 0.9);
+    this.background = scene.add.rectangle(0, 0, 260, 140, 0x000000, 0.9);
     this.background.setStrokeStyle(2, 0x00d4ff);
     
     // Title
-    this.titleText = scene.add.text(0, -60, "CONTROLS", {
+    this.titleText = scene.add.text(0, -55, "CONTROLS", {
       fontFamily: "monospace",
       fontSize: "14px",
       color: "#00d4ff",
@@ -29,31 +29,59 @@ export class HelpMenu {
       resolution: 2,
     }).setOrigin(0.5);
     
-    // Help text
-    const helpContent = [
-      "Movement:",
-      "  WASD or Arrow Keys",
-      "  SPACE - Jump",
+    // Left column - categories
+    const categories = [
+      "MOVEMENT",
       "",
-      "Actions:",
-      "  E - Interact",
-      "  ENTER - Advance dialogue",
-      "  ESC - Pause",
       "",
-      "Press H to close this menu"
+      "ACTIONS",
+      "",
+      "",
+      "",
+      ""
     ].join("\n");
     
-    this.helpText = scene.add.text(0, 10, helpContent, {
+    const categoryText = scene.add.text(-115, -30, categories, {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#00d4ff",
+      align: "left",
+      lineSpacing: 2,
+      resolution: 2,
+    }).setOrigin(0, 0);
+    
+    // Right column - keys
+    const keys = [
+      "WASD / Arrows",
+      "SPACE - Jump",
+      "",
+      "E - Interact",
+      "ENTER - Dialogue",
+      "ESC - Pause",
+      "M - Mute",
+      "",
+    ].join("\n");
+    
+    this.helpText = scene.add.text(-40, -30, keys, {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#cfe8ff",
       align: "left",
       lineSpacing: 2,
       resolution: 2,
-    }).setOrigin(0.5);
+    }).setOrigin(0, 0);
+    
+    // Footer - bottom right corner
+    const footerText = scene.add.text(120, 64, "H to close", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#999999",
+      align: "right",
+      resolution: 2,
+    }).setOrigin(1, 1);
     
     // Add to container
-    this.container.add([this.background, this.titleText, this.helpText]);
+    this.container.add([this.background, this.titleText, categoryText, this.helpText, footerText]);
     
     // Hide by default
     this.hide();

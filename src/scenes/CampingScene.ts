@@ -1781,6 +1781,16 @@ export default class CampingScene extends Phaser.Scene {
   }
 
   update() {
+    // Handle help menu
+    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
+      this.helpMenu.toggle();
+    }
+    
+    // Handle mute toggle
+    if (Phaser.Input.Keyboard.JustDown(this.controls.mute)) {
+      this.gameState.toggleMute();
+    }
+    
     // Handle menus
     if (this.pauseMenu.isVisible() || this.helpMenu.isVisible()) {
       return;

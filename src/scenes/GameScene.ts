@@ -561,8 +561,8 @@ export default class GameScene extends Phaser.Scene {
   update() {
     const dt = this.game.loop.delta / 1000;
 
-    // Handle menu input (ESC for pause, H for help)
-    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, this._cheatConsole)) {
+    // Handle menu input (ESC for pause, H for help, M for mute)
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, this._cheatConsole, this.gameState)) {
       return; // Menus are active, don't process game input
     }
 

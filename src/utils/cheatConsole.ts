@@ -47,8 +47,7 @@ export class CheatConsole {
     // Listen for keydown on the document
     const handleKeyDown = (event: KeyboardEvent) => {
       // Backtick (`) to toggle console - classic game console key
-      // Also keep Ctrl+Shift+C as backup (may not work in all browsers)
-      if (event.key === '`' || (event.ctrlKey && event.shiftKey && event.key === 'C')) {
+      if (event.key === '`') {
         event.preventDefault();
         this.toggle();
       }

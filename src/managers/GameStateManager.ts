@@ -107,6 +107,30 @@ export class GameStateManager {
     this.registry.set('currentMusic', null);
   }
 
+  /**
+   * Check if music is muted
+   */
+  isMuted(): boolean {
+    return this.registry.get('musicMuted') ?? false;
+  }
+
+  /**
+   * Toggle mute state
+   * @returns The new mute state (true = muted)
+   */
+  toggleMute(): boolean {
+    const newMuted = !this.isMuted();
+    this.registry.set('musicMuted', newMuted);
+    
+    const music = this.getCurrentMusic();
+    if (music) {
+      (music as any).setMute(newMuted);
+    }
+    
+    this.log(`Music ${newMuted ? 'muted' : 'unmuted'}`);
+    return newMuted;
+  }
+
   // ============================================================================
   // UI / HELP SYSTEM
   // ============================================================================

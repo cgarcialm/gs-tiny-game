@@ -220,11 +220,11 @@ export default class TitleScene extends Phaser.Scene {
   update() {
     const dt = this.game.loop.delta / 1000;
 
-    // Handle menu input (ESC for pause, H for help)
+    // Handle menu input (ESC for pause, H for help, M for mute)
     // In title scene, "exit to title" means restart the scene
     if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, () => {
       this.scene.restart();
-    }, this._cheatConsole)) {
+    }, this._cheatConsole, this.gameState)) {
       return; // Menus are active, don't process game input
     }
 

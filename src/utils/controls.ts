@@ -16,6 +16,7 @@ export interface GameControls {
   advance: Phaser.Input.Keyboard.Key;
   escape: Phaser.Input.Keyboard.Key;
   help: Phaser.Input.Keyboard.Key;
+  mute: Phaser.Input.Keyboard.Key;
 }
 
 /**
@@ -28,6 +29,7 @@ export interface GameControls {
  * - Enter for advance dialogue
  * - ESC for escape/cancel
  * - H for help menu
+ * - M for mute music
  */
 export function setupControls(scene: Phaser.Scene): GameControls {
   const keyboard = scene.input.keyboard!;
@@ -46,10 +48,11 @@ export function setupControls(scene: Phaser.Scene): GameControls {
     advance: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
     escape: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC),
     help: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H),
+    mute: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M),
   };
   
   // Prevent default browser behavior for game keys
-  keyboard.addCapture('UP,DOWN,LEFT,RIGHT,W,A,S,D,SPACE,E,ENTER,ESC,H');
+  keyboard.addCapture('UP,DOWN,LEFT,RIGHT,W,A,S,D,SPACE,E,ENTER,ESC,H,M');
   
   return keys;
 }

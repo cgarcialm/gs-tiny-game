@@ -585,6 +585,11 @@ export default class Void3DScene extends Phaser.Scene {
       this.helpMenu.toggle();
     }
     
+    // Handle mute toggle
+    if (Phaser.Input.Keyboard.JustDown(this.controls.mute)) {
+      this.gameState.toggleMute();
+    }
+    
     // Don't update 3D if menu is open
     if (this.helpMenu.isVisible() || this.pauseMenu.isVisible()) {
       return;

@@ -122,6 +122,11 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       this.helpMenu.toggle();
     }
     
+    // Handle mute toggle
+    if (Phaser.Input.Keyboard.JustDown(this.controls.mute)) {
+      this.gameState.toggleMute();
+    }
+    
     // Handle menus
     if (this.pauseMenu.isVisible() || this.helpMenu.isVisible()) {
       return;

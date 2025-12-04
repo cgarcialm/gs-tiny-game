@@ -971,6 +971,11 @@ export default class IceHockeyScene extends Phaser.Scene {
       this.helpMenu.toggle();
     }
     
+    // Handle mute toggle
+    if (Phaser.Input.Keyboard.JustDown(this.controls.mute)) {
+      this.gameState.toggleMute();
+    }
+    
     if (this.helpMenu.isVisible()) {
       return;
     }
