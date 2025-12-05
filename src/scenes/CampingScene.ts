@@ -115,6 +115,9 @@ export default class CampingScene extends Phaser.Scene {
     this.pauseMenu = setup.pauseMenu;
     this.gameState = setup.gameState;
     
+    // Ensure cleanup when scene shuts down
+    this.events.on('shutdown', this.shutdown, this);
+    
     // Check if music is already playing from previous scene (Void3D)
     // If not (e.g., debug skip to this scene), start it
     const currentMusic = this.gameState.getCurrentMusic();
@@ -129,6 +132,15 @@ export default class CampingScene extends Phaser.Scene {
     
     // Set up Three.js 3D scene
     this.setupThreeJS();
+    
+    // If WebGL failed, show a simple 2D fallback
+    if (this.webglFailed) {
+      this.showFallbackEnding();
+      return;
+    }
+    
+    // Setup lighting and fade in the 3D renderer
+    this.setupLighting();
     
     // Create camping scene
     this.createCampingSite();
@@ -172,61 +184,80 @@ export default class CampingScene extends Phaser.Scene {
     document.body.appendChild(this.introText);
   }
 
+  private webglFailed = false;
+
   private setupThreeJS() {
-    // Create Three.js scene with sunset gradient
-    this.threeScene = new THREE.Scene();
-    
-    // Sunset gradient background
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d')!;
-    const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-    gradient.addColorStop(0, '#4a2a5a'); // Dark purple top
-    gradient.addColorStop(0.2, '#FF6B9D'); // Pink
-    gradient.addColorStop(0.5, '#FFA500'); // Orange middle
-    gradient.addColorStop(0.75, '#FFD700'); // Golden
-    gradient.addColorStop(1, '#87CEEB'); // Blue bottom
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 256, 256);
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    this.threeScene.background = texture;
-    
-    // Create camera - will be controlled by player
-    this.camera = new THREE.PerspectiveCamera(
-      75, // FOV
-      640 / 360, // Aspect ratio (matches renderer size)
-      0.1, // Near
-      1000 // Far
-    );
-    // Initial position will be set in updateCameraPosition()
-    this.updateCameraPosition();
-    
-    // Create renderer
-    this.threeRenderer = new THREE.WebGLRenderer({ 
-      antialias: true, // Enable antialiasing for smoother edges!
-      alpha: true 
+    try {
+      // Create Three.js scene with sunset gradient
+      this.threeScene = new THREE.Scene();
+      
+      // Sunset gradient background
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d')!;
+      const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+      gradient.addColorStop(0, '#4a2a5a'); // Dark purple top
+      gradient.addColorStop(0.2, '#FF6B9D'); // Pink
+      gradient.addColorStop(0.5, '#FFA500'); // Orange middle
+      gradient.addColorStop(0.75, '#FFD700'); // Golden
+      gradient.addColorStop(1, '#87CEEB'); // Blue bottom
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 256, 256);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      this.threeScene.background = texture;
+      
+      // Create camera - will be controlled by player
+      this.camera = new THREE.PerspectiveCamera(
+        75, // FOV
+        640 / 360, // Aspect ratio (matches renderer size)
+        0.1, // Near
+        1000 // Far
+      );
+      // Initial position will be set in updateCameraPosition()
+      this.updateCameraPosition();
+      
+      // Create renderer
+      this.threeRenderer = new THREE.WebGLRenderer({ 
+        antialias: true, // Enable antialiasing for smoother edges!
+        alpha: true 
+      });
+      this.threeRenderer.setSize(640, 360); // 2x resolution (was 320x180)
+      
+      // Position renderer to overlay Phaser canvas exactly
+      const gameCanvas = this.game.canvas;
+      const rect = gameCanvas.getBoundingClientRect();
+      
+      this.threeRenderer.domElement.style.position = 'absolute';
+      this.threeRenderer.domElement.style.top = rect.top + 'px';
+      this.threeRenderer.domElement.style.left = rect.left + 'px';
+      this.threeRenderer.domElement.style.width = rect.width + 'px';
+      this.threeRenderer.domElement.style.height = rect.height + 'px';
+      this.threeRenderer.domElement.style.pointerEvents = 'none';
+      this.threeRenderer.domElement.style.zIndex = '1';
+      
+      // Add renderer to body
+      document.body.appendChild(this.threeRenderer.domElement);
+      
+      // Start with opacity 0 and fade in (matches Void3D fade out)
+      this.threeRenderer.domElement.style.opacity = '0';
+    } catch (error) {
+      console.warn('WebGL not available for CampingScene:', error);
+      this.webglFailed = true;
+    }
+  }
+
+  private showFallbackEnding() {
+    // WebGL failed - just go back to title since this is the end anyway
+    // Use a small delay to ensure scene is ready
+    this.time.delayedCall(100, () => {
+      this.scene.start(SCENES.TITLE);
     });
-    this.threeRenderer.setSize(640, 360); // 2x resolution (was 320x180)
-    
-    // Position renderer to overlay Phaser canvas exactly
-    const gameCanvas = this.game.canvas;
-    const rect = gameCanvas.getBoundingClientRect();
-    
-    this.threeRenderer.domElement.style.position = 'absolute';
-    this.threeRenderer.domElement.style.top = rect.top + 'px';
-    this.threeRenderer.domElement.style.left = rect.left + 'px';
-    this.threeRenderer.domElement.style.width = rect.width + 'px';
-    this.threeRenderer.domElement.style.height = rect.height + 'px';
-    this.threeRenderer.domElement.style.pointerEvents = 'none';
-    this.threeRenderer.domElement.style.zIndex = '1';
-    
-    // Add renderer to body
-    document.body.appendChild(this.threeRenderer.domElement);
-    
-    // Start with opacity 0 and fade in (matches Void3D fade out)
-    this.threeRenderer.domElement.style.opacity = '0';
+  }
+
+  private setupLighting() {
+    // Fade in the 3D renderer
     const fadeAnim = { opacity: 0 };
     this.tweens.add({
       targets: fadeAnim,
@@ -1782,6 +1813,11 @@ export default class CampingScene extends Phaser.Scene {
   }
 
   update() {
+    // Skip all updates if WebGL failed (showing fallback screen)
+    if (this.webglFailed) {
+      return;
+    }
+    
     // Handle menu input (ESC for pause, H for help, M for mute)
     if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, undefined, this.gameState)) {
       return;

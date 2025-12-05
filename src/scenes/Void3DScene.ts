@@ -38,6 +38,9 @@ export default class Void3DScene extends Phaser.Scene {
     this.pauseMenu = setup.pauseMenu;
     this.gameState = setup.gameState;
     
+    // Ensure cleanup when scene shuts down
+    this.events.on('shutdown', this.shutdown, this);
+    
     // Don't fade in - show GameScene underneath during particle effect
     this.cameras.main.setBackgroundColor('rgba(0, 0, 0, 0)'); // Transparent
     
@@ -315,20 +318,13 @@ export default class Void3DScene extends Phaser.Scene {
   private webglFailed = false;
 
   private setupThreeJS() {
-    this.threeScene = new THREE.Scene();
-    this.threeScene.background = new THREE.Color(0x003d4d); // Void background
-    
-    this.camera = new THREE.PerspectiveCamera(75, 320 / 180, 0.1, 1000);
-    this.camera.position.set(0, 1.8, 6); // Lower camera (at eye level)
-    this.camera.lookAt(0, 1.8, 0); // Look straight ahead (not down)
-    
     try {
-      // Check if WebGL is available before creating renderer
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      if (!gl) {
-        throw new Error('WebGL not supported');
-      }
+      this.threeScene = new THREE.Scene();
+      this.threeScene.background = new THREE.Color(0x003d4d); // Void background
+      
+      this.camera = new THREE.PerspectiveCamera(75, 320 / 180, 0.1, 1000);
+      this.camera.position.set(0, 1.8, 6); // Lower camera (at eye level)
+      this.camera.lookAt(0, 1.8, 0); // Look straight ahead (not down)
       
       this.threeRenderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
       this.threeRenderer.setSize(320, 180);
