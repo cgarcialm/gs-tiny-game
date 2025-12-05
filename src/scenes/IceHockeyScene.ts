@@ -990,12 +990,12 @@ export default class IceHockeyScene extends Phaser.Scene {
       this.updateMinimap(); // Keep minimap updated
     }
     
-    // Check for equipment collection
-    if (!this.hasSkates && this.skates && !this.dialogueManager.isVisible()) {
+    // Check for equipment collection (allow during equipment messages)
+    if (!this.hasSkates && this.skates) {
       this.checkSkatesCollection();
     }
     
-    if (!this.hasStick && this.hockeyStick && !this.dialogueManager.isVisible()) {
+    if (!this.hasStick && this.hockeyStick) {
       this.checkStickCollection();
     }
     
@@ -1042,7 +1042,7 @@ export default class IceHockeyScene extends Phaser.Scene {
       }
     } else {
       // Hide prompt when not near (but don't interfere with stick prompt)
-      if (this.promptText && this.promptText.text === "E to pick up" && (!this.hockeyStick || !checkProximity(this.playerPhysics, this.hockeyStick, 35))) {
+      if (this.promptText && this.promptText.text === "E to pick up" && (!this.hockeyStick || !checkProximity(this.playerPhysics, this.hockeyStick, 15))) {
         this.promptText.setVisible(false);
       }
     }
@@ -1052,7 +1052,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     if (!this.hockeyStick) return;
     
     // Show "E to pick up" prompt when near
-    const isNear = checkProximity(this.playerPhysics, this.hockeyStick, 35);
+    const isNear = checkProximity(this.playerPhysics, this.hockeyStick, 15);
     
     if (isNear) {
       // Show prompt
