@@ -32,7 +32,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private roadBottomY = 180; // Bottom of screen
   private roadTopWidth = 60; // Road width at horizon
   private roadBottomWidth = 280; // Road width at bottom
-  private vanY = 150; // Van's Y position (near bottom)
+  private vanY = 140; // Van's Y position (near bottom)
   private roadCenterX = 160; // Center at bottom
   private horizonCenterX = 100; // Center at horizon (shifted left for curve)
   
@@ -523,14 +523,25 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       padding: { x: 4, y: 2 }
     }).setDepth(100).setName('clockText');
     
-    // Rage meter (bottom)
-    this.add.rectangle(160, 170, 200, 8, 0x333333).setDepth(100);
-    this.add.rectangle(61, 170, 0, 6, 0xff0000).setDepth(101).setName('rageMeter').setOrigin(0, 0.5);
-    this.add.text(10, 170, "RAGE", {
+    // Rage meter (bottom) - edit these variables to adjust positioning
+    const rageBarX =35;      // X position where bar starts (after RAGE text)
+    const rageBarY = 170;     // Y position of the bar
+    const rageBarWidth = 220; // Total width of the bar
+    const rageBarHeight = 8;  // Height of background bar
+    const rageMeterHeight = rageBarHeight - 2; // Height of red fill
+    
+    this.add.rectangle(rageBarX + rageBarWidth / 2, rageBarY, rageBarWidth, rageBarHeight, 0x111111).setDepth(100); // Background bar
+    this.add.rectangle(rageBarX, rageBarY, 0, rageMeterHeight, 0xff0000).setDepth(101).setName('rageMeter').setOrigin(0, 0.5); // Red fill
+    // Semi-transparent background for RAGE text
+    this.add.rectangle(22, rageBarY + 1, 28, 12, 0x000000, 0.5).setDepth(101);
+    this.add.text(10, rageBarY + 1, "RAGE", {
       fontFamily: "monospace",
       fontSize: "8px",
-      color: "#ffffff"
+      color: "#ff0000"
     }).setDepth(102).setOrigin(0, 0.5);
+    
+    // Store bar width for update function
+    this.registry.set('rageBarWidth', rageBarWidth);
     
     // Distance indicator (top-right)
     this.add.text(310, 10, "", {
@@ -906,7 +917,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Update rage meter
     const rageMeter = this.children.getByName('rageMeter') as Phaser.GameObjects.Rectangle;
     if (rageMeter) {
-      rageMeter.width = (this.rageLevel / 100) * 198; // Max 198px
+      const rageBarWidth = this.registry.get('rageBarWidth') || 208;
+      rageMeter.width = (this.rageLevel / 100) * rageBarWidth;
     }
     
     // Update distance
