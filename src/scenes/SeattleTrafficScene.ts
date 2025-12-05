@@ -33,7 +33,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private roadBottomWidth = 280; // Road width at bottom
   private vanY = 140; // Van's Y position (near bottom)
   private roadCenterX = 160; // Center at bottom
-  private horizonCenterX = 100; // Center at horizon (shifted left for curve)
+  private horizonCenterX = 80; // Center at horizon (shifted left for curve)
   
   // Road scrolling
   private roadSpeed = 100; // Base scrolling speed
