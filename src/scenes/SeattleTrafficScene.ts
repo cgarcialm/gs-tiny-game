@@ -55,10 +55,11 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private rageLevel = 0; // 0-100
   private stuckTimer = 0;
   
-  // Checkpoints
-  private starbucks1Distance = 500;
-  private starbucks2Distance = 1000;
-  private trailheadDistance = 2000;
+  // Checkpoints - tuned for 3 real minutes (45 game minutes at 15x speed)
+  // At avg speed 100: 180 seconds = 18000 units total
+  private starbucks1Distance = 5000;   // ~50s in, ~7:27 game time
+  private starbucks2Distance = 11000;  // ~110s in, ~7:42 game time
+  private trailheadDistance = 17500;   // ~175s in, ~7:59 game time
   
   // Speech bubble container
   private speechBubble?: Phaser.GameObjects.Container;
