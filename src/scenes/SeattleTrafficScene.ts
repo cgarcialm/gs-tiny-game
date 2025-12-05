@@ -36,9 +36,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private horizonCenterX = 80; // Center at horizon (shifted left for curve)
   
   // Road scrolling
-  private roadSpeed = 100; // Base scrolling speed
+  private roadSpeed = 100; // Current scrolling speed (changes with lane)
   private roadOffset = 0;
   private laneMarkers: Phaser.GameObjects.Graphics[] = [];
+  
+  // Lane speed rules: left=fast, middle=medium, right=slow
+  private laneSpeeds = [130, 100, 70]; // Lane 0 (left), 1 (middle), 2 (right)
   
   // Traffic cars
   private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number }[] = [];
@@ -83,6 +86,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.trafficCars = [];
     this.laneMarkers = [];
     this.roadOffset = 0;
+    this.roadSpeed = this.laneSpeeds[this.currentLane]; // Set initial speed based on lane
     
     // Create road
     this.createRoad();
@@ -578,6 +582,15 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.currentLane += direction;
     this.isChangingLane = true;
     
+    // Smoothly transition to new lane speed
+    const newSpeed = this.laneSpeeds[this.currentLane];
+    this.tweens.add({
+      targets: this,
+      roadSpeed: newSpeed,
+      duration: 300,
+      ease: "Sine.easeInOut"
+    });
+    
     this.tweens.add({
       targets: this.van,
       x: this.getLaneX(this.currentLane),
@@ -622,7 +635,13 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private spawnTrafficCar() {
     const lane = Math.floor(Math.random() * 3);
-    const speed = 50 + Math.random() * 30; // 50-80 speed (how fast they approach)
+    
+    // Traffic cars are always slower than lane speed so they approach the player
+    // Left lane cars: 90-110 (slower than player's 130)
+    // Middle lane cars: 60-80 (slower than player's 100)
+    // Right lane cars: 40-55 (slower than player's 70)
+    const baseLaneSpeed = this.laneSpeeds[lane] - 35; // Base is 35 below lane speed
+    const speed = baseLaneSpeed + Math.random() * 20; // 0-20 variation
     
     // Create car container
     const container = this.add.container(0, 0);
