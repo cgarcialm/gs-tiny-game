@@ -44,9 +44,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private laneSpeeds = [130, 100, 70]; // Lane 0 (left), 1 (middle), 2 (right)
   
   // Traffic cars
-  private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number }[] = [];
+  private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number, exiting?: boolean }[] = [];
   private carSpawnTimer = 0;
   private carSpawnInterval = 2000; // Spawn every 2 seconds
+  
+  // On-ramps and off-ramps (every 5 game minutes = 20 real seconds at 15x)
+  private lastRampTime = 7 * 60 + 15; // Start time
+  private rampInterval = 5; // Every 5 game minutes
+  private activeRamps: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'on' | 'off', label: Phaser.GameObjects.Text }[] = []
   
   // Game state
   private gamePhase: 'intro' | 'toStarbucks1' | 'toStarbucks2' | 'toTrailhead' | 'won' | 'lost' = 'intro';
@@ -131,6 +136,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       this.updateTraffic(dt);
       this.updateClock(dt);
       this.updateRage(dt);
+      this.checkRamps();
       this.checkCheckpoints();
       this.checkGameOver();
       this.updateUI();
@@ -618,7 +624,20 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       
       // Cars approach at different speeds (relative to player)
       car.y += (this.roadSpeed - car.speed) * dt / 1000;
-      this.updateCarPosition(car);
+      
+      // Handle exiting cars - they drift to the right
+      if (car.exiting) {
+        car.container.x += 50 * dt / 1000; // Drift right
+        
+        // Remove if off-screen to the right
+        if (car.container.x > 340) {
+          car.container.destroy();
+          this.trafficCars.splice(i, 1);
+          continue;
+        }
+      } else {
+        this.updateCarPosition(car);
+      }
       
       // Remove if past screen (bottom) or near horizon (cars that pulled ahead)
       if (car.y > this.roadBottomY + 20 || car.y < this.horizonY + 8) {
@@ -708,7 +727,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private updateClock(dt: number) {
     // Time passes at 15x (45 game minutes in 3 real minutes)
-    this.currentTime += dt / 1000 * 15 / 60; // Convert to minutes
+    this.currentTime += dt / 1000 * 30 / 60; // Convert to minutes
   }
   
   private updateRage(dt: number) {
@@ -729,6 +748,190 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       // Slowly decrease rage when driving smoothly
       this.rageLevel = Math.max(0, this.rageLevel - dt / 1000 * 0.5);
     }
+  }
+  
+  private checkRamps() {
+    // Update all active ramps (scroll with road)
+    for (let i = this.activeRamps.length - 1; i >= 0; i--) {
+      const ramp = this.activeRamps[i];
+      ramp.y += this.roadSpeed * this.game.loop.delta / 1000;
+      this.updateRampGraphics(ramp);
+      
+      // Remove ramp when it goes off screen
+      if (ramp.y > this.roadBottomY + 50) {
+        ramp.graphics.destroy();
+        ramp.label.destroy();
+        this.activeRamps.splice(i, 1);
+      }
+    }
+    
+    // Check if 5 game minutes have passed since last ramp
+    if (this.currentTime >= this.lastRampTime + this.rampInterval && this.activeRamps.length === 0) {
+      this.lastRampTime = this.currentTime;
+      
+      // Trigger EXIT first, then MERGE after a short delay (like real interchanges)
+      this.triggerOffRamp();
+      this.time.delayedCall(1500, () => {
+        this.triggerOnRamp();
+      });
+    }
+  }
+  
+  private createRampGraphics(type: 'on' | 'off') {
+    const graphics = this.add.graphics();
+    graphics.setDepth(1.5); // Between road and cars
+    
+    // Create label with arrow (realistic highway sign colors)
+    // MERGE = yellow warning sign, EXIT = green guide sign
+    const labelText = type === 'on' ? '<< MERGE' : 'EXIT >>';
+    const label = this.add.text(0, 0, labelText, {
+      fontFamily: 'monospace',
+      fontSize: '7px',
+      color: type === 'on' ? '#000000' : '#ffffff',
+      backgroundColor: type === 'on' ? '#ffcc00' : '#006633',
+      padding: { x: 3, y: 2 }
+    }).setDepth(50).setOrigin(0.5);
+    
+    // Ramp starts at horizon
+    const ramp = { graphics, y: this.horizonY + 20, type, label };
+    this.activeRamps.push(ramp);
+    this.updateRampGraphics(ramp);
+  }
+  
+  private updateRampGraphics(ramp: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'on' | 'off', label: Phaser.GameObjects.Text }) {
+    const { graphics, y, type, label } = ramp;
+    graphics.clear();
+    
+    // Get road position at ramp Y
+    const t = 1 - (y - this.horizonY) / (this.roadBottomY - this.horizonY);
+    if (t < 0 || t > 1) {
+      label.setVisible(false);
+      return;
+    }
+    label.setVisible(true);
+    
+    const pos = this.getRoadPosition(t);
+    const rampWidth = pos.width * 0.25; // Ramp is 1/4 road width
+    const rampLength = 30 + (1 - t) * 40; // Longer when closer
+    
+    // Draw ramp road
+    graphics.fillStyle(0x3a3a3a, 1);
+    
+    if (type === 'on') {
+      // On-ramp: comes from bottom-right, merges up-left into highway
+      graphics.beginPath();
+      graphics.moveTo(pos.right, y);
+      graphics.lineTo(pos.right + rampWidth, y + 5);
+      graphics.lineTo(pos.right + rampWidth + 15, y + rampLength * 0.6);
+      graphics.lineTo(pos.right + rampWidth + 30, y + rampLength);
+      graphics.lineTo(pos.right + rampWidth + 40, y + rampLength);
+      graphics.lineTo(pos.right + rampWidth + 30, y + rampLength * 0.5);
+      graphics.lineTo(pos.right + rampWidth, y);
+      graphics.lineTo(pos.right, y - 5);
+      graphics.closePath();
+      graphics.fillPath();
+      
+      // Ramp edge line
+      graphics.lineStyle(1, 0xffffff, 0.6);
+      graphics.beginPath();
+      graphics.moveTo(pos.right + rampWidth + 30, y + rampLength * 0.5);
+      graphics.lineTo(pos.right + rampWidth + 40, y + rampLength);
+      graphics.strokePath();
+    } else {
+      // Off-ramp: curves out to right
+      graphics.beginPath();
+      graphics.moveTo(pos.right, y);
+      graphics.lineTo(pos.right + rampWidth, y);
+      graphics.lineTo(pos.right + rampWidth + 30, y + rampLength * 0.5);
+      graphics.lineTo(pos.right + rampWidth + 40, y + rampLength);
+      graphics.lineTo(pos.right + rampWidth + 30, y + rampLength);
+      graphics.lineTo(pos.right + rampWidth + 15, y + rampLength * 0.6);
+      graphics.lineTo(pos.right, y + 5);
+      graphics.closePath();
+      graphics.fillPath();
+      
+      // Ramp edge line
+      graphics.lineStyle(1, 0xffffff, 0.6);
+      graphics.beginPath();
+      graphics.moveTo(pos.right + rampWidth + 30, y + rampLength * 0.5);
+      graphics.lineTo(pos.right + rampWidth + 40, y + rampLength);
+      graphics.strokePath();
+    }
+    
+    // Update label position - on highway border, slightly ahead of ramp (lower Y = ahead)
+    const labelY = type === 'on' ? y - 15 : y - 10; // Sign appears before ramp
+    label.setPosition(pos.right + 5, labelY);
+  }
+  
+  private triggerOnRamp() {
+    // Create visual ramp
+    this.createRampGraphics('on');
+    
+    // Show notification
+    this.showSpeechBubble("Grayson", "Cars merging!", 2000);
+    
+    // Spawn 2-3 merging cars as ramp passes
+    const numCars = 2 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < numCars; i++) {
+      this.time.delayedCall(500 + i * 600, () => {
+        this.spawnMergingCar();
+      });
+    }
+  }
+  
+  private triggerOffRamp() {
+    // Create visual ramp
+    this.createRampGraphics('off');
+    
+    // Show notification
+    this.showSpeechBubble("Ceci", "Exit ahead", 2000);
+    
+    // Mark some right-lane cars as exiting after a delay
+    this.time.delayedCall(1000, () => {
+      const rightLaneCars = this.trafficCars.filter(car => car.lane === 2 && !car.exiting);
+      const numExiting = Math.min(2, rightLaneCars.length);
+      
+      for (let i = 0; i < numExiting; i++) {
+        if (rightLaneCars[i]) {
+          rightLaneCars[i].exiting = true;
+        }
+      }
+    });
+  }
+  
+  private spawnMergingCar() {
+    // Merging cars come from the right edge, entering the right lane
+    const container = this.add.container(0, 0);
+    container.setDepth(5);
+    
+    const body = this.add.rectangle(0, 0, 16, 28, this.getRandomCarColor());
+    const windshield = this.add.rectangle(0, -6, 12, 8, 0x87CEEB);
+    container.add([body, windshield]);
+    
+    // Spawn near the ramp position (find the on-ramp if exists)
+    const onRamp = this.activeRamps.find(r => r.type === 'on');
+    const rampY = onRamp ? onRamp.y : this.horizonY + 50;
+    const carY = Math.max(this.horizonY + 15, Math.min(rampY + 10, this.roadBottomY - 30));
+    const speed = this.laneSpeeds[2] + (Math.random() * 20 - 10); // Right lane speed
+    
+    const car = { container, lane: 2, speed, y: carY, exiting: false };
+    this.trafficCars.push(car);
+    
+    // Position off-screen to the right
+    const pos = this.getRoadPosition(1 - (carY - this.horizonY) / (this.roadBottomY - this.horizonY));
+    container.setPosition(pos.right + 50, carY);
+    
+    // Calculate perspective scale
+    const t = (carY - this.horizonY) / (this.roadBottomY - this.horizonY);
+    container.setScale(0.2 + t * 0.8);
+    
+    // Animate merging into the right lane
+    this.tweens.add({
+      targets: container,
+      x: this.getLaneX(2, carY),
+      duration: 800,
+      ease: 'Sine.easeOut'
+    });
   }
   
   private checkCheckpoints() {
