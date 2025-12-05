@@ -50,7 +50,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   // On-ramps and off-ramps (every 5 game minutes = 20 real seconds at 15x)
   private lastRampTime = 7 * 60 + 15; // Start time
-  private rampInterval = 5; // Every 5 game minutes
+  private rampInterval = 2; // Every 2 game minutes (for testing - change back to 5)
   private activeRamps: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'on' | 'off', label: Phaser.GameObjects.Text }[] = []
   
   // Game state
@@ -811,50 +811,103 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     label.setVisible(true);
     
     const pos = this.getRoadPosition(t);
-    const rampWidth = pos.width * 0.25; // Ramp is 1/4 road width
-    const rampLength = 30 + (1 - t) * 40; // Longer when closer
     
-    // Draw ramp road
-    graphics.fillStyle(0x3a3a3a, 1);
+    // === RAMP CONFIGURATION - Adjust these to change ramp appearance ===
+    const rampWidth = 8 + (1 - t) * 12;      // Width of the ramp road
+    
+    // RAMP ANGLE: Higher = more horizontal, Lower = more vertical
+    // Try values between 0.5 (steep) and 3.0 (very horizontal)
+    const rampAngle = 2;
+    
+    const baseLength = 30 + (1 - t) * 40;    // Base vertical length
+    const rampLength = baseLength;            // Vertical extent
+    const outerAngle = baseLength * rampAngle; // Horizontal extent (outer edge)
+    const innerAngle = baseLength * rampAngle * 0.8; // Horizontal extent (inner edge)
+    // ===================================================================
+    
+    // Draw curved ramp road using bezier-like segments
+    graphics.fillStyle(0x555555, 1); // Lighter gray to be more visible
+    
+    const segments = 12;
     
     if (type === 'on') {
-      // On-ramp: comes from bottom-right, merges up-left into highway
+      // On-ramp: smooth curve from bottom-right merging into highway
       graphics.beginPath();
-      graphics.moveTo(pos.right, y);
-      graphics.lineTo(pos.right + rampWidth, y + 5);
-      graphics.lineTo(pos.right + rampWidth + 15, y + rampLength * 0.6);
-      graphics.lineTo(pos.right + rampWidth + 30, y + rampLength);
-      graphics.lineTo(pos.right + rampWidth + 40, y + rampLength);
-      graphics.lineTo(pos.right + rampWidth + 30, y + rampLength * 0.5);
-      graphics.lineTo(pos.right + rampWidth, y);
-      graphics.lineTo(pos.right, y - 5);
+      
+      // Outer edge (right side of ramp) - curves from bottom-right to merge point
+      for (let i = 0; i <= segments; i++) {
+        const st = i / segments;
+        // Ease-in curve (starts far right, curves in to highway)
+        const curve = Math.pow(st, 2);
+        const px = pos.right + rampWidth + (1 - curve) * outerAngle;
+        const py = y + (1 - st) * rampLength;
+        if (i === 0) graphics.moveTo(px, py);
+        else graphics.lineTo(px, py);
+      }
+      
+      // Inner edge (left side of ramp) - back down
+      for (let i = segments; i >= 0; i--) {
+        const st = i / segments;
+        const curve = Math.pow(st, 2);
+        const px = pos.right + (1 - curve) * innerAngle;
+        const py = y + (1 - st) * rampLength;
+        graphics.lineTo(px, py);
+      }
+      
       graphics.closePath();
       graphics.fillPath();
       
-      // Ramp edge line
-      graphics.lineStyle(1, 0xffffff, 0.6);
+      // Outer edge line (white stripe)
+      graphics.lineStyle(1, 0xffffff, 0.7);
       graphics.beginPath();
-      graphics.moveTo(pos.right + rampWidth + 30, y + rampLength * 0.5);
-      graphics.lineTo(pos.right + rampWidth + 40, y + rampLength);
+      for (let i = 0; i <= segments; i++) {
+        const st = i / segments;
+        const curve = Math.pow(st, 2);
+        const px = pos.right + rampWidth + (1 - curve) * outerAngle;
+        const py = y + (1 - st) * rampLength;
+        if (i === 0) graphics.moveTo(px, py);
+        else graphics.lineTo(px, py);
+      }
       graphics.strokePath();
+      
     } else {
-      // Off-ramp: curves out to right
+      // Off-ramp: smooth curve from highway out to bottom-right
       graphics.beginPath();
-      graphics.moveTo(pos.right, y);
-      graphics.lineTo(pos.right + rampWidth, y);
-      graphics.lineTo(pos.right + rampWidth + 30, y + rampLength * 0.5);
-      graphics.lineTo(pos.right + rampWidth + 40, y + rampLength);
-      graphics.lineTo(pos.right + rampWidth + 30, y + rampLength);
-      graphics.lineTo(pos.right + rampWidth + 15, y + rampLength * 0.6);
-      graphics.lineTo(pos.right, y + 5);
+      
+      // Inner edge (left side) - from highway going out
+      for (let i = 0; i <= segments; i++) {
+        const st = i / segments;
+        // Ease-out curve (starts at highway, curves out to right)
+        const curve = 1 - Math.pow(1 - st, 2);
+        const px = pos.right + curve * innerAngle;
+        const py = y + st * rampLength;
+        if (i === 0) graphics.moveTo(px, py);
+        else graphics.lineTo(px, py);
+      }
+      
+      // Outer edge (right side) - back up
+      for (let i = segments; i >= 0; i--) {
+        const st = i / segments;
+        const curve = 1 - Math.pow(1 - st, 2);
+        const px = pos.right + rampWidth + curve * outerAngle;
+        const py = y + st * rampLength;
+        graphics.lineTo(px, py);
+      }
+      
       graphics.closePath();
       graphics.fillPath();
       
-      // Ramp edge line
-      graphics.lineStyle(1, 0xffffff, 0.6);
+      // Outer edge line (white stripe)
+      graphics.lineStyle(1, 0xffffff, 0.7);
       graphics.beginPath();
-      graphics.moveTo(pos.right + rampWidth + 30, y + rampLength * 0.5);
-      graphics.lineTo(pos.right + rampWidth + 40, y + rampLength);
+      for (let i = 0; i <= segments; i++) {
+        const st = i / segments;
+        const curve = 1 - Math.pow(1 - st, 2);
+        const px = pos.right + rampWidth + curve * outerAngle;
+        const py = y + st * rampLength;
+        if (i === 0) graphics.moveTo(px, py);
+        else graphics.lineTo(px, py);
+      }
       graphics.strokePath();
     }
     
