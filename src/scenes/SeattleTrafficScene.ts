@@ -194,9 +194,28 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Seattle skyline
     this.drawSeattleSkyline(skyGraphics);
     
-    // Ground/grass on sides (darker for night)
-    const ground = this.add.rectangle(160, (this.horizonY + this.roadBottomY) / 2, 320, this.roadBottomY - this.horizonY, 0x1a2a1a);
-    ground.setDepth(0);
+    // Ground - grass on left side (darker for night)
+    const grassLeft = this.add.rectangle(40, (this.horizonY + this.roadBottomY) / 2, 80, this.roadBottomY - this.horizonY, 0x1a2a1a);
+    grassLeft.setDepth(0);
+    
+    // Water on right side (dark blue, Puget Sound)
+    const waterGraphics = this.add.graphics();
+    waterGraphics.setDepth(0);
+    waterGraphics.fillStyle(0x0a1a2a, 1); // Dark blue water
+    waterGraphics.fillRect(200, this.horizonY, 120, this.roadBottomY - this.horizonY);
+    
+    // Water reflections/shimmer
+    waterGraphics.fillStyle(0x1a3a5a, 0.3);
+    for (let i = 0; i < 8; i++) {
+      const wy = this.horizonY + 10 + i * 18;
+      const ww = 20 + Math.random() * 40;
+      const wx = 220 + Math.random() * 60;
+      waterGraphics.fillRect(wx, wy, ww, 2);
+    }
+    
+    // Middle section (between road edges)
+    const middleGround = this.add.rectangle(160, (this.horizonY + this.roadBottomY) / 2, 160, this.roadBottomY - this.horizonY, 0x1a2a1a);
+    middleGround.setDepth(0);
     
     // Draw curved perspective road
     const roadGraphics = this.add.graphics();
@@ -273,24 +292,24 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private drawMountains(graphics: Phaser.GameObjects.Graphics) {
-    // Mt. Rainier silhouette on the right
+    // Mt. Rainier silhouette - shorter and wider, at far right of screen
     graphics.fillStyle(0x1a1a2a, 1);
     graphics.beginPath();
-    graphics.moveTo(220, this.horizonY);
-    graphics.lineTo(260, this.horizonY - 25);
-    graphics.lineTo(280, this.horizonY - 20);
-    graphics.lineTo(300, this.horizonY - 28);
-    graphics.lineTo(320, this.horizonY - 15);
+    graphics.moveTo(250, this.horizonY);
+    graphics.lineTo(265, this.horizonY - 6);
+    graphics.lineTo(285, this.horizonY - 14);
+    graphics.lineTo(305, this.horizonY - 12);
+    graphics.lineTo(320, this.horizonY - 8);
     graphics.lineTo(320, this.horizonY);
     graphics.closePath();
     graphics.fillPath();
     
-    // Snow cap
+    // Snow cap on Rainier (wider)
     graphics.fillStyle(0x4a4a5a, 1);
     graphics.beginPath();
-    graphics.moveTo(255, this.horizonY - 22);
-    graphics.lineTo(260, this.horizonY - 25);
-    graphics.lineTo(265, this.horizonY - 22);
+    graphics.moveTo(278, this.horizonY - 10);
+    graphics.lineTo(285, this.horizonY - 14);
+    graphics.lineTo(295, this.horizonY - 11);
     graphics.closePath();
     graphics.fillPath();
   }
@@ -298,75 +317,87 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private drawSeattleSkyline(graphics: Phaser.GameObjects.Graphics) {
     const skylineY = this.horizonY;
     
-    // Building silhouettes (dark)
+    // Building silhouettes (dark) - left to right: many buildings, space needle, 2 small buildings, mt rainier
     graphics.fillStyle(0x151520, 1);
     
-    // Left side buildings
-    graphics.fillRect(0, skylineY - 12, 15, 12);
-    graphics.fillRect(18, skylineY - 18, 12, 18);
-    graphics.fillRect(32, skylineY - 10, 10, 10);
-    graphics.fillRect(44, skylineY - 22, 14, 22);
-    graphics.fillRect(60, skylineY - 15, 10, 15);
+    // Many buildings on the left
+    graphics.fillRect(40, skylineY - 14, 8, 14);
+    graphics.fillRect(50, skylineY - 20, 10, 20);
+    graphics.fillRect(62, skylineY - 16, 8, 16);
+    graphics.fillRect(72, skylineY - 24, 12, 24);
+    graphics.fillRect(86, skylineY - 18, 10, 18);
     
-    // Space Needle! (center-left)
-    this.drawSpaceNeedle(graphics, 85, skylineY);
+    // Columbia Center (tallest)
+    graphics.fillRect(98, skylineY - 30, 12, 30);
     
-    // More buildings
+    graphics.fillRect(112, skylineY - 20, 10, 20);
+    graphics.fillRect(124, skylineY - 16, 10, 16);
+    graphics.fillRect(136, skylineY - 22, 10, 22);
+    graphics.fillRect(148, skylineY - 14, 8, 14);
+    graphics.fillRect(158, skylineY - 18, 10, 18);
+    graphics.fillRect(170, skylineY - 12, 8, 12);
+    
+    // Space Needle! (moved right)
+    this.drawSpaceNeedle(graphics, 190, skylineY);
+    
+    // Two smaller buildings after Space Needle
     graphics.fillStyle(0x151520, 1);
-    graphics.fillRect(100, skylineY - 20, 12, 20);
-    graphics.fillRect(115, skylineY - 28, 15, 28);
-    graphics.fillRect(132, skylineY - 16, 10, 16);
-    
-    // Columbia Center (tallest, right of center)
-    graphics.fillRect(145, skylineY - 32, 14, 32);
-    
-    // Right side buildings
-    graphics.fillRect(162, skylineY - 18, 12, 18);
-    graphics.fillRect(176, skylineY - 14, 10, 14);
-    graphics.fillRect(188, skylineY - 20, 14, 20);
-    graphics.fillRect(205, skylineY - 12, 12, 12);
+    graphics.fillRect(207, skylineY - 12, 10, 12);
+    graphics.fillRect(220, skylineY - 8, 8, 8);
     
     // Add lit windows to buildings
     this.addBuildingLights(graphics, skylineY);
   }
   
   private drawSpaceNeedle(graphics: Phaser.GameObjects.Graphics, x: number, baseY: number) {
-    // Space Needle silhouette
+    // Space Needle silhouette (slightly smaller)
     graphics.fillStyle(0x202030, 1);
     
     // Base/legs
-    graphics.fillTriangle(x - 6, baseY, x + 6, baseY, x, baseY - 8);
+    graphics.fillTriangle(x - 5, baseY, x + 5, baseY, x, baseY - 6);
     
     // Shaft
-    graphics.fillRect(x - 1, baseY - 30, 2, 22);
+    graphics.fillRect(x - 1, baseY - 24, 2, 18);
     
-    // Observation deck
-    graphics.fillRect(x - 8, baseY - 32, 16, 3);
+    // Observation deck - diamond/rhombus shape
+    graphics.beginPath();
+    graphics.moveTo(x - 7, baseY - 25); // Left point
+    graphics.lineTo(x, baseY - 27); // Top point
+    graphics.lineTo(x + 7, baseY - 25); // Right point
+    graphics.lineTo(x, baseY - 23); // Bottom point
+    graphics.closePath();
+    graphics.fillPath();
     
     // Top spire
-    graphics.fillRect(x, baseY - 38, 1, 6);
+    graphics.fillRect(x, baseY - 32, 1, 5);
     
     // Observation deck lights (red beacon)
     graphics.fillStyle(0xff3333, 0.8);
-    graphics.fillCircle(x, baseY - 38, 1);
+    graphics.fillCircle(x, baseY - 32, 1);
     
     // Restaurant ring lights
     graphics.fillStyle(0xffffaa, 0.6);
-    graphics.fillRect(x - 6, baseY - 31, 2, 1);
-    graphics.fillRect(x + 4, baseY - 31, 2, 1);
+    graphics.fillRect(x - 5, baseY - 25, 2, 1);
+    graphics.fillRect(x + 3, baseY - 25, 2, 1);
   }
   
   private addBuildingLights(graphics: Phaser.GameObjects.Graphics, skylineY: number) {
-    // Random lit windows
+    // Random lit windows - buildings aligned with highway horizon
     const buildings = [
-      { x: 0, w: 15, h: 12 },
-      { x: 18, w: 12, h: 18 },
-      { x: 44, w: 14, h: 22 },
-      { x: 100, w: 12, h: 20 },
-      { x: 115, w: 15, h: 28 },
-      { x: 145, w: 14, h: 32 },
-      { x: 162, w: 12, h: 18 },
-      { x: 188, w: 14, h: 20 },
+      { x: 40, w: 8, h: 14 },
+      { x: 50, w: 10, h: 20 },
+      { x: 62, w: 8, h: 16 },
+      { x: 72, w: 12, h: 24 },
+      { x: 86, w: 10, h: 18 },
+      { x: 98, w: 12, h: 30 },
+      { x: 112, w: 10, h: 20 },
+      { x: 124, w: 10, h: 16 },
+      { x: 136, w: 10, h: 22 },
+      { x: 148, w: 8, h: 14 },
+      { x: 158, w: 10, h: 18 },
+      { x: 170, w: 8, h: 12 },
+      { x: 207, w: 10, h: 12 },
+      { x: 220, w: 8, h: 8 },
     ];
     
     buildings.forEach(b => {
