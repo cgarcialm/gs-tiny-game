@@ -699,8 +699,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private updateClock(dt: number) {
-    // Time passes (1 real second = 2 game seconds) - slower pace
-    this.currentTime += dt / 1000 * 2 / 60; // Convert to minutes (slower)
+    // Time passes at 15x (45 game minutes in 3 real minutes)
+    this.currentTime += dt / 1000 * 15 / 60; // Convert to minutes
   }
   
   private updateRage(dt: number) {
