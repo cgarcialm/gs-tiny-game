@@ -619,8 +619,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       car.y += (this.roadSpeed - car.speed) * dt / 1000;
       this.updateCarPosition(car);
       
-      // Remove if past screen
-      if (car.y > this.roadBottomY + 20) {
+      // Remove if past screen (bottom) or near horizon (cars that pulled ahead)
+      if (car.y > this.roadBottomY + 20 || car.y < this.horizonY + 8) {
         car.container.destroy();
         this.trafficCars.splice(i, 1);
         continue;
@@ -636,12 +636,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private spawnTrafficCar() {
     const lane = Math.floor(Math.random() * 3);
     
-    // Traffic cars are always slower than lane speed so they approach the player
-    // Left lane cars: 90-110 (slower than player's 130)
-    // Middle lane cars: 60-80 (slower than player's 100)
-    // Right lane cars: 40-55 (slower than player's 70)
-    const baseLaneSpeed = this.laneSpeeds[lane] - 35; // Base is 35 below lane speed
-    const speed = baseLaneSpeed + Math.random() * 20; // 0-20 variation
+    // Cars match their lane speed (with small variation)
+    const baseLaneSpeed = this.laneSpeeds[lane];
+    const speed = baseLaneSpeed + (Math.random() * 20 - 10); // ±10 variation
     
     // Create car container
     const container = this.add.container(0, 0);
@@ -653,8 +650,18 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     container.add([body, windshield]);
     
-    // Start at horizon
-    const carY = this.horizonY + 10;
+    // Spawn position relative to player's lane:
+    // - Lanes to the LEFT of player: spawn from bottom, faster cars overtake toward horizon
+    // - Same lane as player: spawn from top, similar speed
+    // - Lanes to the RIGHT of player: spawn from top, slower cars that player catches up to
+    let carY: number;
+    if (lane < this.currentLane) {
+      // Car is in a lane to the LEFT of player - faster, comes from behind
+      carY = this.roadBottomY - 5;
+    } else {
+      // Same lane or lanes to the RIGHT - spawn at horizon
+      carY = this.horizonY + 10;
+    }
     
     this.trafficCars.push({ container, lane, speed, y: carY });
     this.updateCarPosition(this.trafficCars[this.trafficCars.length - 1]);
