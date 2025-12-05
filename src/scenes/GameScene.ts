@@ -316,9 +316,9 @@ export default class GameScene extends Phaser.Scene {
             onComplete: () => {
               walkTimer.destroy();
               
-              // Show skip button (unimplemented level)
+              // Transition to Seattle Traffic scene
               this.time.delayedCall(500, () => {
-                const skipText = this.add.text(160, 90, "Level in progress...\nPress ENTER to skip to next level", {
+                const promptText = this.add.text(160, 90, "Press ENTER to continue", {
                   fontSize: '14px',
                   fontFamily: 'monospace',
                   color: '#ffffff',
@@ -326,25 +326,24 @@ export default class GameScene extends Phaser.Scene {
                   padding: { x: 10, y: 8 },
                   align: 'center'
                 });
-                skipText.setOrigin(0.5);
-                skipText.setDepth(100);
+                promptText.setOrigin(0.5);
+                promptText.setDepth(100);
                 
                 // Wait for ENTER
                 const generation = this.sceneGeneration; // Capture current generation
-                const skipCheck = () => {
+                const continueCheck = () => {
                   if (generation !== this.sceneGeneration) {
-                    this.events.off('update', skipCheck); // Scene restarted, stop listening
+                    this.events.off('update', continueCheck); // Scene restarted, stop listening
                     return;
                   }
                   if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
-                    this.events.off('update', skipCheck);
-                    skipText.destroy();
-                    // Set level to 3 so next time it's Smush level
-                    this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
-                    fadeToScene(this, SCENES.GAME, 1000);
+                    this.events.off('update', continueCheck);
+                    promptText.destroy();
+                    // Go to Seattle Traffic scene
+                    fadeToScene(this, SCENES.SEATTLE_TRAFFIC, 1000);
                   }
                 };
-                this.events.on('update', skipCheck);
+                this.events.on('update', continueCheck);
               });
             }
           });

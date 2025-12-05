@@ -25,15 +25,22 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   // Player van
   private van!: Phaser.GameObjects.Container;
   private currentLane = 1; // 0=left, 1=center, 2=right
-  private lanePositions = [65, 160, 255]; // X positions for each lane
   private isChangingLane = false;
+  
+  // Road perspective settings
+  private horizonY = 40; // Where the road vanishes
+  private roadBottomY = 180; // Bottom of screen
+  private roadTopWidth = 60; // Road width at horizon
+  private roadBottomWidth = 280; // Road width at bottom
+  private vanY = 150; // Van's Y position (near bottom)
   
   // Road scrolling
   private roadSpeed = 100; // Base scrolling speed
   private roadOffset = 0;
+  private laneMarkers: Phaser.GameObjects.Graphics[] = [];
   
   // Traffic cars
-  private trafficCars: { sprite: Phaser.GameObjects.Rectangle, lane: number, speed: number }[] = [];
+  private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number }[] = [];
   private carSpawnTimer = 0;
   private carSpawnInterval = 2000; // Spawn every 2 seconds
   
@@ -76,6 +83,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.rageLevel = 0;
     this.stuckTimer = 0;
     this.trafficCars = [];
+    this.laneMarkers = [];
+    this.roadOffset = 0;
     this.cardPiece = null;
     
     // Create road
@@ -152,28 +161,125 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private createRoad() {
-    // Road background (dark gray)
-    const road = this.add.rectangle(160, 90, 280, 180, 0x333333);
-    road.setDepth(0);
+    // Sky/background
+    const sky = this.add.rectangle(160, this.horizonY / 2, 320, this.horizonY, 0x4a90a4);
+    sky.setDepth(0);
     
-    // Lane markers (will be animated)
-    // TODO: Add scrolling lane markers
+    // Ground/grass on sides
+    const ground = this.add.rectangle(160, (this.horizonY + this.roadBottomY) / 2, 320, this.roadBottomY - this.horizonY, 0x3d5c3d);
+    ground.setDepth(0);
+    
+    // Draw perspective road
+    const roadGraphics = this.add.graphics();
+    roadGraphics.setDepth(1);
+    
+    // Road surface (dark gray trapezoid)
+    roadGraphics.fillStyle(0x333333, 1);
+    roadGraphics.beginPath();
+    roadGraphics.moveTo(160 - this.roadTopWidth / 2, this.horizonY); // Top-left
+    roadGraphics.lineTo(160 + this.roadTopWidth / 2, this.horizonY); // Top-right
+    roadGraphics.lineTo(160 + this.roadBottomWidth / 2, this.roadBottomY); // Bottom-right
+    roadGraphics.lineTo(160 - this.roadBottomWidth / 2, this.roadBottomY); // Bottom-left
+    roadGraphics.closePath();
+    roadGraphics.fillPath();
+    
+    // Road edges (white lines)
+    roadGraphics.lineStyle(2, 0xffffff, 1);
+    // Left edge
+    roadGraphics.lineBetween(
+      160 - this.roadTopWidth / 2, this.horizonY,
+      160 - this.roadBottomWidth / 2, this.roadBottomY
+    );
+    // Right edge
+    roadGraphics.lineBetween(
+      160 + this.roadTopWidth / 2, this.horizonY,
+      160 + this.roadBottomWidth / 2, this.roadBottomY
+    );
+    
+    // Create lane dividers (will be animated)
+    this.createLaneMarkers();
+  }
+  
+  private createLaneMarkers() {
+    // Create dashed lane dividers that will scroll
+    const numMarkers = 8; // Number of dash segments per lane
+    
+    for (let lane = 0; lane < 2; lane++) { // 2 dividers for 3 lanes
+      for (let i = 0; i < numMarkers; i++) {
+        const marker = this.add.graphics();
+        marker.setDepth(2);
+        this.laneMarkers.push(marker);
+        marker.setData('lane', lane);
+        marker.setData('index', i);
+      }
+    }
+    
+    this.updateLaneMarkers();
+  }
+  
+  private updateLaneMarkers() {
+    const numMarkers = 8;
+    const markerSpacing = (this.roadBottomY - this.horizonY) / numMarkers;
+    
+    this.laneMarkers.forEach((marker) => {
+      marker.clear();
+      
+      const lane = marker.getData('lane') as number;
+      const index = marker.getData('index') as number;
+      
+      // Calculate Y position with scroll offset
+      const baseY = this.horizonY + (index * markerSpacing) + (this.roadOffset % markerSpacing);
+      
+      if (baseY < this.horizonY || baseY > this.roadBottomY - 5) return;
+      
+      // Calculate perspective factor (0 at horizon, 1 at bottom)
+      const t = (baseY - this.horizonY) / (this.roadBottomY - this.horizonY);
+      
+      // Road width at this Y position
+      const roadWidth = this.roadTopWidth + (this.roadBottomWidth - this.roadTopWidth) * t;
+      const roadLeft = 160 - roadWidth / 2;
+      
+      // Lane divider X position (1/3 and 2/3 across the road)
+      const laneX = roadLeft + roadWidth * (lane + 1) / 3;
+      
+      // Marker length scales with perspective
+      const markerLength = 3 + t * 8;
+      const markerWidth = 1 + t * 2;
+      
+      // Draw yellow dashed line
+      marker.fillStyle(0xffff00, 1);
+      marker.fillRect(laneX - markerWidth / 2, baseY, markerWidth, markerLength);
+    });
+  }
+  
+  // Get X position for a lane at the van's Y position
+  private getLaneX(lane: number): number {
+    const t = (this.vanY - this.horizonY) / (this.roadBottomY - this.horizonY);
+    const roadWidth = this.roadTopWidth + (this.roadBottomWidth - this.roadTopWidth) * t;
+    const roadLeft = 160 - roadWidth / 2;
+    
+    // Lanes are at 1/6, 3/6, 5/6 of the road width (center of each lane)
+    const lanePositions = [1/6, 3/6, 5/6];
+    return roadLeft + roadWidth * lanePositions[lane];
   }
   
   private createVan() {
-    // Burgundy van at bottom of screen
-    this.van = this.add.container(this.lanePositions[1], 140);
+    // Burgundy van at bottom of screen (with perspective - larger since closer)
+    this.van = this.add.container(this.getLaneX(1), this.vanY);
     this.van.setDepth(10);
     
-    // Simple van sprite (burgundy rectangle)
-    const body = this.add.rectangle(0, 0, 12, 20, 0x8B0000); // Burgundy
-    const windshield = this.add.rectangle(0, -5, 10, 6, 0x87CEEB); // Light blue
+    // Van sprite (burgundy) - larger since it's in foreground
+    const body = this.add.rectangle(0, 0, 24, 36, 0x8B0000); // Burgundy
+    const windshield = this.add.rectangle(0, -10, 20, 10, 0x87CEEB); // Light blue
     const wheels = this.add.graphics();
     wheels.fillStyle(0x000000, 1);
-    wheels.fillRect(-6, 7, 3, 4); // Left wheel
-    wheels.fillRect(3, 7, 3, 4); // Right wheel
+    wheels.fillRect(-12, 12, 6, 8); // Left wheel
+    wheels.fillRect(6, 12, 6, 8); // Right wheel
     
-    this.van.add([body, windshield, wheels]);
+    // Add some detail - roof rack
+    const rack = this.add.rectangle(0, -16, 18, 3, 0x333333);
+    
+    this.van.add([body, windshield, wheels, rack]);
   }
   
   private createUI() {
@@ -228,6 +334,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Scroll road
     this.roadOffset += this.roadSpeed * dt / 1000;
     this.distanceTraveled += this.roadSpeed * dt / 1000;
+    
+    // Update lane markers animation
+    this.updateLaneMarkers();
   }
   
   private changeLane(direction: number) {
@@ -236,7 +345,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     this.tweens.add({
       targets: this.van,
-      x: this.lanePositions[this.currentLane],
+      x: this.getLaneX(this.currentLane),
       duration: 200,
       ease: "Sine.easeInOut",
       onComplete: () => {
@@ -253,31 +362,68 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       this.spawnTrafficCar();
     }
     
-    // Move traffic cars down (they move slower than road)
-    this.trafficCars.forEach((car, index) => {
-      car.sprite.y += (this.roadSpeed - car.speed) * dt / 1000;
+    // Move traffic cars down (they approach the player)
+    // Use reverse iteration to safely remove items
+    for (let i = this.trafficCars.length - 1; i >= 0; i--) {
+      const car = this.trafficCars[i];
       
-      // Remove if off screen
-      if (car.sprite.y > 200) {
-        car.sprite.destroy();
-        this.trafficCars.splice(index, 1);
+      // Cars approach at different speeds (relative to player)
+      car.y += (this.roadSpeed - car.speed) * dt / 1000;
+      this.updateCarPosition(car);
+      
+      // Remove if past screen
+      if (car.y > this.roadBottomY + 20) {
+        car.container.destroy();
+        this.trafficCars.splice(i, 1);
+        continue;
       }
       
       // Check collision with player van
       if (this.checkCarCollision(car)) {
         this.hitCar();
       }
-    });
+    }
   }
   
   private spawnTrafficCar() {
     const lane = Math.floor(Math.random() * 3);
-    const speed = 50 + Math.random() * 30; // 50-80 speed
+    const speed = 50 + Math.random() * 30; // 50-80 speed (how fast they approach)
     
-    const car = this.add.rectangle(this.lanePositions[lane], -20, 10, 18, this.getRandomCarColor());
-    car.setDepth(5);
+    // Create car container
+    const container = this.add.container(0, 0);
+    container.setDepth(5);
     
-    this.trafficCars.push({ sprite: car, lane, speed });
+    // Car body
+    const body = this.add.rectangle(0, 0, 16, 28, this.getRandomCarColor());
+    const windshield = this.add.rectangle(0, -6, 12, 8, 0x87CEEB);
+    
+    container.add([body, windshield]);
+    
+    // Start at horizon
+    const carY = this.horizonY + 10;
+    
+    this.trafficCars.push({ container, lane, speed, y: carY });
+    this.updateCarPosition(this.trafficCars[this.trafficCars.length - 1]);
+  }
+  
+  private updateCarPosition(car: { container: Phaser.GameObjects.Container, lane: number, y: number }) {
+    // Calculate perspective factor (0 at horizon, 1 at bottom)
+    const t = (car.y - this.horizonY) / (this.roadBottomY - this.horizonY);
+    
+    // Scale based on distance (smaller at horizon, larger at bottom)
+    const scale = 0.2 + t * 0.8; // 0.2 to 1.0
+    car.container.setScale(scale);
+    
+    // Get lane X position at this Y
+    const roadWidth = this.roadTopWidth + (this.roadBottomWidth - this.roadTopWidth) * t;
+    const roadLeft = 160 - roadWidth / 2;
+    const lanePositions = [1/6, 3/6, 5/6];
+    const x = roadLeft + roadWidth * lanePositions[car.lane];
+    
+    car.container.setPosition(x, car.y);
+    
+    // Depth based on Y (further back = lower depth)
+    car.container.setDepth(3 + Math.floor(t * 5));
   }
   
   private getRandomCarColor(): number {
@@ -285,12 +431,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     return colors[Math.floor(Math.random() * colors.length)];
   }
   
-  private checkCarCollision(car: { sprite: Phaser.GameObjects.Rectangle, lane: number }): boolean {
+  private checkCarCollision(car: { container: Phaser.GameObjects.Container, lane: number, y: number }): boolean {
     // Simple collision: same lane and overlapping Y
     if (car.lane !== this.currentLane) return false;
     
-    const distance = Math.abs(car.sprite.y - this.van.y);
-    return distance < 20;
+    const distance = Math.abs(car.y - this.vanY);
+    return distance < 25;
   }
   
   private hitCar() {
@@ -310,8 +456,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Rage increases when stuck behind slow cars
     const carAhead = this.trafficCars.find(car => 
       car.lane === this.currentLane && 
-      car.sprite.y > this.van.y - 40 && 
-      car.sprite.y < this.van.y
+      car.y > this.vanY - 40 && 
+      car.y < this.vanY
     );
     
     if (carAhead && carAhead.speed < this.roadSpeed) {
@@ -350,7 +496,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private arriveAtStarbucks1() {
     this.gamePhase = 'atStarbucks1';
-    this.trafficCars.forEach(car => car.sprite.destroy());
+    this.trafficCars.forEach(car => car.container.destroy());
     this.trafficCars = [];
     
     // Wrong Starbucks dialogue
@@ -385,7 +531,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private arriveAtStarbucks2() {
     this.gamePhase = 'atStarbucks2';
-    this.trafficCars.forEach(car => car.sprite.destroy());
+    this.trafficCars.forEach(car => car.container.destroy());
     this.trafficCars = [];
     
     // Correct Starbucks - get coffee
@@ -418,7 +564,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private arriveAtTrailhead() {
     this.gamePhase = 'won';
-    this.trafficCars.forEach(car => car.sprite.destroy());
+    this.trafficCars.forEach(car => car.container.destroy());
     this.trafficCars = [];
     
     // Check if made it before 8 AM
