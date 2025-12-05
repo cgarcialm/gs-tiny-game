@@ -198,35 +198,78 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const ground = this.add.rectangle(160, (this.horizonY + this.roadBottomY) / 2, 320, this.roadBottomY - this.horizonY, 0x1a2a1a);
     ground.setDepth(0);
     
-    // Draw perspective road
+    // Draw curved perspective road
     const roadGraphics = this.add.graphics();
     roadGraphics.setDepth(1);
     
-    // Road surface (dark asphalt)
+    // Draw road as filled polygon following curve
     roadGraphics.fillStyle(0x2a2a2a, 1);
     roadGraphics.beginPath();
-    roadGraphics.moveTo(160 - this.roadTopWidth / 2, this.horizonY); // Top-left
-    roadGraphics.lineTo(160 + this.roadTopWidth / 2, this.horizonY); // Top-right
-    roadGraphics.lineTo(160 + this.roadBottomWidth / 2, this.roadBottomY); // Bottom-right
-    roadGraphics.lineTo(160 - this.roadBottomWidth / 2, this.roadBottomY); // Bottom-left
+    
+    // Start at bottom-left
+    roadGraphics.moveTo(this.roadCenterX - this.roadBottomWidth / 2, this.roadBottomY);
+    
+    // Draw left edge going up (curved)
+    const segments = 20;
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments; // 0 at bottom, 1 at top
+      const pos = this.getRoadPosition(t);
+      roadGraphics.lineTo(pos.left, pos.y);
+    }
+    
+    // Draw right edge going down (curved)
+    for (let i = segments; i >= 0; i--) {
+      const t = i / segments;
+      const pos = this.getRoadPosition(t);
+      roadGraphics.lineTo(pos.right, pos.y);
+    }
+    
     roadGraphics.closePath();
     roadGraphics.fillPath();
     
-    // Road edges (white lines)
+    // Road edges (white lines) - draw as curves
     roadGraphics.lineStyle(2, 0xffffff, 0.8);
+    
     // Left edge
-    roadGraphics.lineBetween(
-      160 - this.roadTopWidth / 2, this.horizonY,
-      160 - this.roadBottomWidth / 2, this.roadBottomY
-    );
+    roadGraphics.beginPath();
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const pos = this.getRoadPosition(t);
+      if (i === 0) roadGraphics.moveTo(pos.left, pos.y);
+      else roadGraphics.lineTo(pos.left, pos.y);
+    }
+    roadGraphics.strokePath();
+    
     // Right edge
-    roadGraphics.lineBetween(
-      160 + this.roadTopWidth / 2, this.horizonY,
-      160 + this.roadBottomWidth / 2, this.roadBottomY
-    );
+    roadGraphics.beginPath();
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const pos = this.getRoadPosition(t);
+      if (i === 0) roadGraphics.moveTo(pos.right, pos.y);
+      else roadGraphics.lineTo(pos.right, pos.y);
+    }
+    roadGraphics.strokePath();
     
     // Create lane dividers (will be animated)
     this.createLaneMarkers();
+  }
+  
+  // Get road position at a given t (0 = bottom, 1 = top/horizon)
+  private getRoadPosition(t: number): { y: number, centerX: number, width: number, left: number, right: number } {
+    // Use easing for more natural curve (ease-in curve to the left)
+    const curveT = Math.pow(t, 1.5); // Curve accelerates toward horizon
+    
+    const y = this.roadBottomY - t * (this.roadBottomY - this.horizonY);
+    const centerX = this.roadCenterX + curveT * (this.horizonCenterX - this.roadCenterX);
+    const width = this.roadBottomWidth - t * (this.roadBottomWidth - this.roadTopWidth);
+    
+    return {
+      y,
+      centerX,
+      width,
+      left: centerX - width / 2,
+      right: centerX + width / 2
+    };
   }
   
   private drawMountains(graphics: Phaser.GameObjects.Graphics) {
@@ -377,19 +420,16 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       
       if (baseY < this.horizonY || baseY > this.roadBottomY - 5) return;
       
-      // Calculate perspective factor (0 at horizon, 1 at bottom)
-      const t = (baseY - this.horizonY) / (this.roadBottomY - this.horizonY);
-      
-      // Road width at this Y position
-      const roadWidth = this.roadTopWidth + (this.roadBottomWidth - this.roadTopWidth) * t;
-      const roadLeft = 160 - roadWidth / 2;
+      // Calculate t (0 at bottom, 1 at top) for road position
+      const t = 1 - (baseY - this.horizonY) / (this.roadBottomY - this.horizonY);
+      const pos = this.getRoadPosition(t);
       
       // Lane divider X position (1/3 and 2/3 across the road)
-      const laneX = roadLeft + roadWidth * (lane + 1) / 3;
+      const laneX = pos.left + pos.width * (lane + 1) / 3;
       
-      // Marker length scales with perspective
-      const markerLength = 3 + t * 8;
-      const markerWidth = 1 + t * 2;
+      // Marker length scales with perspective (smaller at top)
+      const markerLength = 3 + (1 - t) * 8;
+      const markerWidth = 1 + (1 - t) * 2;
       
       // Draw yellow dashed line
       marker.fillStyle(0xffff00, 1);
@@ -397,15 +437,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     });
   }
   
-  // Get X position for a lane at the van's Y position
-  private getLaneX(lane: number): number {
-    const t = (this.vanY - this.horizonY) / (this.roadBottomY - this.horizonY);
-    const roadWidth = this.roadTopWidth + (this.roadBottomWidth - this.roadTopWidth) * t;
-    const roadLeft = 160 - roadWidth / 2;
+  // Get X position for a lane at a given Y position
+  private getLaneX(lane: number, y: number = this.vanY): number {
+    const t = 1 - (y - this.horizonY) / (this.roadBottomY - this.horizonY);
+    const pos = this.getRoadPosition(t);
     
     // Lanes are at 1/6, 3/6, 5/6 of the road width (center of each lane)
     const lanePositions = [1/6, 3/6, 5/6];
-    return roadLeft + roadWidth * lanePositions[lane];
+    return pos.left + pos.width * lanePositions[lane];
   }
   
   private createVan() {
@@ -559,11 +598,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const scale = 0.2 + t * 0.8; // 0.2 to 1.0
     car.container.setScale(scale);
     
-    // Get lane X position at this Y
-    const roadWidth = this.roadTopWidth + (this.roadBottomWidth - this.roadTopWidth) * t;
-    const roadLeft = 160 - roadWidth / 2;
-    const lanePositions = [1/6, 3/6, 5/6];
-    const x = roadLeft + roadWidth * lanePositions[car.lane];
+    // Get lane X position at this Y (follows the curve)
+    const x = this.getLaneX(car.lane, car.y);
     
     car.container.setPosition(x, car.y);
     
