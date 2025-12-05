@@ -198,24 +198,46 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const grassLeft = this.add.rectangle(40, (this.horizonY + this.roadBottomY) / 2, 80, this.roadBottomY - this.horizonY, 0x1a2a1a);
     grassLeft.setDepth(0);
     
-    // Water on right side (dark blue, Puget Sound)
+    // Middle section (between road edges) - draw first so water overlays it
+    const middleGround = this.add.rectangle(160, (this.horizonY + this.roadBottomY) / 2, 160, this.roadBottomY - this.horizonY, 0x1a2a1a);
+    middleGround.setDepth(0);
+    
+    // Water on right side (dark blue, Puget Sound) - follows right edge of road
     const waterGraphics = this.add.graphics();
-    waterGraphics.setDepth(0);
+    waterGraphics.setDepth(0.5);
     waterGraphics.fillStyle(0x0a1a2a, 1); // Dark blue water
-    waterGraphics.fillRect(200, this.horizonY, 120, this.roadBottomY - this.horizonY);
+    
+    // Draw water as polygon following road's right edge
+    waterGraphics.beginPath();
+    // Start at horizon, right edge of road
+    const horizonRoadPos = this.getRoadPosition(1); // t=1 is horizon
+    waterGraphics.moveTo(horizonRoadPos.right, this.horizonY);
+    // Go to top-right corner
+    waterGraphics.lineTo(320, this.horizonY);
+    // Go to bottom-right corner
+    waterGraphics.lineTo(320, this.roadBottomY);
+    // Follow road's right edge back up
+    const waterSegments = 10;
+    for (let i = 0; i <= waterSegments; i++) {
+      const t = i / waterSegments; // 0 at bottom, 1 at top
+      const pos = this.getRoadPosition(t);
+      waterGraphics.lineTo(pos.right, pos.y);
+    }
+    waterGraphics.closePath();
+    waterGraphics.fillPath();
     
     // Water reflections/shimmer
     waterGraphics.fillStyle(0x1a3a5a, 0.3);
     for (let i = 0; i < 8; i++) {
-      const wy = this.horizonY + 10 + i * 18;
-      const ww = 20 + Math.random() * 40;
-      const wx = 220 + Math.random() * 60;
-      waterGraphics.fillRect(wx, wy, ww, 2);
+      const t = (i + 1) / 10;
+      const pos = this.getRoadPosition(t);
+      const wy = pos.y;
+      const ww = 15 + Math.random() * 30;
+      const wx = pos.right + 10 + Math.random() * (320 - pos.right - 20);
+      if (wx + ww < 320) {
+        waterGraphics.fillRect(wx, wy, ww, 2);
+      }
     }
-    
-    // Middle section (between road edges)
-    const middleGround = this.add.rectangle(160, (this.horizonY + this.roadBottomY) / 2, 160, this.roadBottomY - this.horizonY, 0x1a2a1a);
-    middleGround.setDepth(0);
     
     // Draw curved perspective road
     const roadGraphics = this.add.graphics();
