@@ -61,8 +61,6 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   // Card piece (on win)
   private cardPiece: Phaser.GameObjects.Graphics | null = null;
   
-  // Event handler reference for cleanup
-  private skipHandler?: () => void;
 
   constructor() {
     super("SeattleTraffic");
@@ -102,27 +100,6 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(10);
-    
-    // Add skip button (level in development)
-    const skipText = this.add.text(160, 90, "Seattle Traffic level in progress...\nPress ENTER to skip to next level", {
-      fontSize: '14px',
-      fontFamily: 'monospace',
-      color: '#ffffff',
-      backgroundColor: '#000000',
-      padding: { x: 10, y: 8 },
-      align: 'center'
-    });
-    skipText.setOrigin(0.5);
-    skipText.setDepth(1000);
-    
-    // Wait for ENTER to skip
-    this.skipHandler = () => {
-      skipText.destroy();
-      // Progress to level 3 (Smush)
-      this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
-      fadeToScene(this, SCENES.GAME, 1000);
-    };
-    this.input.keyboard?.on('keydown-ENTER', this.skipHandler);
     
     // Start intro sequence (can still be implemented later)
     this.startIntroSequence();
@@ -315,12 +292,13 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private drawMountains(graphics: Phaser.GameObjects.Graphics) {
     // Mt. Rainier silhouette - shorter and wider, at far right of screen
+    const offsetX = 20; // Same offset as skyline
     graphics.fillStyle(0x1a1a2a, 1);
     graphics.beginPath();
-    graphics.moveTo(250, this.horizonY);
-    graphics.lineTo(265, this.horizonY - 6);
-    graphics.lineTo(285, this.horizonY - 14);
-    graphics.lineTo(305, this.horizonY - 12);
+    graphics.moveTo(Math.min(250 + offsetX, 320), this.horizonY);
+    graphics.lineTo(Math.min(265 + offsetX, 320), this.horizonY - 6);
+    graphics.lineTo(Math.min(285 + offsetX, 320), this.horizonY - 14);
+    graphics.lineTo(Math.min(305 + offsetX, 320), this.horizonY - 12);
     graphics.lineTo(320, this.horizonY - 8);
     graphics.lineTo(320, this.horizonY);
     graphics.closePath();
@@ -329,43 +307,53 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Snow cap on Rainier (wider)
     graphics.fillStyle(0x4a4a5a, 1);
     graphics.beginPath();
-    graphics.moveTo(278, this.horizonY - 10);
-    graphics.lineTo(285, this.horizonY - 14);
-    graphics.lineTo(295, this.horizonY - 11);
+    graphics.moveTo(Math.min(278 + offsetX, 320), this.horizonY - 10);
+    graphics.lineTo(Math.min(285 + offsetX, 320), this.horizonY - 14);
+    graphics.lineTo(Math.min(295 + offsetX, 320), this.horizonY - 11);
     graphics.closePath();
     graphics.fillPath();
   }
   
   private drawSeattleSkyline(graphics: Phaser.GameObjects.Graphics) {
     const skylineY = this.horizonY;
+    const offsetX = 20; // Shift everything right
     
     // Building silhouettes (dark) - left to right: many buildings, space needle, 2 small buildings, mt rainier
     graphics.fillStyle(0x151520, 1);
     
+    // Small houses/short buildings on far left
+    graphics.fillRect(0, skylineY - 6, 6, 6);
+    graphics.fillRect(8, skylineY - 8, 7, 8);
+    graphics.fillRect(17, skylineY - 5, 5, 5);
+    graphics.fillRect(24, skylineY - 9, 8, 9);
+    graphics.fillRect(34, skylineY - 6, 6, 6);
+    graphics.fillRect(42, skylineY - 10, 7, 10);
+    graphics.fillRect(51, skylineY - 7, 6, 7);
+    
     // Many buildings on the left
-    graphics.fillRect(40, skylineY - 14, 8, 14);
-    graphics.fillRect(50, skylineY - 20, 10, 20);
-    graphics.fillRect(62, skylineY - 16, 8, 16);
-    graphics.fillRect(72, skylineY - 24, 12, 24);
-    graphics.fillRect(86, skylineY - 18, 10, 18);
+    graphics.fillRect(40 + offsetX, skylineY - 14, 8, 14);
+    graphics.fillRect(50 + offsetX, skylineY - 20, 10, 20);
+    graphics.fillRect(62 + offsetX, skylineY - 16, 8, 16);
+    graphics.fillRect(72 + offsetX, skylineY - 24, 12, 24);
+    graphics.fillRect(86 + offsetX, skylineY - 18, 10, 18);
     
     // Columbia Center (tallest)
-    graphics.fillRect(98, skylineY - 30, 12, 30);
+    graphics.fillRect(98 + offsetX, skylineY - 30, 12, 30);
     
-    graphics.fillRect(112, skylineY - 20, 10, 20);
-    graphics.fillRect(124, skylineY - 16, 10, 16);
-    graphics.fillRect(136, skylineY - 22, 10, 22);
-    graphics.fillRect(148, skylineY - 14, 8, 14);
-    graphics.fillRect(158, skylineY - 18, 10, 18);
-    graphics.fillRect(170, skylineY - 12, 8, 12);
+    graphics.fillRect(112 + offsetX, skylineY - 20, 10, 20);
+    graphics.fillRect(124 + offsetX, skylineY - 16, 10, 16);
+    graphics.fillRect(136 + offsetX, skylineY - 22, 10, 22);
+    graphics.fillRect(148 + offsetX, skylineY - 14, 8, 14);
+    graphics.fillRect(158 + offsetX, skylineY - 18, 10, 18);
+    graphics.fillRect(170 + offsetX, skylineY - 12, 8, 12);
     
     // Space Needle! (moved right)
-    this.drawSpaceNeedle(graphics, 190, skylineY);
+    this.drawSpaceNeedle(graphics, 190 + offsetX, skylineY);
     
     // Two smaller buildings after Space Needle
     graphics.fillStyle(0x151520, 1);
-    graphics.fillRect(207, skylineY - 12, 10, 12);
-    graphics.fillRect(220, skylineY - 8, 8, 8);
+    graphics.fillRect(207 + offsetX, skylineY - 12, 10, 12);
+    graphics.fillRect(220 + offsetX, skylineY - 8, 8, 8);
     
     // Add lit windows to buildings
     this.addBuildingLights(graphics, skylineY);
@@ -405,21 +393,27 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private addBuildingLights(graphics: Phaser.GameObjects.Graphics, skylineY: number) {
     // Random lit windows - buildings aligned with highway horizon
+    const offsetX = 20; // Same offset as skyline
     const buildings = [
-      { x: 40, w: 8, h: 14 },
-      { x: 50, w: 10, h: 20 },
-      { x: 62, w: 8, h: 16 },
-      { x: 72, w: 12, h: 24 },
-      { x: 86, w: 10, h: 18 },
-      { x: 98, w: 12, h: 30 },
-      { x: 112, w: 10, h: 20 },
-      { x: 124, w: 10, h: 16 },
-      { x: 136, w: 10, h: 22 },
-      { x: 148, w: 8, h: 14 },
-      { x: 158, w: 10, h: 18 },
-      { x: 170, w: 8, h: 12 },
-      { x: 207, w: 10, h: 12 },
-      { x: 220, w: 8, h: 8 },
+      // Small houses on far left
+      { x: 8, w: 7, h: 8 },
+      { x: 24, w: 8, h: 9 },
+      { x: 42, w: 7, h: 10 },
+      // Taller buildings
+      { x: 40 + offsetX, w: 8, h: 14 },
+      { x: 50 + offsetX, w: 10, h: 20 },
+      { x: 62 + offsetX, w: 8, h: 16 },
+      { x: 72 + offsetX, w: 12, h: 24 },
+      { x: 86 + offsetX, w: 10, h: 18 },
+      { x: 98 + offsetX, w: 12, h: 30 },
+      { x: 112 + offsetX, w: 10, h: 20 },
+      { x: 124 + offsetX, w: 10, h: 16 },
+      { x: 136 + offsetX, w: 10, h: 22 },
+      { x: 148 + offsetX, w: 8, h: 14 },
+      { x: 158 + offsetX, w: 10, h: 18 },
+      { x: 170 + offsetX, w: 8, h: 12 },
+      { x: 207 + offsetX, w: 10, h: 12 },
+      { x: 220 + offsetX, w: 8, h: 8 },
     ];
     
     buildings.forEach(b => {
@@ -936,11 +930,5 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     }
   }
   
-  shutdown() {
-    // Remove keyboard listener to prevent it from firing after scene restart
-    if (this.skipHandler && this.input.keyboard) {
-      this.input.keyboard.off('keydown-ENTER', this.skipHandler);
-    }
-  }
 }
 
