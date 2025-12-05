@@ -6,7 +6,6 @@ import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 import { HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import { HELP_HINT_TEXT_STYLE } from "../config/textStyles";
-import { createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 import type { GameControls } from "../utils/controls";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
@@ -58,8 +57,6 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private starbucks2Distance = 1000;
   private trailheadDistance = 2000;
   
-  // Card piece (on win)
-  private cardPiece: Phaser.GameObjects.Graphics | null = null;
   
 
   constructor() {
@@ -85,7 +82,6 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.trafficCars = [];
     this.laneMarkers = [];
     this.roadOffset = 0;
-    this.cardPiece = null;
     
     // Create road
     this.createRoad();
@@ -120,10 +116,6 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     }
     
     if (this.gamePhase === 'won' || this.gamePhase === 'lost') {
-      // Game over - check for card collection
-      if (this.cardPiece) {
-        this.checkCardCollection();
-      }
       return;
     }
     
@@ -687,8 +679,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private updateClock(dt: number) {
-    // Time passes (1 real second = 5 game seconds)
-    this.currentTime += dt / 1000 * 5;
+    // Time passes (1 real second = 2 game seconds) - slower pace
+    this.currentTime += dt / 1000 * 2 / 60; // Convert to minutes (slower)
   }
   
   private updateRage(dt: number) {
@@ -832,43 +824,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         padding: { x: 8, y: 4 }
       }).setOrigin(0.5).setDepth(50);
       
-      // Spawn memory card piece
-      this.time.delayedCall(1500, () => {
-        this.spawnCardPiece();
-      });
-    });
-  }
-  
-  private spawnCardPiece() {
-    this.cardPiece = createCardPieceSprite(this, 160, 130);
-    this.cardPiece.setDepth(60);
-    spawnCardPieceSparkles(this, 160, 130);
-    
-    // Pulse animation
-    this.tweens.add({
-      targets: this.cardPiece,
-      scale: 1.2,
-      duration: 600,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut"
-    });
-  }
-  
-  private checkCardCollection() {
-    if (!this.cardPiece) return;
-    
-    // Click or press E to collect
-    if (Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
-      this.cardPiece.destroy();
-      this.cardPiece = null;
-      
-      // Transition to next level
-      this.time.delayedCall(500, () => {
+      // Transition to next level after delay
+      this.time.delayedCall(2000, () => {
         this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
         fadeToScene(this, SCENES.GAME, 1000);
       });
-    }
+    });
   }
   
   private loseByRage() {
@@ -909,9 +870,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Update clock
     const hours = Math.floor(this.currentTime / 60);
     const minutes = Math.floor(this.currentTime % 60);
+    const seconds = Math.floor((this.currentTime % 1) * 60);
     const clockText = this.children.getByName('clockText') as Phaser.GameObjects.Text;
     if (clockText) {
-      clockText.setText(`${hours}:${minutes.toString().padStart(2, '0')} AM`);
+      clockText.setText(`${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} AM`);
     }
     
     // Update rage meter
