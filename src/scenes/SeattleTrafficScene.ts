@@ -46,7 +46,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private carSpawnInterval = 2000; // Spawn every 2 seconds
   
   // Game state
-  private gamePhase: 'intro' | 'toStarbucks1' | 'atStarbucks1' | 'toStarbucks2' | 'atStarbucks2' | 'toTrailhead' | 'won' | 'lost' = 'intro';
+  private gamePhase: 'intro' | 'toStarbucks1' | 'toStarbucks2' | 'toTrailhead' | 'won' | 'lost' = 'intro';
   private distanceTraveled = 0;
   private currentTime = 7 * 60 + 15; // 7:15 AM in minutes
   private rageLevel = 0; // 0-100
@@ -57,7 +57,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private starbucks2Distance = 1000;
   private trailheadDistance = 2000;
   
-  
+  // Speech bubble container
+  private speechBubble?: Phaser.GameObjects.Container;
 
   constructor() {
     super("SeattleTraffic");
@@ -726,71 +727,25 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private arriveAtStarbucks1() {
-    this.gamePhase = 'atStarbucks1';
-    this.trafficCars.forEach(car => car.container.destroy());
-    this.trafficCars = [];
+    // Keep game running - just transition to next phase immediately
+    this.gamePhase = 'toStarbucks2';
     
-    // Wrong Starbucks dialogue
-    this.time.delayedCall(500, () => {
-      this.add.text(160, 60, "STARBUCKS", {
-        fontFamily: "monospace",
-        fontSize: "20px",
-        color: "#00704a",
-        fontStyle: "bold"
-      }).setOrigin(0.5).setDepth(50);
-      
-      this.time.delayedCall(1000, () => {
-        this.add.text(160, 100, "Ceci: Wait... wrong one!\nI ordered at the OTHER Starbucks!", {
-          fontFamily: "monospace",
-          fontSize: "10px",
-          color: "#ffffff",
-          backgroundColor: "#000000",
-          padding: { x: 8, y: 4 },
-          align: "center"
-        }).setOrigin(0.5).setDepth(50);
-        
-        // Increase rage
-        this.rageLevel = Math.min(100, this.rageLevel + 10);
-        
-        // Continue to correct Starbucks
-        this.time.delayedCall(3000, () => {
-          this.gamePhase = 'toStarbucks2';
-        });
-      });
-    });
+    // Wrong Starbucks dialogue (game keeps running)
+    this.showSpeechBubble("Ceci", "Wait... wrong one! I ordered at the OTHER Starbucks!", 3000);
+    
+    // Increase rage
+    this.rageLevel = Math.min(100, this.rageLevel + 10);
   }
   
   private arriveAtStarbucks2() {
-    this.gamePhase = 'atStarbucks2';
-    this.trafficCars.forEach(car => car.container.destroy());
-    this.trafficCars = [];
+    // Keep game running - just transition to next phase immediately
+    this.gamePhase = 'toTrailhead';
     
-    // Correct Starbucks - get coffee
-    this.time.delayedCall(500, () => {
-      this.add.text(160, 60, "STARBUCKS", {
-        fontFamily: "monospace",
-        fontSize: "20px",
-        color: "#00704a",
-        fontStyle: "bold"
-      }).setOrigin(0.5).setDepth(50);
-      
-      this.time.delayedCall(1000, () => {
-        this.add.text(160, 100, "Ceci: Finally! Got my coffee!", {
-          fontFamily: "monospace",
-          fontSize: "10px",
-          color: "#ffffff",
-          backgroundColor: "#000000",
-          padding: { x: 8, y: 4 }
-        }).setOrigin(0.5).setDepth(50);
-        
-        // Continue to trailhead
-        this.time.delayedCall(2000, () => {
-          this.gamePhase = 'toTrailhead';
-          // Traffic gets heavier (spawn faster)
-          this.carSpawnInterval = 1500;
-        });
-      });
-    });
+    // Correct Starbucks dialogue (game keeps running)
+    this.showSpeechBubble("Ceci", "Finally! Got my coffee!", 2500);
+    
+    // Traffic gets heavier (spawn faster)
+    this.carSpawnInterval = 1500;
   }
   
   private arriveAtTrailhead() {
@@ -808,41 +763,19 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private winGame() {
     // Victory!
-    this.add.text(160, 60, "TRAILHEAD", {
-      fontFamily: "monospace",
-      fontSize: "20px",
-      color: "#22c55e",
-      fontStyle: "bold"
-    }).setOrigin(0.5).setDepth(50);
+    this.showSpeechBubble("Ceci", "We made it! Let's hike!", 2500);
     
-    this.time.delayedCall(1000, () => {
-      this.add.text(160, 90, "Made it before 8 AM!", {
-        fontFamily: "monospace",
-        fontSize: "12px",
-        color: "#ffffff",
-        backgroundColor: "#000000",
-        padding: { x: 8, y: 4 }
-      }).setOrigin(0.5).setDepth(50);
-      
-      // Transition to next level after delay
-      this.time.delayedCall(2000, () => {
-        this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
-        fadeToScene(this, SCENES.GAME, 1000);
-      });
+    // Transition to next level after delay
+    this.time.delayedCall(3000, () => {
+      this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
+      fadeToScene(this, SCENES.GAME, 1000);
     });
   }
   
   private loseByRage() {
     this.gamePhase = 'lost';
     
-    this.add.text(160, 90, "TOO MUCH TRAFFIC!\n\nGrayson: I can't deal with this...", {
-      fontFamily: "monospace",
-      fontSize: "12px",
-      color: "#ffffff",
-      backgroundColor: "#000000",
-      padding: { x: 8, y: 4 },
-      align: "center"
-    }).setOrigin(0.5).setDepth(50);
+    this.showSpeechBubble("Grayson", "I can't deal with this traffic anymore...", 2500);
     
     this.time.delayedCall(3000, () => {
       this.scene.restart();
@@ -852,17 +785,98 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private loseByTime() {
     this.gamePhase = 'lost';
     
-    this.add.text(160, 90, "TOO LATE!\n\nCeci: The trail's gonna be packed now...", {
-      fontFamily: "monospace",
-      fontSize: "12px",
-      color: "#ffffff",
-      backgroundColor: "#000000",
-      padding: { x: 8, y: 4 },
-      align: "center"
-    }).setOrigin(0.5).setDepth(50);
+    this.showSpeechBubble("Ceci", "The trail's gonna be packed now...", 2500);
     
     this.time.delayedCall(3000, () => {
       this.scene.restart();
+    });
+  }
+  
+  private showSpeechBubble(speaker: string, text: string, duration: number = 3000) {
+    // Remove existing bubble if any
+    if (this.speechBubble) {
+      this.speechBubble.destroy();
+    }
+    
+    // Position over the water (right side of screen), in the sky area
+    const bubbleX = 255;
+    const bubbleY = 80;
+    
+    // Create container
+    this.speechBubble = this.add.container(bubbleX, bubbleY);
+    this.speechBubble.setDepth(200);
+    
+    // Create text first to measure it
+    const fullText = `${speaker}: ${text}`;
+    const messageText = this.add.text(0, 0, fullText, {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#000000",
+      wordWrap: { width: 100 }
+    }).setOrigin(0.5);
+    
+    // Calculate bubble size based on text
+    const padding = 8;
+    const bubbleWidth = messageText.width + padding * 2;
+    const bubbleHeight = messageText.height + padding * 2;
+    
+    // Create bubble background with graphics
+    const bubbleGraphics = this.add.graphics();
+    bubbleGraphics.fillStyle(0xffffff, 0.95);
+    bubbleGraphics.lineStyle(2, 0x333333, 1);
+    
+    // Rounded rectangle for bubble
+    bubbleGraphics.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight / 2, bubbleWidth, bubbleHeight, 6);
+    bubbleGraphics.strokeRoundedRect(-bubbleWidth / 2, -bubbleHeight / 2, bubbleWidth, bubbleHeight, 6);
+    
+    // Pointer/tail pointing toward the car (bottom-left)
+    bubbleGraphics.fillStyle(0xffffff, 0.95);
+    bubbleGraphics.beginPath();
+    bubbleGraphics.moveTo(-bubbleWidth / 2 + 10, bubbleHeight / 2); // Start at bottom edge
+    bubbleGraphics.lineTo(-bubbleWidth / 2 - 8, bubbleHeight / 2 + 12); // Point toward car
+    bubbleGraphics.lineTo(-bubbleWidth / 2 + 22, bubbleHeight / 2); // Back to bottom edge
+    bubbleGraphics.closePath();
+    bubbleGraphics.fillPath();
+    
+    // Outline for the pointer
+    bubbleGraphics.lineStyle(2, 0x333333, 1);
+    bubbleGraphics.beginPath();
+    bubbleGraphics.moveTo(-bubbleWidth / 2 + 10, bubbleHeight / 2);
+    bubbleGraphics.lineTo(-bubbleWidth / 2 - 8, bubbleHeight / 2 + 12);
+    bubbleGraphics.lineTo(-bubbleWidth / 2 + 22, bubbleHeight / 2);
+    bubbleGraphics.strokePath();
+    
+    // Add to container
+    this.speechBubble.add([bubbleGraphics, messageText]);
+    
+    // Animate in
+    this.speechBubble.setScale(0);
+    this.speechBubble.setAlpha(0);
+    this.tweens.add({
+      targets: this.speechBubble,
+      scale: 1,
+      alpha: 1,
+      duration: 150,
+      ease: 'Back.easeOut'
+    });
+    
+    // Auto-remove after duration
+    this.time.delayedCall(duration, () => {
+      if (this.speechBubble) {
+        this.tweens.add({
+          targets: this.speechBubble,
+          scale: 0,
+          alpha: 0,
+          duration: 150,
+          ease: 'Back.easeIn',
+          onComplete: () => {
+            if (this.speechBubble) {
+              this.speechBubble.destroy();
+              this.speechBubble = undefined;
+            }
+          }
+        });
+      }
     });
   }
   
