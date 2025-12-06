@@ -62,9 +62,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   // Checkpoints - tuned for 3 real minutes (45 game minutes at 15x speed)
   // At avg speed 100: 180 seconds = 18000 units total
-  private starbucks1Distance = 5000;   // ~50s in, ~7:27 game time
-  private starbucks2Distance = 11000;  // ~110s in, ~7:42 game time
-  private trailheadDistance = 17500;   // ~175s in, ~7:59 game time
+  private starbucks1Distance = 5833;   // 1/3 of total distance (~20 miles)
+  private starbucks2Distance = 11667;  // 2/3 of total distance (~40 miles)
+  private trailheadDistance = 17500;   // Full distance to trailhead (~60 miles)
+  private unitsPerMile = 291.67;       // Conversion: 17500 units = 60 miles
   
   // Speech bubble container
   private speechBubble?: Phaser.GameObjects.Container;
@@ -728,8 +729,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private updateClock(dt: number) {
-    // Time passes at 15x (45 game minutes in 3 real minutes)
-    this.currentTime += dt / 1000 * 30 / 60; // Convert to minutes
+    // Time passes at 
+    this.currentTime += dt / 1000 * 45 / 60; // Convert to minutes
   }
   
   private updateRage(dt: number) {
@@ -1272,7 +1273,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         remaining = this.trailheadDistance - this.distanceTraveled;
       }
       
-      distanceText.setText(`→ ${target}: ${Math.max(0, Math.floor(remaining))}m`);
+      const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
+      distanceText.setText(`→ ${target}: ${miles} mi`);
     }
   }
   
