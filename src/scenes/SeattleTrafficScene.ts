@@ -41,7 +41,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private laneMarkers: Phaser.GameObjects.Graphics[] = [];
   
   // Lane speed rules: left=fast, middle=medium, right=slow
-  private laneSpeeds = [130, 100, 70]; // Lane 0 (left), 1 (middle), 2 (right)
+  private laneSpeeds = [150, 100, 50]; // Lane 0 (left), 1 (middle), 2 (right)
   
   // Traffic cars
   private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number, exiting?: boolean }[] = [];
