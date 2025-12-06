@@ -60,12 +60,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private rageLevel = 0; // 0-100
   private stuckTimer = 0;
   
-  // Checkpoints - tuned for 3 real minutes (45 game minutes at 15x speed)
-  // At avg speed 100: 180 seconds = 18000 units total
-  private starbucks1Distance = 5833;   // 1/3 of total distance (~20 miles)
-  private starbucks2Distance = 11667;  // 2/3 of total distance (~40 miles)
-  private trailheadDistance = 17500;   // Full distance to trailhead (~60 miles)
-  private unitsPerMile = 291.67;       // Conversion: 17500 units = 60 miles
+  // Checkpoints - tuned so ETA starts at 8:15 in middle lane (speed 100)
+  // At speed 100: 120 real seconds = 60 game minutes → ETA 8:15
+  private starbucks1Distance = 4000;   // 1/3 of total distance (~20 miles)
+  private starbucks2Distance = 8000;   // 2/3 of total distance (~40 miles)
+  private trailheadDistance = 12000;   // Full distance to trailhead (~60 miles)
+  private unitsPerMile = 200;          // Conversion: 12000 units = 60 miles
   
   // Speech bubble container
   private speechBubble?: Phaser.GameObjects.Container;
@@ -1275,6 +1275,16 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       const etaHours = Math.floor(etaMinutes / 60);
       const etaMins = Math.floor(etaMinutes % 60);
       etaText.setText(`Final ETA: ${etaHours}:${etaMins.toString().padStart(2, '0')}`);
+      
+      // Color code ETA: green < 8:00, yellow = 8:00, red > 8:00
+      const deadline = 8 * 60; // 8:00 AM in minutes
+      if (etaMinutes < deadline - 1) {
+        etaText.setColor('#00ff00'); // Green - early
+      } else if (etaMinutes <= deadline + 1) {
+        etaText.setColor('#ffff00'); // Yellow - on time
+      } else {
+        etaText.setColor('#ff0000'); // Red - late
+      }
       
       // Current checkpoint instruction
       if (this.gamePhase === 'toStarbucks1') {
