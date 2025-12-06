@@ -49,8 +49,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private carSpawnInterval = 2000; // Spawn every 2 seconds
   
   // On-ramps and off-ramps (every 5 game minutes = 20 real seconds at 15x)
-  private lastRampTime = 7 * 60 + 14; // Start time (1 min before game start so first ramp appears quickly)
-  private rampInterval = 1; // Every 1 game minute for testing
+  private lastRampTime = 7 * 60 + 10; // Start time (5 min before game start so first ramps appear at 7:15)
+  private rampInterval = 5; // Every 5 game minutes (20 real seconds at 15x)
   private activeRamps: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'on' | 'off', label: Phaser.GameObjects.Text }[] = []
   
   // Game state
@@ -93,7 +93,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.laneMarkers = [];
     this.roadOffset = 0;
     this.roadSpeed = this.laneSpeeds[this.currentLane]; // Set initial speed based on lane
-    this.lastRampTime = 7 * 60 + 14; // Reset ramp timing
+    this.lastRampTime = 7 * 60 + 10; // Reset ramp timing (5 min before start)
     this.activeRamps = []; // Clear any leftover ramps
     
     // Create road
@@ -773,7 +773,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       
       // Trigger EXIT first, then MERGE after a short delay (like real interchanges)
       this.triggerOffRamp();
-      this.time.delayedCall(1500, () => {
+      this.time.delayedCall(1000, () => {
         this.triggerOnRamp();
       });
     }
