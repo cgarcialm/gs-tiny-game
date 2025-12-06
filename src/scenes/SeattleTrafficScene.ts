@@ -628,19 +628,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       // Cars approach at different speeds (relative to player)
       car.y += (this.roadSpeed - car.speed) * dt / 1000;
       
-      // Handle exiting cars - they drift to the right
-      if (car.exiting) {
-        car.container.x += 50 * dt / 1000; // Drift right
-        
-        // Remove if off-screen to the right
-        if (car.container.x > 340) {
-          car.container.destroy();
-          this.trafficCars.splice(i, 1);
-          continue;
-        }
-      } else {
-        this.updateCarPosition(car);
-      }
+      this.updateCarPosition(car);
       
       // Remove if past screen (bottom) or near horizon (cars that pulled ahead)
       if (car.y > this.roadBottomY + 20 || car.y < this.horizonY + 8) {
@@ -1018,20 +1006,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private triggerOffRamp() {
-    // Create visual ramp
+    // Create visual ramp only (no car exiting effect - looks bad going into water)
     this.createRampGraphics('off');
-    
-    // Mark some right-lane cars as exiting after a delay
-    this.time.delayedCall(1000, () => {
-      const rightLaneCars = this.trafficCars.filter(car => car.lane === 2 && !car.exiting);
-      const numExiting = Math.min(2, rightLaneCars.length);
-      
-      for (let i = 0; i < numExiting; i++) {
-        if (rightLaneCars[i]) {
-          rightLaneCars[i].exiting = true;
-        }
-      }
-    });
   }
   
   private spawnMergingCar() {
@@ -1275,10 +1251,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       let remaining = 0;
       
       if (this.gamePhase === 'toStarbucks1') {
-        target = "Coffee Shop 1";
+        target = "Starbucks";
         remaining = this.starbucks1Distance - this.distanceTraveled;
       } else if (this.gamePhase === 'toStarbucks2') {
-        target = "Coffee Shop 2";
+        target = "Starbucks";
         remaining = this.starbucks2Distance - this.distanceTraveled;
       } else if (this.gamePhase === 'toTrailhead') {
         target = "Trailhead";
@@ -1286,7 +1262,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       }
       
       const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
-      distanceText.setText(`→ ${target}: ${miles} mi`);
+      distanceText.setText(`↱ ${target}: ${miles} mi`);
     }
   }
   
