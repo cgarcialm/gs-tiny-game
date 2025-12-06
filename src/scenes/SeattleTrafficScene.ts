@@ -690,13 +690,19 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.updateCarPosition(this.trafficCars[this.trafficCars.length - 1]);
   }
   
-  private updateCarPosition(car: { container: Phaser.GameObjects.Container, lane: number, y: number }) {
+  private updateCarPosition(car: { container: Phaser.GameObjects.Container, lane: number, y: number, merging?: boolean }) {
     // Calculate perspective factor (0 at horizon, 1 at bottom)
     const t = (car.y - this.horizonY) / (this.roadBottomY - this.horizonY);
     
     // Scale based on distance (smaller at horizon, larger at bottom)
     const scale = 0.2 + t * 0.8; // 0.2 to 1.0
     car.container.setScale(scale);
+    
+    // Skip X position update if car is merging (tween is controlling it)
+    if (car.merging) {
+      car.container.setY(car.y);
+      return;
+    }
     
     // Get lane X position at this Y (follows the curve)
     const x = this.getLaneX(car.lane, car.y);
@@ -1002,10 +1008,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Create visual ramp
     this.createRampGraphics('on');
     
-    // Spawn 2-3 merging cars as ramp passes
+    // Spawn 2-3 merging cars immediately as ramp appears (faster timing)
     const numCars = 2 + Math.floor(Math.random() * 2);
     for (let i = 0; i < numCars; i++) {
-      this.time.delayedCall(500 + i * 600, () => {
+      this.time.delayedCall(100 + i * 300, () => {
         this.spawnMergingCar();
       });
     }
@@ -1043,23 +1049,29 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const carY = Math.max(this.horizonY + 15, Math.min(rampY + 10, this.roadBottomY - 30));
     const speed = this.laneSpeeds[2] + (Math.random() * 20 - 10); // Right lane speed
     
-    const car = { container, lane: 2, speed, y: carY, exiting: false };
+    const car = { container, lane: 2, speed, y: carY, exiting: false, merging: true };
     this.trafficCars.push(car);
     
-    // Position off-screen to the right
+    // Position off-screen to the right, slightly above target Y (coming from ramp curve)
     const pos = this.getRoadPosition(1 - (carY - this.horizonY) / (this.roadBottomY - this.horizonY));
-    container.setPosition(pos.right + 50, carY);
+    const startX = pos.right + 40;
+    const startY = carY - 15; // Start slightly higher (coming from ramp)
+    container.setPosition(startX, startY);
     
     // Calculate perspective scale
     const t = (carY - this.horizonY) / (this.roadBottomY - this.horizonY);
     container.setScale(0.2 + t * 0.8);
     
-    // Animate merging into the right lane
+    // Fast diagonal merge animation into the right lane
     this.tweens.add({
       targets: container,
       x: this.getLaneX(2, carY),
-      duration: 800,
-      ease: 'Sine.easeOut'
+      y: carY,
+      duration: 350,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        car.merging = false; // Allow normal position updates after merge
+      }
     });
   }
   
