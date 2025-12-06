@@ -49,8 +49,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private carSpawnInterval = 2000; // Spawn every 2 seconds
   
   // On-ramps and off-ramps (every 5 game minutes = 20 real seconds at 15x)
-  private lastRampTime = 7 * 60 + 15; // Start time
-  private rampInterval = 2; // Every 2 game minutes (for testing - change back to 5)
+  private lastRampTime = 7 * 60 + 14; // Start time (1 min before game start so first ramp appears quickly)
+  private rampInterval = 1; // Every 1 game minute for testing
   private activeRamps: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'on' | 'off', label: Phaser.GameObjects.Text }[] = []
   
   // Game state
@@ -839,18 +839,20 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         const st = i / segments;
         // Ease-in curve (starts far right, curves in to highway)
         const curve = Math.pow(st, 2);
-        const px = pos.right + rampWidth + (1 - curve) * outerAngle;
+        // Outer edge starts at road edge
+        const px = pos.right + (1 - curve) * outerAngle;
         const py = y + (1 - st) * rampLength;
         if (i === 0) graphics.moveTo(px, py);
         else graphics.lineTo(px, py);
       }
       
-      // Inner edge (left side of ramp) - back down
+      // Inner edge (left side of ramp) - back down, starts below outer
       for (let i = segments; i >= 0; i--) {
         const st = i / segments;
         const curve = Math.pow(st, 2);
-        const px = pos.right + (1 - curve) * innerAngle;
-        const py = y + (1 - st) * rampLength;
+        // Start at road edge but 10px right and 10px below outer (creates gap at connection)
+        const px = pos.right + (1 - curve) * innerAngle + 10;
+        const py = y + 10 + (1 - st) * rampLength;
         graphics.lineTo(px, py);
       }
       
@@ -864,36 +866,44 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       for (let i = 0; i <= segments; i++) {
         const st = i / segments;
         const curve = Math.pow(st, 2);
-        const px = pos.right + rampWidth + (1 - curve) * outerAngle;
+        const px = pos.right + (1 - curve) * outerAngle;
         const py = y + (1 - st) * rampLength;
         if (i === 0) graphics.moveTo(px, py);
         else graphics.lineTo(px, py);
       }
       graphics.strokePath();
-      // Inner edge
+      // Inner edge (starts 10px below)
       graphics.beginPath();
       for (let i = 0; i <= segments; i++) {
         const st = i / segments;
         const curve = Math.pow(st, 2);
-        const px = pos.right + (1 - curve) * innerAngle;
-        const py = y + (1 - st) * rampLength;
+        const px = pos.right + (1 - curve) * innerAngle + 10;
+        const py = y + 10 + (1 - st) * rampLength;
         if (i === 0) graphics.moveTo(px, py);
         else graphics.lineTo(px, py);
       }
       graphics.strokePath();
       
-      // Yellow dashed center line
+      // Yellow dashed center line - between outer and inner edges
       graphics.lineStyle(1, 0xffff00, 0.8);
       for (let i = 0; i < segments; i += 3) { // Dashed: draw every 3rd segment
         const st1 = i / segments;
         const st2 = Math.min((i + 1.5) / segments, 1);
         const curve1 = Math.pow(st1, 2);
         const curve2 = Math.pow(st2, 2);
-        const centerOffset = (outerAngle + innerAngle) / 2;
-        const px1 = pos.right + rampWidth / 2 + (1 - curve1) * centerOffset;
-        const py1 = y + (1 - st1) * rampLength;
-        const px2 = pos.right + rampWidth / 2 + (1 - curve2) * centerOffset;
-        const py2 = y + (1 - st2) * rampLength;
+        // Center is midway between outer and inner edges
+        const outerX1 = pos.right + (1 - curve1) * outerAngle;
+        const outerY1 = y + (1 - st1) * rampLength;
+        const innerX1 = pos.right + (1 - curve1) * innerAngle + 10;
+        const innerY1 = y + 10 + (1 - st1) * rampLength;
+        const outerX2 = pos.right + (1 - curve2) * outerAngle;
+        const outerY2 = y + (1 - st2) * rampLength;
+        const innerX2 = pos.right + (1 - curve2) * innerAngle + 10;
+        const innerY2 = y + 10 + (1 - st2) * rampLength;
+        const px1 = (outerX1 + innerX1) / 2;
+        const py1 = (outerY1 + innerY1) / 2;
+        const px2 = (outerX2 + innerX2) / 2;
+        const py2 = (outerY2 + innerY2) / 2;
         graphics.beginPath();
         graphics.moveTo(px1, py1);
         graphics.lineTo(px2, py2);
@@ -904,22 +914,23 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       // Off-ramp: smooth curve from highway out to bottom-right
       graphics.beginPath();
       
-      // Inner edge (left side) - from highway going out
+      // Inner edge (left side) - from highway going out, starts below outer
       for (let i = 0; i <= segments; i++) {
         const st = i / segments;
         // Ease-out curve (starts at highway, curves out to right)
         const curve = 1 - Math.pow(1 - st, 2);
-        const px = pos.right + curve * innerAngle;
-        const py = y + st * rampLength;
+        // Start at road edge but 10px right and 10px below outer (creates gap at connection)
+        const px = pos.right + curve * innerAngle + 10;
+        const py = y + 10 + st * rampLength;
         if (i === 0) graphics.moveTo(px, py);
         else graphics.lineTo(px, py);
       }
       
-      // Outer edge (right side) - back up
+      // Outer edge (right side) - back up, starts at road edge
       for (let i = segments; i >= 0; i--) {
         const st = i / segments;
         const curve = 1 - Math.pow(1 - st, 2);
-        const px = pos.right + rampWidth + curve * outerAngle;
+        const px = pos.right + curve * outerAngle;
         const py = y + st * rampLength;
         graphics.lineTo(px, py);
       }
@@ -934,7 +945,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       for (let i = 0; i <= segments; i++) {
         const st = i / segments;
         const curve = 1 - Math.pow(1 - st, 2);
-        const px = pos.right + rampWidth + curve * outerAngle;
+        const px = pos.right + curve * outerAngle;
         const py = y + st * rampLength;
         if (i === 0) graphics.moveTo(px, py);
         else graphics.lineTo(px, py);
@@ -945,25 +956,33 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       for (let i = 0; i <= segments; i++) {
         const st = i / segments;
         const curve = 1 - Math.pow(1 - st, 2);
-        const px = pos.right + curve * innerAngle;
-        const py = y + st * rampLength;
+        const px = pos.right + curve * innerAngle + 10;
+        const py = y + 10 + st * rampLength;
         if (i === 0) graphics.moveTo(px, py);
         else graphics.lineTo(px, py);
       }
       graphics.strokePath();
       
-      // Yellow dashed center line
+      // Yellow dashed center line - between outer and inner edges
       graphics.lineStyle(1, 0xffff00, 0.8);
       for (let i = 0; i < segments; i += 3) { // Dashed: draw every 3rd segment
         const st1 = i / segments;
         const st2 = Math.min((i + 1.5) / segments, 1);
         const curve1 = 1 - Math.pow(1 - st1, 2);
         const curve2 = 1 - Math.pow(1 - st2, 2);
-        const centerOffset = (outerAngle + innerAngle) / 2;
-        const px1 = pos.right + rampWidth / 2 + curve1 * centerOffset;
-        const py1 = y + st1 * rampLength;
-        const px2 = pos.right + rampWidth / 2 + curve2 * centerOffset;
-        const py2 = y + st2 * rampLength;
+        // Center is midway between outer and inner edges
+        const outerX1 = pos.right + curve1 * outerAngle;
+        const outerY1 = y + st1 * rampLength;
+        const innerX1 = pos.right + curve1 * innerAngle + 10;
+        const innerY1 = y + 10 + st1 * rampLength;
+        const outerX2 = pos.right + curve2 * outerAngle;
+        const outerY2 = y + st2 * rampLength;
+        const innerX2 = pos.right + curve2 * innerAngle + 10;
+        const innerY2 = y + 10 + st2 * rampLength;
+        const px1 = (outerX1 + innerX1) / 2;
+        const py1 = (outerY1 + innerY1) / 2;
+        const px2 = (outerX2 + innerX2) / 2;
+        const py2 = (outerY2 + innerY2) / 2;
         graphics.beginPath();
         graphics.moveTo(px1, py1);
         graphics.lineTo(px2, py2);
