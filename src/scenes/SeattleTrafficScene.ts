@@ -999,9 +999,6 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Create visual ramp
     this.createRampGraphics('on');
     
-    // Show notification
-    this.showSpeechBubble("Grayson", "Cars merging!", 2000);
-    
     // Spawn 2-3 merging cars as ramp passes
     const numCars = 2 + Math.floor(Math.random() * 2);
     for (let i = 0; i < numCars; i++) {
@@ -1014,9 +1011,6 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private triggerOffRamp() {
     // Create visual ramp
     this.createRampGraphics('off');
-    
-    // Show notification
-    this.showSpeechBubble("Ceci", "Exit ahead", 2000);
     
     // Mark some right-lane cars as exiting after a delay
     this.time.delayedCall(1000, () => {
