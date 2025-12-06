@@ -60,12 +60,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private rageLevel = 0; // 0-100
   private stuckTimer = 0;
   
-  // Checkpoints - tuned so ETA starts at 8:15 in middle lane (speed 100)
-  // At speed 100: 120 real seconds = 60 game minutes → ETA 8:15
-  private starbucks1Distance = 4000;   // 1/3 of total distance (~20 miles)
-  private starbucks2Distance = 8000;   // 2/3 of total distance (~40 miles)
-  private trailheadDistance = 12000;   // Full distance to trailhead (~60 miles)
-  private unitsPerMile = 200;          // Conversion: 12000 units = 60 miles
+  // Checkpoints - tuned so ETA starts at 8:15 in middle lane (speed 100) at 45x time
+  // At speed 100: 8000/100 * 0.75 = 60 game minutes → ETA 8:15
+  private starbucks1Distance = 2667;   // 1/3 of total distance (~20 miles)
+  private starbucks2Distance = 5333;   // 2/3 of total distance (~40 miles)
+  private trailheadDistance = 8000;    // Full distance to trailhead (~60 miles)
+  private unitsPerMile = 133.33;       // Conversion: 8000 units = 60 miles
   
   // Speech bubble container
   private speechBubble?: Phaser.GameObjects.Container;
@@ -1268,10 +1268,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const hikeDistText = this.children.getByName('hikeDistText') as Phaser.GameObjects.Text;
     
     if (etaText && checkpointText && hikeDistText) {
-      // Calculate ETA for HIKE (trailhead), not current checkpoint
+      // Calculate ETA using MIDDLE lane speed as baseline (100)
+      // This way: fast lane (150) = ETA drops, middle (100) = stable, slow (50) = ETA rises
+      // Because you TRAVEL at actual speed but ETA ASSUMES middle speed
       const remainingToHike = this.trailheadDistance - this.distanceTraveled;
-      const timeToHike = remainingToHike / this.roadSpeed / 60; // in game minutes
-      const etaMinutes = this.currentTime + timeToHike;
+      const baselineSpeed = this.laneSpeeds[1]; // Middle lane speed = 100
+      const realSecondsToHike = remainingToHike / baselineSpeed;
+      const gameMinutesToHike = realSecondsToHike * 45 / 60; // convert to game minutes at 45x speed
+      const etaMinutes = this.currentTime + gameMinutesToHike;
       const etaHours = Math.floor(etaMinutes / 60);
       const etaMins = Math.floor(etaMinutes % 60);
       etaText.setText(`Final ETA: ${etaHours}:${etaMins.toString().padStart(2, '0')}`);
