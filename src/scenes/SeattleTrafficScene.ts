@@ -550,14 +550,32 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Store bar width for update function
     this.registry.set('rageBarWidth', rageBarWidth);
     
-    // Distance indicator (top-right)
+    // Final ETA for hike (top-right)
     this.add.text(310, 10, "", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffff00",
+      backgroundColor: "#000000",
+      padding: { x: 4, y: 2 }
+    }).setDepth(100).setOrigin(1, 0).setName('etaText');
+    
+    // Current checkpoint instruction (below ETA)
+    this.add.text(310, 24, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffffff",
       backgroundColor: "#000000",
       padding: { x: 4, y: 2 }
-    }).setDepth(100).setOrigin(1, 0).setName('distanceText');
+    }).setDepth(100).setOrigin(1, 0).setName('checkpointText');
+    
+    // Total hike distance (below checkpoint)
+    this.add.text(310, 38, "", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+      backgroundColor: "#000000",
+      padding: { x: 4, y: 2 }
+    }).setDepth(100).setOrigin(1, 0).setName('hikeDistText');
     
     this.updateUI();
   }
@@ -1244,25 +1262,36 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       rageMeter.width = (this.rageLevel / 100) * rageBarWidth;
     }
     
-    // Update distance
-    const distanceText = this.children.getByName('distanceText') as Phaser.GameObjects.Text;
-    if (distanceText) {
-      let target = "";
-      let remaining = 0;
+    // Update ETA, checkpoint, and hike distance
+    const etaText = this.children.getByName('etaText') as Phaser.GameObjects.Text;
+    const checkpointText = this.children.getByName('checkpointText') as Phaser.GameObjects.Text;
+    const hikeDistText = this.children.getByName('hikeDistText') as Phaser.GameObjects.Text;
+    
+    if (etaText && checkpointText && hikeDistText) {
+      // Calculate ETA for HIKE (trailhead), not current checkpoint
+      const remainingToHike = this.trailheadDistance - this.distanceTraveled;
+      const timeToHike = remainingToHike / this.roadSpeed / 60; // in game minutes
+      const etaMinutes = this.currentTime + timeToHike;
+      const etaHours = Math.floor(etaMinutes / 60);
+      const etaMins = Math.floor(etaMinutes % 60);
+      etaText.setText(`Final ETA: ${etaHours}:${etaMins.toString().padStart(2, '0')}`);
       
+      // Current checkpoint instruction
       if (this.gamePhase === 'toStarbucks1') {
-        target = "Starbucks";
-        remaining = this.starbucks1Distance - this.distanceTraveled;
+        const remaining = this.starbucks1Distance - this.distanceTraveled;
+        const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
+        checkpointText.setText(`↱ Starbucks: ${miles} mi`);
       } else if (this.gamePhase === 'toStarbucks2') {
-        target = "Starbucks";
-        remaining = this.starbucks2Distance - this.distanceTraveled;
+        const remaining = this.starbucks2Distance - this.distanceTraveled;
+        const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
+        checkpointText.setText(`↱ Starbucks: ${miles} mi`);
       } else if (this.gamePhase === 'toTrailhead') {
-        target = "Trailhead";
-        remaining = this.trailheadDistance - this.distanceTraveled;
+        checkpointText.setText(''); // No more stops
       }
       
-      const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
-      distanceText.setText(`↱ ${target}: ${miles} mi`);
+      // Total hike distance remaining
+      const hikeMiles = Math.max(0, remainingToHike / this.unitsPerMile).toFixed(1);
+      hikeDistText.setText(`Hike: ${hikeMiles} mi`);
     }
   }
   
