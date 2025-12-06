@@ -93,6 +93,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.laneMarkers = [];
     this.roadOffset = 0;
     this.roadSpeed = this.laneSpeeds[this.currentLane]; // Set initial speed based on lane
+    this.lastRampTime = 7 * 60 + 14; // Reset ramp timing
+    this.activeRamps = []; // Clear any leftover ramps
     
     // Create road
     this.createRoad();
