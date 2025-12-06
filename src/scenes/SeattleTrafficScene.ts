@@ -825,10 +825,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const innerAngle = baseLength * rampAngle * 0.8; // Horizontal extent (inner edge)
     // ===================================================================
     
-    // Draw curved ramp road using bezier-like segments
-    graphics.fillStyle(0x555555, 1); // Lighter gray to be more visible
+    // Draw curved ramp road
+    graphics.fillStyle(0x2a2a2a, 1); // Match main road color
     
-    const segments = 12;
+    const segments = 16; // More segments for smoother curve
     
     if (type === 'on') {
       // On-ramp: smooth curve from bottom-right merging into highway
@@ -857,8 +857,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       graphics.closePath();
       graphics.fillPath();
       
-      // Outer edge line (white stripe)
-      graphics.lineStyle(1, 0xffffff, 0.7);
+      // White edge lines on BOTH sides
+      graphics.lineStyle(1, 0xffffff, 0.9);
+      // Outer edge
       graphics.beginPath();
       for (let i = 0; i <= segments; i++) {
         const st = i / segments;
@@ -869,6 +870,35 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         else graphics.lineTo(px, py);
       }
       graphics.strokePath();
+      // Inner edge
+      graphics.beginPath();
+      for (let i = 0; i <= segments; i++) {
+        const st = i / segments;
+        const curve = Math.pow(st, 2);
+        const px = pos.right + (1 - curve) * innerAngle;
+        const py = y + (1 - st) * rampLength;
+        if (i === 0) graphics.moveTo(px, py);
+        else graphics.lineTo(px, py);
+      }
+      graphics.strokePath();
+      
+      // Yellow dashed center line
+      graphics.lineStyle(1, 0xffff00, 0.8);
+      for (let i = 0; i < segments; i += 3) { // Dashed: draw every 3rd segment
+        const st1 = i / segments;
+        const st2 = Math.min((i + 1.5) / segments, 1);
+        const curve1 = Math.pow(st1, 2);
+        const curve2 = Math.pow(st2, 2);
+        const centerOffset = (outerAngle + innerAngle) / 2;
+        const px1 = pos.right + rampWidth / 2 + (1 - curve1) * centerOffset;
+        const py1 = y + (1 - st1) * rampLength;
+        const px2 = pos.right + rampWidth / 2 + (1 - curve2) * centerOffset;
+        const py2 = y + (1 - st2) * rampLength;
+        graphics.beginPath();
+        graphics.moveTo(px1, py1);
+        graphics.lineTo(px2, py2);
+        graphics.strokePath();
+      }
       
     } else {
       // Off-ramp: smooth curve from highway out to bottom-right
@@ -897,8 +927,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       graphics.closePath();
       graphics.fillPath();
       
-      // Outer edge line (white stripe)
-      graphics.lineStyle(1, 0xffffff, 0.7);
+      // White edge lines on BOTH sides
+      graphics.lineStyle(1, 0xffffff, 0.9);
+      // Outer edge
       graphics.beginPath();
       for (let i = 0; i <= segments; i++) {
         const st = i / segments;
@@ -909,6 +940,35 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         else graphics.lineTo(px, py);
       }
       graphics.strokePath();
+      // Inner edge
+      graphics.beginPath();
+      for (let i = 0; i <= segments; i++) {
+        const st = i / segments;
+        const curve = 1 - Math.pow(1 - st, 2);
+        const px = pos.right + curve * innerAngle;
+        const py = y + st * rampLength;
+        if (i === 0) graphics.moveTo(px, py);
+        else graphics.lineTo(px, py);
+      }
+      graphics.strokePath();
+      
+      // Yellow dashed center line
+      graphics.lineStyle(1, 0xffff00, 0.8);
+      for (let i = 0; i < segments; i += 3) { // Dashed: draw every 3rd segment
+        const st1 = i / segments;
+        const st2 = Math.min((i + 1.5) / segments, 1);
+        const curve1 = 1 - Math.pow(1 - st1, 2);
+        const curve2 = 1 - Math.pow(1 - st2, 2);
+        const centerOffset = (outerAngle + innerAngle) / 2;
+        const px1 = pos.right + rampWidth / 2 + curve1 * centerOffset;
+        const py1 = y + st1 * rampLength;
+        const px2 = pos.right + rampWidth / 2 + curve2 * centerOffset;
+        const py2 = y + st2 * rampLength;
+        graphics.beginPath();
+        graphics.moveTo(px1, py1);
+        graphics.lineTo(px2, py2);
+        graphics.strokePath();
+      }
     }
     
     // Update label position - on highway border, slightly ahead of ramp (lower Y = ahead)
