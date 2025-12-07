@@ -306,6 +306,68 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       }
     }
     
+    // Underpass road - another highway crossing under the main one
+    const underpassGraphics = this.add.graphics();
+    underpassGraphics.setDepth(0.8); // Below main road
+    
+    // Shifted LEFT, bottom starts close to main highway's right edge
+    const mainRoadBottomRight = this.roadCenterX + this.roadBottomWidth / 2; // ~300
+    const underpassHorizonX = 95; // Far left at horizon (off-screen)
+    const underpassBottomX = mainRoadBottomRight; // Just right of main road bottom
+    const underpassTopWidth = 30;
+    const underpassBottomWidth = 90;
+    
+    // Draw underpass road as filled polygon
+    underpassGraphics.fillStyle(0x1a1a1a, 1); // Darker asphalt (in shadow)
+    underpassGraphics.beginPath();
+    
+    // Left edge - from horizon going down
+    underpassGraphics.moveTo(underpassHorizonX - underpassTopWidth / 2, this.horizonY);
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10;
+      const y = this.horizonY + t * (this.roadBottomY - this.horizonY);
+      const centerX = underpassHorizonX + t * (underpassBottomX - underpassHorizonX);
+      const width = underpassTopWidth + t * (underpassBottomWidth - underpassTopWidth);
+      underpassGraphics.lineTo(centerX - width / 2, y);
+    }
+    
+    // Right edge - back up
+    for (let i = 10; i >= 0; i--) {
+      const t = i / 10;
+      const y = this.horizonY + t * (this.roadBottomY - this.horizonY);
+      const centerX = underpassHorizonX + t * (underpassBottomX - underpassHorizonX);
+      const width = underpassTopWidth + t * (underpassBottomWidth - underpassTopWidth);
+      underpassGraphics.lineTo(centerX + width / 2, y);
+    }
+    
+    underpassGraphics.closePath();
+    underpassGraphics.fillPath();
+    
+    // White edge lines
+    underpassGraphics.lineStyle(2, 0xffffff, 0.6);
+    // Left edge
+    underpassGraphics.beginPath();
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10;
+      const y = this.horizonY + t * (this.roadBottomY - this.horizonY);
+      const centerX = underpassHorizonX + t * (underpassBottomX - underpassHorizonX);
+      const width = underpassTopWidth + t * (underpassBottomWidth - underpassTopWidth);
+      if (i === 0) underpassGraphics.moveTo(centerX - width / 2, y);
+      else underpassGraphics.lineTo(centerX - width / 2, y);
+    }
+    underpassGraphics.strokePath();
+    // Right edge
+    underpassGraphics.beginPath();
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10;
+      const y = this.horizonY + t * (this.roadBottomY - this.horizonY);
+      const centerX = underpassHorizonX + t * (underpassBottomX - underpassHorizonX);
+      const width = underpassTopWidth + t * (underpassBottomWidth - underpassTopWidth);
+      if (i === 0) underpassGraphics.moveTo(centerX + width / 2, y);
+      else underpassGraphics.lineTo(centerX + width / 2, y);
+    }
+    underpassGraphics.strokePath();
+    
     // Draw curved perspective road
     const roadGraphics = this.add.graphics();
     roadGraphics.setDepth(1);
@@ -1118,6 +1180,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     graphics.fillStyle(0x2a2a2a, 1); // Match main road color
     
     const segments = 16; // More segments for smoother curve
+    
     
     if (type === 'on') {
       // On-ramp: smooth curve from bottom-right merging into highway
