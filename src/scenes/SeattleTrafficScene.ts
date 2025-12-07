@@ -53,6 +53,11 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private rampInterval = 5; // Every 5 game minutes (20 real seconds at 15x)
   private activeRamps: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'on' | 'off', label: Phaser.GameObjects.Text }[] = []
   
+  // Roadside elements (scrolling trees and rocks)
+  private leftSideElements: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'tree' | 'rock', xOffset: number }[] = [];
+  private rightSideElements: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'tree' | 'rock', xOffset: number }[] = [];
+  private rightStripWidth = 55;
+  
   // Game state
   private gamePhase: 'intro' | 'toStarbucks1' | 'toStarbucks2' | 'toTrailhead' | 'won' | 'lost' = 'intro';
   private distanceTraveled = 0;
@@ -142,6 +147,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     if (this.gamePhase.startsWith('to')) {
       this.updateDriving(dt);
       this.updateTraffic(dt);
+      this.updateRoadsideElements(dt);
       this.updateClock(dt);
       this.updateRage(dt);
       this.checkRamps();
@@ -210,8 +216,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       grassGraphics.fillRect(gx, gy, size, size * 1.5);
     }
     
-    // Add forest elements (pine trees, bushes, rocks) on left side
-    this.drawForestElements();
+    // Initialize scrolling roadside elements (left side)
+    this.initLeftSideElements();
     
     // Middle section (between road edges) - draw first so water overlays it
     const middleGround = this.add.rectangle(160, (this.horizonY + this.roadBottomY) / 2, 160, this.roadBottomY - this.horizonY, 0x1a2a1a);
@@ -263,8 +269,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       stripGraphics.fillRect(dx, dy, 1 + Math.random() * 2, 1 + Math.random() * 2);
     }
     
-    // Small trees and rocks on the dirt strip (farther/smaller)
-    this.drawRightSideElements(stripGraphics, stripWidth);
+    // Initialize scrolling roadside elements (right side)
+    this.initRightSideElements(stripWidth);
     
     // Water on right side (dark blue, Puget Sound) - starts after dirt strip
     const waterGraphics = this.add.graphics();
@@ -398,88 +404,116 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     graphics.fillPath();
   }
   
-  private drawRightSideElements(graphics: Phaser.GameObjects.Graphics, stripWidth: number) {
-    // Small trees on the right dirt strip (appear farther/smaller)
-    const treeData: { x: number, t: number }[] = [];
-    
-    for (let i = 0; i < 12; i++) {
-      const t = 0.1 + Math.random() * 0.85;
-      const pos = this.getRoadPosition(t);
-      const sw = stripWidth * (0.3 + (1 - t) * 0.7);
-      // Position trees within the strip
-      const x = pos.right + 3 + Math.random() * (sw - 6);
-      treeData.push({ x, t });
-    }
-    
-    treeData.sort((a, b) => b.t - a.t);
-    
-    for (const tree of treeData) {
-      const y = this.horizonY + (1 - tree.t) * (this.roadBottomY - this.horizonY);
-      // Smaller scale (0.15 to 0.5) since they're "farther"
-      const scale = 0.15 + (1 - tree.t) * 0.35;
-      this.drawPineTree(graphics, tree.x, y, scale);
-    }
-    
-    // Small rocks along the strip
-    for (let i = 0; i < 8; i++) {
-      const t = 0.1 + Math.random() * 0.85;
-      const pos = this.getRoadPosition(t);
-      const sw = stripWidth * (0.3 + (1 - t) * 0.7);
-      const x = pos.right + 2 + Math.random() * (sw - 4);
-      const y = this.horizonY + (1 - t) * (this.roadBottomY - this.horizonY);
-      const scale = 0.2 + (1 - t) * 0.3;
-      this.drawRock(graphics, x, y, scale);
+  private initRightSideElements(stripWidth: number) {
+    this.rightStripWidth = stripWidth;
+    // Create initial set of trees and rocks on the right dirt strip
+    for (let i = 0; i < 15; i++) {
+      const y = this.horizonY + Math.random() * (this.roadBottomY - this.horizonY);
+      const type = Math.random() < 0.7 ? 'tree' : 'rock';
+      const xOffset = 3 + Math.random() * 0.6; // Offset within strip (as fraction)
+      this.spawnRightSideElement(y, type as 'tree' | 'rock', xOffset);
     }
   }
   
-  private drawForestElements() {
-    const graphics = this.add.graphics();
-    graphics.setDepth(1); // Above grass, below road
-    
-    // Draw elements from horizon to bottom (far to near)
-    // Elements get larger as they get closer (perspective)
-    
-    // Generate trees following the road curve with random offsets
-    const treeData: { x: number, t: number }[] = [];
-    
-    // Create trees at various depths, positioned relative to road edge
+  private initLeftSideElements() {
+    // Create initial set of trees and rocks on the left side
     for (let i = 0; i < 25; i++) {
-      const t = 0.05 + Math.random() * 0.92; // Random depth from bottom to horizon
-      const roadPos = this.getRoadPosition(t);
-      // Position trees from left edge of screen to just before road, with randomness
-      const maxX = roadPos.left - 8; // Leave gap from road
-      const x = Math.random() * Math.max(5, maxX);
-      treeData.push({ x, t });
+      const y = this.horizonY + Math.random() * (this.roadBottomY - this.horizonY);
+      const type = Math.random() < 0.75 ? 'tree' : 'rock';
+      const xOffset = Math.random() * 0.9; // Offset from left edge (as fraction of available space)
+      this.spawnLeftSideElement(y, type as 'tree' | 'rock', xOffset);
+    }
+  }
+  
+  private spawnLeftSideElement(y: number, type: 'tree' | 'rock', xOffset: number) {
+    const graphics = this.add.graphics();
+    graphics.setDepth(1);
+    this.leftSideElements.push({ graphics, y, type, xOffset });
+    this.updateLeftSideElement({ graphics, y, type, xOffset });
+  }
+  
+  private spawnRightSideElement(y: number, type: 'tree' | 'rock', xOffset: number) {
+    const graphics = this.add.graphics();
+    graphics.setDepth(1);
+    this.rightSideElements.push({ graphics, y, type, xOffset });
+    this.updateRightSideElement({ graphics, y, type, xOffset });
+  }
+  
+  private updateLeftSideElement(elem: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'tree' | 'rock', xOffset: number }) {
+    const t = 1 - (elem.y - this.horizonY) / (this.roadBottomY - this.horizonY);
+    const roadPos = this.getRoadPosition(t);
+    const maxX = Math.max(5, roadPos.left - 8);
+    const x = elem.xOffset * maxX;
+    
+    elem.graphics.clear();
+    
+    if (t < 0 || t > 1) return;
+    
+    if (elem.type === 'tree') {
+      const scale = 0.3 + (1 - t) * 0.7;
+      this.drawPineTree(elem.graphics, x, elem.y, scale);
+    } else {
+      const scale = 0.5 + (1 - t) * 0.5;
+      this.drawRock(elem.graphics, x, elem.y, scale);
+    }
+  }
+  
+  private updateRightSideElement(elem: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'tree' | 'rock', xOffset: number }) {
+    const t = 1 - (elem.y - this.horizonY) / (this.roadBottomY - this.horizonY);
+    const roadPos = this.getRoadPosition(t);
+    const sw = this.rightStripWidth * (0.3 + (1 - t) * 0.7);
+    const x = roadPos.right + elem.xOffset * sw;
+    
+    elem.graphics.clear();
+    
+    if (t < 0 || t > 1) return;
+    
+    if (elem.type === 'tree') {
+      const scale = 0.15 + (1 - t) * 0.35; // Smaller since they're "farther"
+      this.drawPineTree(elem.graphics, x, elem.y, scale);
+    } else {
+      const scale = 0.2 + (1 - t) * 0.3;
+      this.drawRock(elem.graphics, x, elem.y, scale);
+    }
+  }
+  
+  private updateRoadsideElements(dt: number) {
+    const scrollSpeed = this.roadSpeed * dt / 1000;
+    
+    // Update left side elements
+    for (let i = this.leftSideElements.length - 1; i >= 0; i--) {
+      const elem = this.leftSideElements[i];
+      elem.y += scrollSpeed;
+      
+      // Remove if off screen, spawn new one at horizon
+      if (elem.y > this.roadBottomY + 20) {
+        elem.graphics.destroy();
+        this.leftSideElements.splice(i, 1);
+        // Spawn new element at horizon
+        const type = Math.random() < 0.75 ? 'tree' : 'rock';
+        const xOffset = Math.random() * 0.9;
+        this.spawnLeftSideElement(this.horizonY + 5, type as 'tree' | 'rock', xOffset);
+      } else {
+        this.updateLeftSideElement(elem);
+      }
     }
     
-    // Sort by t (back to front) so closer trees overlap distant ones
-    treeData.sort((a, b) => b.t - a.t);
-    
-    for (const tree of treeData) {
-      const y = this.horizonY + (1 - tree.t) * (this.roadBottomY - this.horizonY);
-      const scale = 0.3 + (1 - tree.t) * 0.7;
-      this.drawPineTree(graphics, tree.x, y, scale);
-    }
-    
-    // Rocks - along highway border, following the curve
-    const rockData: { x: number, t: number }[] = [];
-    
-    for (let i = 0; i < 12; i++) {
-      const t = 0.08 + Math.random() * 0.85;
-      const roadPos = this.getRoadPosition(t);
-      // Position rocks close to the road edge (within 15px of it)
-      const roadEdge = roadPos.left;
-      const x = roadEdge - 5 - Math.random() * 12;
-      rockData.push({ x: Math.max(0, x), t });
-    }
-    
-    // Sort rocks back to front
-    rockData.sort((a, b) => b.t - a.t);
-    
-    for (const rock of rockData) {
-      const y = this.horizonY + (1 - rock.t) * (this.roadBottomY - this.horizonY);
-      const scale = 0.5 + (1 - rock.t) * 0.5;
-      this.drawRock(graphics, rock.x, y, scale);
+    // Update right side elements
+    for (let i = this.rightSideElements.length - 1; i >= 0; i--) {
+      const elem = this.rightSideElements[i];
+      elem.y += scrollSpeed;
+      
+      // Remove if off screen, spawn new one at horizon
+      if (elem.y > this.roadBottomY + 20) {
+        elem.graphics.destroy();
+        this.rightSideElements.splice(i, 1);
+        // Spawn new element at horizon
+        const type = Math.random() < 0.7 ? 'tree' : 'rock';
+        const xOffset = 0.1 + Math.random() * 0.6;
+        this.spawnRightSideElement(this.horizonY + 5, type as 'tree' | 'rock', xOffset);
+      } else {
+        this.updateRightSideElement(elem);
+      }
     }
   }
   
