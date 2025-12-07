@@ -63,7 +63,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private starsGraphics!: Phaser.GameObjects.Graphics;
   
   // Game state
-  private gamePhase: 'intro' | 'toStarbucks1' | 'toStarbucks2' | 'toTrailhead' | 'won' | 'lost' = 'intro';
+  private gamePhase: 'intro' | 'toStarbucks1' | 'atStarbucks1' | 'toStarbucks2' | 'atStarbucks2' | 'toTrailhead' | 'won' | 'lost' = 'intro';
   private distanceTraveled = 0;
   private currentTime = 7 * 60 + 15; // 7:15 AM in minutes
   private rageLevel = 0; // 0-100
@@ -1831,33 +1831,95 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private arriveAtStarbucks1() {
-    // Keep game running - just transition to next phase immediately
-    this.gamePhase = 'toStarbucks2';
+    // Pause gameplay during exit animation
+    this.gamePhase = 'atStarbucks1';
     this.starbucks1ExitActive = false;
+    const savedSpeed = this.roadSpeed;
+    this.roadSpeed = 0;
     
-    // Clean up the exit ramp
-    this.cleanupActiveRamps();
+    // Store original van position
+    const originalX = this.van.x;
     
-    // Wrong Starbucks dialogue (game keeps running)
-    this.showSpeechBubble("Ceci", "Wait... wrong one! I ordered at the OTHER Starbucks!", 3000);
-    
-    // Increase rage
-    this.rageLevel = Math.min(100, this.rageLevel + 10);
+    // Animate van sliding right onto exit ramp
+    this.tweens.add({
+      targets: this.van,
+      x: this.van.x + 80,
+      alpha: 0.3,
+      duration: 800,
+      ease: 'Sine.easeIn',
+      onComplete: () => {
+        // Clean up the exit ramp while van is "off screen"
+        this.cleanupActiveRamps();
+        
+        // Wait at Starbucks
+        this.time.delayedCall(1500, () => {
+          // Wrong Starbucks dialogue
+          this.showSpeechBubble("Ceci", "Wait... wrong one! I ordered at the OTHER Starbucks!", 3000);
+          
+          // Increase rage
+          this.rageLevel = Math.min(100, this.rageLevel + 10);
+          
+          // Animate van coming back from exit
+          this.tweens.add({
+            targets: this.van,
+            x: originalX,
+            alpha: 1,
+            duration: 800,
+            ease: 'Sine.easeOut',
+            onComplete: () => {
+              // Resume gameplay
+              this.gamePhase = 'toStarbucks2';
+              this.roadSpeed = savedSpeed;
+            }
+          });
+        });
+      }
+    });
   }
   
   private arriveAtStarbucks2() {
-    // Keep game running - just transition to next phase immediately
-    this.gamePhase = 'toTrailhead';
+    // Pause gameplay during exit animation
+    this.gamePhase = 'atStarbucks2';
     this.starbucks2ExitActive = false;
+    const savedSpeed = this.roadSpeed;
+    this.roadSpeed = 0;
     
-    // Clean up the exit ramp
-    this.cleanupActiveRamps();
+    // Store original van position
+    const originalX = this.van.x;
     
-    // Correct Starbucks dialogue (game keeps running)
-    this.showSpeechBubble("Ceci", "Finally! Got my coffee!", 2500);
-    
-    // Traffic gets heavier (spawn faster)
-    this.carSpawnInterval = 1500;
+    // Animate van sliding right onto exit ramp
+    this.tweens.add({
+      targets: this.van,
+      x: this.van.x + 80,
+      alpha: 0.3,
+      duration: 800,
+      ease: 'Sine.easeIn',
+      onComplete: () => {
+        // Clean up the exit ramp while van is "off screen"
+        this.cleanupActiveRamps();
+        
+        // Wait at Starbucks (getting coffee)
+        this.time.delayedCall(2000, () => {
+          // Got coffee dialogue
+          this.showSpeechBubble("Ceci", "Finally! Got my coffee! ☕", 2500);
+          
+          // Animate van coming back from exit
+          this.tweens.add({
+            targets: this.van,
+            x: originalX,
+            alpha: 1,
+            duration: 800,
+            ease: 'Sine.easeOut',
+            onComplete: () => {
+              // Resume gameplay with heavier traffic
+              this.gamePhase = 'toTrailhead';
+              this.roadSpeed = savedSpeed;
+              this.carSpawnInterval = 1500;
+            }
+          });
+        });
+      }
+    });
   }
   
   private arriveAtTrailhead() {
