@@ -58,6 +58,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private rightSideElements: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'tree' | 'rock', xOffset: number }[] = [];
   private rightStripWidth = 55;
   
+  // Dynamic sky
+  private skyGraphics!: Phaser.GameObjects.Graphics;
+  private starsGraphics!: Phaser.GameObjects.Graphics;
+  
   // Game state
   private gamePhase: 'intro' | 'toStarbucks1' | 'toStarbucks2' | 'toTrailhead' | 'won' | 'lost' = 'intro';
   private distanceTraveled = 0;
@@ -150,6 +154,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       this.updateRoadsideElements(dt);
       this.updateClock(dt);
       this.updateRage(dt);
+      this.updateSky();
       this.checkRamps();
       this.checkCheckpoints();
       this.checkGameOver();
@@ -158,36 +163,38 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private createRoad() {
-    // Night sky gradient (dark blue to purple at horizon)
-    const skyGraphics = this.add.graphics();
-    skyGraphics.setDepth(0);
+    // Dynamic sky gradient
+    this.skyGraphics = this.add.graphics();
+    this.skyGraphics.setDepth(0);
     
-    // Draw gradient sky manually with rectangles
-    for (let y = 0; y < this.horizonY; y++) {
-      const t = y / this.horizonY;
-      // From dark blue (top) to purple-pink (horizon)
-      const r = Math.floor(10 + t * 40);
-      const g = Math.floor(15 + t * 20);
-      const b = Math.floor(35 + t * 45);
-      skyGraphics.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
-      skyGraphics.fillRect(0, y, 320, 1);
-    }
+    // Stars (separate layer so they can fade)
+    this.starsGraphics = this.add.graphics();
+    this.starsGraphics.setDepth(0.1);
     
-    // Stars
+    // Store star positions for consistent rendering
+    const starPositions: { x: number, y: number, size: number, alpha: number }[] = [];
     for (let i = 0; i < 30; i++) {
-      const starX = Math.random() * 320;
-      const starY = Math.random() * (this.horizonY - 10);
-      const starSize = Math.random() < 0.3 ? 2 : 1;
-      const alpha = 0.4 + Math.random() * 0.6;
-      skyGraphics.fillStyle(0xffffff, alpha);
-      skyGraphics.fillRect(starX, starY, starSize, starSize);
+      starPositions.push({
+        x: Math.random() * 320,
+        y: Math.random() * (this.horizonY - 10),
+        size: Math.random() < 0.3 ? 2 : 1,
+        alpha: 0.4 + Math.random() * 0.6
+      });
     }
+    this.registry.set('starPositions', starPositions);
+    
+    // Initial sky draw
+    this.updateSky();
+    
+    // Mountains and skyline on separate layer (so they don't get cleared with sky updates)
+    const skylineGraphics = this.add.graphics();
+    skylineGraphics.setDepth(0.2);
     
     // Mountains silhouette (Mt. Rainier style on right)
-    this.drawMountains(skyGraphics);
+    this.drawMountains(skylineGraphics);
     
     // Seattle skyline
-    this.drawSeattleSkyline(skyGraphics);
+    this.drawSeattleSkyline(skylineGraphics);
     
     // Ground - grass on left side with gradient texture
     const grassGraphics = this.add.graphics();
@@ -440,6 +447,57 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       left: centerX - width / 2,
       right: centerX + width / 2
     };
+  }
+  
+  private updateSky() {
+    // Calculate time progress: 7:15 (435 min) = 0, 8:00 (480 min) = 1
+    const startTime = 7 * 60 + 15; // 7:15 AM
+    const endTime = 8 * 60; // 8:00 AM
+    const timeProgress = Math.max(0, Math.min(1, (this.currentTime - startTime) / (endTime - startTime)));
+    
+    this.skyGraphics.clear();
+    
+    // Draw gradient sky - transitions from night to dawn to day
+    for (let y = 0; y < this.horizonY; y++) {
+      const t = y / this.horizonY; // 0 at top, 1 at horizon
+      
+      // Night colors (7:15)
+      const nightTopR = 10, nightTopG = 15, nightTopB = 35;
+      const nightHorizonR = 50, nightHorizonG = 35, nightHorizonB = 80;
+      
+      // Day colors (8:00) - very soft early morning, subtle dawn
+      const dayTopR = 35, dayTopG = 55, dayTopB = 90;
+      const dayHorizonR = 100, dayHorizonG = 80, dayHorizonB = 85;
+      
+      // Interpolate between night and day based on time
+      const topR = nightTopR + timeProgress * (dayTopR - nightTopR);
+      const topG = nightTopG + timeProgress * (dayTopG - nightTopG);
+      const topB = nightTopB + timeProgress * (dayTopB - nightTopB);
+      const horizonR = nightHorizonR + timeProgress * (dayHorizonR - nightHorizonR);
+      const horizonG = nightHorizonG + timeProgress * (dayHorizonG - nightHorizonG);
+      const horizonB = nightHorizonB + timeProgress * (dayHorizonB - nightHorizonB);
+      
+      // Blend top to horizon
+      const r = Math.floor(topR + t * (horizonR - topR));
+      const g = Math.floor(topG + t * (horizonG - topG));
+      const b = Math.floor(topB + t * (horizonB - topB));
+      
+      this.skyGraphics.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
+      this.skyGraphics.fillRect(0, y, 320, 1);
+    }
+    
+    // Stars fade out as it gets lighter
+    this.starsGraphics.clear();
+    const starAlpha = Math.max(0, 1 - timeProgress * 1.5); // Stars gone by ~7:45
+    if (starAlpha > 0) {
+      const starPositions = this.registry.get('starPositions') as { x: number, y: number, size: number, alpha: number }[];
+      if (starPositions) {
+        for (const star of starPositions) {
+          this.starsGraphics.fillStyle(0xffffff, star.alpha * starAlpha);
+          this.starsGraphics.fillRect(star.x, star.y, star.size, star.size);
+        }
+      }
+    }
   }
   
   private drawMountains(graphics: Phaser.GameObjects.Graphics) {
