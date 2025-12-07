@@ -129,7 +129,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     // Different update based on phase
     if (this.gamePhase === 'intro') {
-      // Waiting for intro to finish
+      // Waiting for intro to finish, but still update UI
+      this.updateUI();
       return;
     }
     
@@ -371,8 +372,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private drawSpaceNeedle(graphics: Phaser.GameObjects.Graphics, x: number, baseY: number) {
-    // Space Needle silhouette (slightly smaller)
-    graphics.fillStyle(0x202030, 1);
+    // Space Needle silhouette - lighter color to stand out against sky
+    graphics.fillStyle(0x8090a0, 1);
     
     // Base/legs
     graphics.fillTriangle(x - 5, baseY, x + 5, baseY, x, baseY - 6);
@@ -554,8 +555,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Store bar width for update function
     this.registry.set('rageBarWidth', rageBarWidth);
     
-    // Final ETA for hike (top-right)
-    this.add.text(310, 10, "", {
+    // Final ETA for hike (right side, over water)
+    this.add.text(316, 45, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffff00",
@@ -564,7 +565,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     }).setDepth(100).setOrigin(1, 0).setName('etaText');
     
     // Current checkpoint instruction (below ETA)
-    this.add.text(310, 24, "", {
+    this.add.text(316, 59, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffffff",
@@ -573,7 +574,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     }).setDepth(100).setOrigin(1, 0).setName('checkpointText');
     
     // Total hike distance (below checkpoint)
-    this.add.text(310, 38, "", {
+    this.add.text(316, 73, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffffff",
@@ -1489,20 +1490,26 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       }
       
       // Current checkpoint instruction
-      if (this.gamePhase === 'toStarbucks1') {
+      if (this.gamePhase === 'intro' || this.gamePhase === 'toStarbucks1') {
         const remaining = this.starbucks1Distance - this.distanceTraveled;
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
         checkpointText.setText(`↱ Starbucks: ${miles} mi`);
+        checkpointText.setColor('#ffffff');
+        hikeDistText.setY(73); // Normal position below checkpoint
       } else if (this.gamePhase === 'toStarbucks2') {
         const remaining = this.starbucks2Distance - this.distanceTraveled;
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
         checkpointText.setText(`↱ Starbucks: ${miles} mi`);
+        checkpointText.setColor('#ffffff');
+        hikeDistText.setY(73); // Normal position below checkpoint
       } else if (this.gamePhase === 'toTrailhead') {
         if (this.finalExitSpawned) {
           checkpointText.setText('↱ TRAILHEAD EXIT - RIGHT LANE!');
           checkpointText.setColor('#ff0000'); // Red warning
+          hikeDistText.setY(73); // Normal position
         } else {
-          checkpointText.setText(''); // No stops until exit
+          checkpointText.setText(''); // No Starbucks stops
+          hikeDistText.setY(59); // Move up to where checkpoint was
         }
       }
       
