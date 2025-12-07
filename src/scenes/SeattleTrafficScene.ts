@@ -59,6 +59,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private currentTime = 7 * 60 + 15; // 7:15 AM in minutes
   private rageLevel = 0; // 0-100
   private stuckTimer = 0;
+  private finalExitSpawned = false;
+  private finalExitActive = false;
   
   // Checkpoints - tuned so ETA starts at 8:15 in middle lane (speed 100) at 45x time
   // At speed 100: 8000/100 * 0.75 = 60 game minutes → ETA 8:15
@@ -96,6 +98,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.roadSpeed = this.laneSpeeds[this.currentLane]; // Set initial speed based on lane
     this.lastRampTime = 7 * 60 + 10; // Reset ramp timing (5 min before start)
     this.activeRamps = []; // Clear any leftover ramps
+    this.finalExitSpawned = false;
+    this.finalExitActive = false;
     
     // Create road
     this.createRoad();
@@ -577,6 +581,15 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       padding: { x: 4, y: 2 }
     }).setDepth(100).setOrigin(1, 0).setName('hikeDistText');
     
+    // DEBUG: Exit detection info (bottom center)
+    this.add.text(160, 175, "", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffffff",
+      backgroundColor: "#000000aa",
+      padding: { x: 4, y: 2 }
+    }).setDepth(200).setOrigin(0.5, 1).setName('exitDebug');
+    
     this.updateUI();
   }
   
@@ -663,7 +676,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private spawnTrafficCar() {
-    const lane = Math.floor(Math.random() * 3);
+    let lane = Math.floor(Math.random() * 3);
+    
+    // During final exit, don't spawn cars in the right lane (keep it clear)
+    if (this.finalExitActive && lane === 2) {
+      lane = Math.floor(Math.random() * 2); // Only lanes 0 or 1
+    }
     
     // Cars match their lane speed (with small variation)
     const baseLaneSpeed = this.laneSpeeds[lane];
@@ -781,7 +799,11 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     }
     
     // Check if 5 game minutes have passed since last ramp
-    if (this.currentTime >= this.lastRampTime + this.rampInterval && this.activeRamps.length === 0) {
+    // Don't spawn regular ramps when close to trailhead (final exit takes over)
+    const remainingToTrailhead = this.trailheadDistance - this.distanceTraveled;
+    const nearTrailhead = this.gamePhase === 'toTrailhead' && remainingToTrailhead <= 1500;
+    
+    if (this.currentTime >= this.lastRampTime + this.rampInterval && this.activeRamps.length === 0 && !nearTrailhead) {
       this.lastRampTime = this.currentTime;
       
       // Trigger EXIT first, then MERGE after a short delay (like real interchanges)
@@ -1074,9 +1096,114 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       this.arriveAtStarbucks1();
     } else if (this.gamePhase === 'toStarbucks2' && this.distanceTraveled >= this.starbucks2Distance) {
       this.arriveAtStarbucks2();
-    } else if (this.gamePhase === 'toTrailhead' && this.distanceTraveled >= this.trailheadDistance) {
-      this.arriveAtTrailhead();
+    } else if (this.gamePhase === 'toTrailhead') {
+      const remaining = this.trailheadDistance - this.distanceTraveled;
+      
+      // Show early warning at 1000 units (text only, no ramp yet)
+      if (remaining <= 1000 && remaining > 200 && !this.finalExitSpawned) {
+        this.showSpeechBubble("Ceci", "Our exit is coming up! Get ready to move right!", 3000);
+        this.finalExitSpawned = true;
+      }
+      
+      // Spawn the actual exit ramp at 200 units (will reach van when remaining ~= 0)
+      if (remaining <= 200 && !this.finalExitActive) {
+        this.finalExitActive = true;
+        this.createExitRampVisual();
+        
+        // Clear right lane for the exit
+        for (let i = this.trafficCars.length - 1; i >= 0; i--) {
+          if (this.trafficCars[i].lane === 2) {
+            this.trafficCars[i].container.destroy();
+            this.trafficCars.splice(i, 1);
+          }
+        }
+      }
+      
+      // Find the final exit ramp and check if it's at the van
+      const finalExitRamp = this.activeRamps.find(r => r.type === 'off');
+      
+      // DEBUG: Show exit detection info
+      const debugText = this.children.getByName('exitDebug') as Phaser.GameObjects.Text;
+      if (debugText) {
+        const rampY = finalExitRamp ? finalExitRamp.y.toFixed(0) : 'N/A';
+        debugText.setText(`Lane: ${this.currentLane} | Remaining: ${remaining.toFixed(0)} | Ramp Y: ${rampY}`);
+        debugText.setColor(this.currentLane === 2 ? '#00ff00' : '#ff0000');
+      }
+      
+      // Check if exit ramp has PASSED the van (gone below it)
+      if (finalExitRamp && this.finalExitActive) {
+        const rampPassedVan = finalExitRamp.y >= this.vanY + 30; // Ramp has scrolled past van
+        if (rampPassedVan) {
+          if (this.currentLane === 2) {
+            this.takeExit();
+          } else {
+            this.missedExit();
+          }
+        }
+      }
     }
+  }
+  
+  private takeExit() {
+    this.gamePhase = 'won';
+    this.finalExitActive = false;
+    
+    // Stop traffic
+    this.trafficCars.forEach(car => car.container.destroy());
+    this.trafficCars = [];
+    
+    // Animate van exiting to the right (onto the ramp)
+    this.tweens.add({
+      targets: this.van,
+      x: this.van.x + 80, // Move right onto ramp
+      y: this.van.y - 30, // Move up slightly (perspective)
+      scale: 0.7, // Get smaller (going into distance)
+      duration: 1000,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        // Fade out
+        this.tweens.add({
+          targets: this.van,
+          alpha: 0,
+          duration: 500,
+          onComplete: () => {
+            this.arriveAtTrailhead();
+          }
+        });
+      }
+    });
+    
+    this.showSpeechBubble("Grayson", "Taking the exit!", 2000);
+  }
+  
+  private createExitRampVisual() {
+    this.showSpeechBubble("Ceci", "That's our exit! RIGHT LANE NOW!", 2000);
+    
+    // Create the trailhead exit ramp
+    const graphics = this.add.graphics();
+    graphics.setDepth(1.5);
+    
+    const label = this.add.text(0, 0, 'EXIT >> TRAILHEAD', {
+      fontFamily: 'monospace',
+      fontSize: '7px',
+      color: '#ffffff',
+      backgroundColor: '#006633',
+      padding: { x: 3, y: 2 }
+    }).setDepth(100);
+    
+    const ramp = { graphics, y: this.horizonY + 20, type: 'off' as const, label };
+    this.activeRamps.push(ramp);
+    this.updateRampGraphics(ramp);
+  }
+  
+  private missedExit() {
+    this.gamePhase = 'lost';
+    
+    this.showSpeechBubble("Grayson", "Oops, I missed the exit...", 2500);
+    
+    this.time.delayedCall(3000, () => {
+      this.scene.restart();
+    });
   }
   
   private checkGameOver() {
@@ -1300,7 +1427,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
         checkpointText.setText(`↱ Starbucks: ${miles} mi`);
       } else if (this.gamePhase === 'toTrailhead') {
-        checkpointText.setText(''); // No more stops
+        if (this.finalExitSpawned) {
+          checkpointText.setText('↱ TRAILHEAD EXIT - RIGHT LANE!');
+          checkpointText.setColor('#ff0000'); // Red warning
+        } else {
+          checkpointText.setText(''); // No stops until exit
+        }
       }
       
       // Total hike distance remaining
