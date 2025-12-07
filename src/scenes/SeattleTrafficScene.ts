@@ -217,26 +217,71 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const middleGround = this.add.rectangle(160, (this.horizonY + this.roadBottomY) / 2, 160, this.roadBottomY - this.horizonY, 0x1a2a1a);
     middleGround.setDepth(0);
     
-    // Water on right side (dark blue, Puget Sound) - follows right edge of road
+    // Brown dirt strip on right side of highway (between road and water)
+    const stripWidth = 55; // Width of the dirt strip (wider)
+    const stripGraphics = this.add.graphics();
+    stripGraphics.setDepth(0.3);
+    
+    // Generate irregular edge offsets (cached for consistent water edge)
+    const stripSegments = 20; // More segments for smoother irregular edge
+    const edgeOffsets: number[] = [];
+    for (let i = 0; i <= stripSegments; i++) {
+      // Random offset for irregular shoreline (-5 to +8 pixels)
+      edgeOffsets.push((Math.random() - 0.4) * 12);
+    }
+    
+    // Draw brown strip following road's right edge with irregular outer edge
+    stripGraphics.fillStyle(0x3d2a1a, 1); // Dark brown dirt
+    stripGraphics.beginPath();
+    const horizonRoadPos = this.getRoadPosition(1);
+    stripGraphics.moveTo(horizonRoadPos.right, this.horizonY);
+    stripGraphics.lineTo(horizonRoadPos.right + stripWidth * 0.3 + edgeOffsets[stripSegments], this.horizonY);
+    // Follow curve down on outer edge with irregular offsets
+    for (let i = stripSegments; i >= 0; i--) {
+      const t = i / stripSegments;
+      const pos = this.getRoadPosition(t);
+      const sw = stripWidth * (0.3 + (1 - t) * 0.7) + edgeOffsets[i]; // Add irregular offset
+      stripGraphics.lineTo(pos.right + sw, pos.y);
+    }
+    // Follow road edge back up
+    for (let i = 0; i <= stripSegments; i++) {
+      const t = i / stripSegments;
+      const pos = this.getRoadPosition(t);
+      stripGraphics.lineTo(pos.right, pos.y);
+    }
+    stripGraphics.closePath();
+    stripGraphics.fillPath();
+    
+    // Add texture to dirt strip
+    stripGraphics.fillStyle(0x4a3520, 0.5);
+    for (let i = 0; i < 60; i++) {
+      const t = Math.random();
+      const pos = this.getRoadPosition(t);
+      const sw = stripWidth * (0.3 + (1 - t) * 0.7);
+      const dx = pos.right + 2 + Math.random() * (sw - 4);
+      const dy = pos.y;
+      stripGraphics.fillRect(dx, dy, 1 + Math.random() * 2, 1 + Math.random() * 2);
+    }
+    
+    // Small trees and rocks on the dirt strip (farther/smaller)
+    this.drawRightSideElements(stripGraphics, stripWidth);
+    
+    // Water on right side (dark blue, Puget Sound) - starts after dirt strip
     const waterGraphics = this.add.graphics();
     waterGraphics.setDepth(0.5);
     waterGraphics.fillStyle(0x0a1a2a, 1); // Dark blue water
     
-    // Draw water as polygon following road's right edge
+    // Draw water as polygon following dirt strip's irregular outer edge
     waterGraphics.beginPath();
-    // Start at horizon, right edge of road
-    const horizonRoadPos = this.getRoadPosition(1); // t=1 is horizon
-    waterGraphics.moveTo(horizonRoadPos.right, this.horizonY);
-    // Go to top-right corner
+    waterGraphics.moveTo(horizonRoadPos.right + stripWidth * 0.3 + edgeOffsets[stripSegments], this.horizonY);
     waterGraphics.lineTo(320, this.horizonY);
-    // Go to bottom-right corner
     waterGraphics.lineTo(320, this.roadBottomY);
-    // Follow road's right edge back up
-    const waterSegments = 10;
-    for (let i = 0; i <= waterSegments; i++) {
-      const t = i / waterSegments; // 0 at bottom, 1 at top
+    // Follow strip's irregular outer edge back up
+    for (let i = 0; i <= stripSegments; i++) {
+      const t = i / stripSegments;
       const pos = this.getRoadPosition(t);
-      waterGraphics.lineTo(pos.right, pos.y);
+      const sw = stripWidth * (0.3 + (1 - t) * 0.7) + edgeOffsets[i];
+      waterGraphics.lineTo(pos.right + sw, pos.y);
     }
     waterGraphics.closePath();
     waterGraphics.fillPath();
@@ -246,9 +291,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     for (let i = 0; i < 8; i++) {
       const t = (i + 1) / 10;
       const pos = this.getRoadPosition(t);
+      const sw = stripWidth * (0.3 + (1 - t) * 0.7);
       const wy = pos.y;
       const ww = 15 + Math.random() * 30;
-      const wx = pos.right + 10 + Math.random() * (320 - pos.right - 20);
+      const wx = pos.right + sw + 5 + Math.random() * (320 - pos.right - sw - 15);
       if (wx + ww < 320) {
         waterGraphics.fillRect(wx, wy, ww, 2);
       }
@@ -350,6 +396,40 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     graphics.lineTo(Math.min(295 + offsetX, 320), this.horizonY - 11);
     graphics.closePath();
     graphics.fillPath();
+  }
+  
+  private drawRightSideElements(graphics: Phaser.GameObjects.Graphics, stripWidth: number) {
+    // Small trees on the right dirt strip (appear farther/smaller)
+    const treeData: { x: number, t: number }[] = [];
+    
+    for (let i = 0; i < 12; i++) {
+      const t = 0.1 + Math.random() * 0.85;
+      const pos = this.getRoadPosition(t);
+      const sw = stripWidth * (0.3 + (1 - t) * 0.7);
+      // Position trees within the strip
+      const x = pos.right + 3 + Math.random() * (sw - 6);
+      treeData.push({ x, t });
+    }
+    
+    treeData.sort((a, b) => b.t - a.t);
+    
+    for (const tree of treeData) {
+      const y = this.horizonY + (1 - tree.t) * (this.roadBottomY - this.horizonY);
+      // Smaller scale (0.15 to 0.5) since they're "farther"
+      const scale = 0.15 + (1 - tree.t) * 0.35;
+      this.drawPineTree(graphics, tree.x, y, scale);
+    }
+    
+    // Small rocks along the strip
+    for (let i = 0; i < 8; i++) {
+      const t = 0.1 + Math.random() * 0.85;
+      const pos = this.getRoadPosition(t);
+      const sw = stripWidth * (0.3 + (1 - t) * 0.7);
+      const x = pos.right + 2 + Math.random() * (sw - 4);
+      const y = this.horizonY + (1 - t) * (this.roadBottomY - this.horizonY);
+      const scale = 0.2 + (1 - t) * 0.3;
+      this.drawRock(graphics, x, y, scale);
+    }
   }
   
   private drawForestElements() {
