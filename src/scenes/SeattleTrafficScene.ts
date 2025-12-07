@@ -530,13 +530,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     if (t < 0 || t > 1) return;
     
-    // Check if element would be on the underpass road - don't draw if so
+    // Check if element would be directly on the underpass road - don't draw if so
     // Underpass goes from horizon(95) to bottom(300), calculate its X at this Y
     const underpassHorizonX = 95;
     const underpassBottomX = 300;
     const underpassCenterX = underpassHorizonX + (1 - t) * (underpassBottomX - underpassHorizonX);
     const underpassWidth = 30 + (1 - t) * 60; // 30 at top, 90 at bottom
-    if (x > underpassCenterX - underpassWidth / 2 - 10 && x < underpassCenterX + underpassWidth / 2 + 10) {
+    // Only hide if directly on the road (no padding)
+    if (x > underpassCenterX - underpassWidth / 2 + 7 && x < underpassCenterX + underpassWidth / 2 - 7) {
       // Element is on the underpass, don't draw
       return;
     }
