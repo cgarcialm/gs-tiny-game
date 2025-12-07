@@ -538,8 +538,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private initLeftSideElements() {
-    // Create initial set of trees and rocks on the left side
-    for (let i = 0; i < 25; i++) {
+    // Create initial set of trees and rocks on the left side (sparse)
+    for (let i = 0; i < 15; i++) {
       const y = this.horizonY + Math.random() * (this.roadBottomY - this.horizonY);
       const type = Math.random() < 0.75 ? 'tree' : 'rock';
       const xOffset = Math.random() * 0.9; // Offset from left edge (as fraction of available space)
@@ -623,7 +623,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       if (elem.y > this.roadBottomY + 20) {
         elem.graphics.destroy();
         this.leftSideElements.splice(i, 1);
-        // Spawn new element at horizon
+        // Spawn new element to maintain sparse forest
         const type = Math.random() < 0.75 ? 'tree' : 'rock';
         const xOffset = Math.random() * 0.9;
         this.spawnLeftSideElement(this.horizonY + 5, type as 'tree' | 'rock', xOffset);
