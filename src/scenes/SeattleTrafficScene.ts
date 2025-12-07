@@ -949,8 +949,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Store bar width for update function
     this.registry.set('rageBarWidth', rageBarWidth);
     
-    // Final ETA for hike (right side, over water)
-    this.add.text(316, 45, "", {
+    // Final ETA for hike (top right, opposite of clock)
+    this.add.text(316, 10, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffff00",
@@ -958,8 +958,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       padding: { x: 4, y: 2 }
     }).setDepth(100).setOrigin(1, 0).setName('etaText');
     
-    // Current checkpoint instruction (below ETA)
-    this.add.text(316, 59, "", {
+    // Current checkpoint instruction (over water, lower right)
+    this.add.text(316, 45, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffffff",
@@ -967,8 +967,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       padding: { x: 4, y: 2 }
     }).setDepth(100).setOrigin(1, 0).setName('checkpointText');
     
-    // Total hike distance (below checkpoint)
-    this.add.text(316, 73, "", {
+    // Total hike distance (below checkpoint, over water)
+    this.add.text(316, 59, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffffff",
@@ -1187,7 +1187,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Check if 5 game minutes have passed since last ramp
     // Don't spawn regular ramps when close to trailhead (final exit takes over)
     const remainingToTrailhead = this.trailheadDistance - this.distanceTraveled;
-    const nearTrailhead = this.gamePhase === 'toTrailhead' && remainingToTrailhead <= 1500;
+    const nearTrailhead = this.gamePhase === 'toTrailhead' && remainingToTrailhead <= 600;
     
     if (this.currentTime >= this.lastRampTime + this.rampInterval && this.activeRamps.length === 0 && !nearTrailhead) {
       this.lastRampTime = this.currentTime;
@@ -1486,14 +1486,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     } else if (this.gamePhase === 'toTrailhead') {
       const remaining = this.trailheadDistance - this.distanceTraveled;
       
-      // Show early warning at 1000 units (text only, no ramp yet)
-      if (remaining <= 1000 && remaining > 200 && !this.finalExitSpawned) {
+      // Show early warning at 500 units (text only, no ramp yet)
+      if (remaining <= 500 && remaining > 50 && !this.finalExitSpawned) {
         this.showSpeechBubble("Ceci", "Our exit is coming up! Get ready to move right!", 3000);
         this.finalExitSpawned = true;
       }
       
-      // Spawn the actual exit ramp at 200 units (will reach van when remaining ~= 0)
-      if (remaining <= 200 && !this.finalExitActive) {
+      // Spawn the actual exit ramp at 50 units (very close to destination)
+      if (remaining <= 50 && !this.finalExitActive) {
         this.finalExitActive = true;
         this.createExitRampVisual();
         
@@ -1852,12 +1852,24 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       // This way: fast lane (150) = ETA drops, middle (100) = stable, slow (50) = ETA rises
       // Because you TRAVEL at actual speed but ETA ASSUMES middle speed
       const remainingToHike = this.trailheadDistance - this.distanceTraveled;
-      const baselineSpeed = this.laneSpeeds[1]; // Middle lane speed = 100
-      const realSecondsToHike = remainingToHike / baselineSpeed;
-      const gameMinutesToHike = realSecondsToHike * 45 / 60; // convert to game minutes at 45x speed
-      const etaMinutes = this.currentTime + gameMinutesToHike;
-      const etaHours = Math.floor(etaMinutes / 60);
-      const etaMins = Math.floor(etaMinutes % 60);
+      
+      let etaHours: number;
+      let etaMins: number;
+      let etaMinutes: number;
+      
+      if (this.finalExitActive) {
+        // At destination - ETA is current time
+        etaMinutes = this.currentTime;
+        etaHours = Math.floor(etaMinutes / 60);
+        etaMins = Math.floor(etaMinutes % 60);
+      } else {
+        const baselineSpeed = this.laneSpeeds[1]; // Middle lane speed = 100
+        const realSecondsToHike = remainingToHike / baselineSpeed;
+        const gameMinutesToHike = realSecondsToHike * 45 / 60; // convert to game minutes at 45x speed
+        etaMinutes = this.currentTime + gameMinutesToHike;
+        etaHours = Math.floor(etaMinutes / 60);
+        etaMins = Math.floor(etaMinutes % 60);
+      }
       etaText.setText(`Final ETA: ${etaHours}:${etaMins.toString().padStart(2, '0')}`);
       
       // Color code ETA: green < 8:00, yellow = 8:00, red > 8:00
@@ -1876,26 +1888,36 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
         checkpointText.setText(`↱ Starbucks: ${miles} mi`);
         checkpointText.setColor('#ffffff');
-        hikeDistText.setY(73); // Normal position below checkpoint
+        hikeDistText.setY(59); // Normal position below checkpoint
       } else if (this.gamePhase === 'toStarbucks2') {
         const remaining = this.starbucks2Distance - this.distanceTraveled;
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
         checkpointText.setText(`↱ Starbucks: ${miles} mi`);
         checkpointText.setColor('#ffffff');
-        hikeDistText.setY(73); // Normal position below checkpoint
+        hikeDistText.setY(59); // Normal position below checkpoint
       } else if (this.gamePhase === 'toTrailhead') {
-        if (this.finalExitSpawned) {
+        if (this.finalExitActive) {
+          // Exit ramp is on screen - urgent!
           checkpointText.setText('↱ TRAILHEAD EXIT - RIGHT LANE!');
           checkpointText.setColor('#ff0000'); // Red warning
-          hikeDistText.setY(73); // Normal position
+          hikeDistText.setY(59); // Normal position
+        } else if (this.finalExitSpawned) {
+          checkpointText.setText('↱ Trailhead exit ahead!');
+          checkpointText.setColor('#ffff00'); // Yellow warning
+          hikeDistText.setY(59); // Normal position
         } else {
           checkpointText.setText(''); // No Starbucks stops
-          hikeDistText.setY(59); // Move up to where checkpoint was
+          hikeDistText.setY(45); // Move up to where checkpoint was
         }
       }
       
-      // Total hike distance remaining
-      const hikeMiles = Math.max(0, remainingToHike / this.unitsPerMile).toFixed(1);
+      // Total hike distance remaining (show 0 when exit is active)
+      let hikeMiles: string;
+      if (this.finalExitActive) {
+        hikeMiles = "0.0"; // We're there!
+      } else {
+        hikeMiles = Math.max(0, remainingToHike / this.unitsPerMile).toFixed(1);
+      }
       hikeDistText.setText(`Hike: ${hikeMiles} mi`);
     }
   }
