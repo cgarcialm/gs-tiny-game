@@ -51,7 +51,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   // On-ramps and off-ramps (every 5 game minutes = 20 real seconds at 15x)
   private lastRampTime = 7 * 60 + 10; // Start time (5 min before game start so first ramps appear at 7:15)
   private rampInterval = 5; // Every 5 game minutes (20 real seconds at 15x)
-  private activeRamps: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'on' | 'off', label: Phaser.GameObjects.Text }[] = []
+  private activeRamps: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'on' | 'off', label: Phaser.GameObjects.Text, checkpoint?: 'starbucks1' | 'starbucks2' | 'trailhead' }[] = []
   
   // Roadside elements (scrolling trees and rocks)
   private leftSideElements: { graphics: Phaser.GameObjects.Graphics, y: number, type: 'tree' | 'rock', xOffset: number }[] = [];
@@ -71,6 +71,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private finalExitSpawned = false;
   private finalExitActive = false;
   private exitDecisionMade = false; // Ensure exit check only happens once
+  
+  // Starbucks exit flags
+  private starbucks1ExitSpawned = false;
+  private starbucks1ExitActive = false;
+  private starbucks1ExitDecisionMade = false;
+  private starbucks2ExitSpawned = false;
+  private starbucks2ExitActive = false;
+  private starbucks2ExitDecisionMade = false;
   
   // Checkpoints - tuned so ETA starts at 8:15 in middle lane (speed 100) at 45x time
   // At speed 100: 8000/100 * 0.75 = 60 game minutes → ETA 8:15
@@ -1185,11 +1193,20 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     }
     
     // Check if 5 game minutes have passed since last ramp
-    // Don't spawn regular ramps when close to trailhead (final exit takes over)
+    // Don't spawn regular ramps when close to any checkpoint exit
+    const remainingToStarbucks1 = this.starbucks1Distance - this.distanceTraveled;
+    const remainingToStarbucks2 = this.starbucks2Distance - this.distanceTraveled;
     const remainingToTrailhead = this.trailheadDistance - this.distanceTraveled;
-    const nearTrailhead = this.gamePhase === 'toTrailhead' && remainingToTrailhead <= 600;
     
-    if (this.currentTime >= this.lastRampTime + this.rampInterval && this.activeRamps.length === 0 && !nearTrailhead) {
+    const nearCheckpoint = 
+      (this.gamePhase === 'toStarbucks1' && remainingToStarbucks1 <= 600) ||
+      (this.gamePhase === 'toStarbucks2' && remainingToStarbucks2 <= 600) ||
+      (this.gamePhase === 'toTrailhead' && remainingToTrailhead <= 600);
+    
+    // Also don't spawn if a checkpoint exit is already active
+    const checkpointExitActive = this.starbucks1ExitActive || this.starbucks2ExitActive || this.finalExitActive;
+    
+    if (this.currentTime >= this.lastRampTime + this.rampInterval && this.activeRamps.length === 0 && !nearCheckpoint && !checkpointExitActive) {
       this.lastRampTime = this.currentTime;
       
       // Trigger EXIT first, then MERGE after a short delay (like real interchanges)
@@ -1479,11 +1496,102 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private checkCheckpoints() {
-    if (this.gamePhase === 'toStarbucks1' && this.distanceTraveled >= this.starbucks1Distance) {
-      this.arriveAtStarbucks1();
-    } else if (this.gamePhase === 'toStarbucks2' && this.distanceTraveled >= this.starbucks2Distance) {
-      this.arriveAtStarbucks2();
-    } else if (this.gamePhase === 'toTrailhead') {
+    // Starbucks 1 exit logic
+    if (this.gamePhase === 'toStarbucks1') {
+      const remaining = this.starbucks1Distance - this.distanceTraveled;
+      
+      // Show warning at 500 units
+      if (remaining <= 500 && remaining > 50 && !this.starbucks1ExitSpawned) {
+        this.showSpeechBubble("Ceci", "Starbucks exit coming up! Get in the right lane!", 3000);
+        this.starbucks1ExitSpawned = true;
+      }
+      
+      // Spawn exit ramp at 50 units
+      if (remaining <= 50 && !this.starbucks1ExitActive) {
+        console.log('Creating Starbucks 1 exit ramp, remaining:', remaining);
+        this.starbucks1ExitActive = true;
+        this.createStarbucksExitRamp(1);
+        
+        // Clear right lane
+        for (let i = this.trafficCars.length - 1; i >= 0; i--) {
+          if (this.trafficCars[i].lane === 2) {
+            this.trafficCars[i].container.destroy();
+            this.trafficCars.splice(i, 1);
+          }
+        }
+      }
+      
+      // Check if exit is at van level
+      const starbucks1Exit = this.activeRamps.find(r => r.checkpoint === 'starbucks1');
+      
+      // Debug: log ramp status
+      if (this.starbucks1ExitActive) {
+        console.log('SB1 Exit check:', {
+          rampFound: !!starbucks1Exit,
+          rampY: starbucks1Exit?.y,
+          vanY: this.vanY,
+          detectionRange: `${this.vanY - 20} to ${this.vanY + 20}`,
+          decisionMade: this.starbucks1ExitDecisionMade,
+          currentLane: this.currentLane,
+          activeRamps: this.activeRamps.map(r => ({ type: r.type, checkpoint: r.checkpoint, y: r.y }))
+        });
+      }
+      
+      if (starbucks1Exit && this.starbucks1ExitActive && !this.starbucks1ExitDecisionMade) {
+        const rampAtVan = starbucks1Exit.y >= this.vanY - 20 && starbucks1Exit.y <= this.vanY + 20;
+        if (rampAtVan) {
+          console.log('SB1 Exit DETECTED! Lane:', this.currentLane);
+          this.starbucks1ExitDecisionMade = true;
+          if (this.currentLane === 2) {
+            this.arriveAtStarbucks1();
+          } else {
+            this.missedStarbucks1();
+          }
+        }
+      }
+    }
+    
+    // Starbucks 2 exit logic
+    else if (this.gamePhase === 'toStarbucks2') {
+      const remaining = this.starbucks2Distance - this.distanceTraveled;
+      
+      // Show warning at 500 units
+      if (remaining <= 500 && remaining > 50 && !this.starbucks2ExitSpawned) {
+        this.showSpeechBubble("Ceci", "There's the right Starbucks! Exit right!", 3000);
+        this.starbucks2ExitSpawned = true;
+      }
+      
+      // Spawn exit ramp at 50 units
+      if (remaining <= 50 && !this.starbucks2ExitActive) {
+        this.starbucks2ExitActive = true;
+        this.createStarbucksExitRamp(2);
+        
+        // Clear right lane
+        for (let i = this.trafficCars.length - 1; i >= 0; i--) {
+          if (this.trafficCars[i].lane === 2) {
+            this.trafficCars[i].container.destroy();
+            this.trafficCars.splice(i, 1);
+          }
+        }
+      }
+      
+      // Check if exit is at van level
+      const starbucks2Exit = this.activeRamps.find(r => r.checkpoint === 'starbucks2');
+      if (starbucks2Exit && this.starbucks2ExitActive && !this.starbucks2ExitDecisionMade) {
+        const rampAtVan = starbucks2Exit.y >= this.vanY - 20 && starbucks2Exit.y <= this.vanY + 20;
+        if (rampAtVan) {
+          this.starbucks2ExitDecisionMade = true;
+          if (this.currentLane === 2) {
+            this.arriveAtStarbucks2();
+          } else {
+            this.missedStarbucks2();
+          }
+        }
+      }
+    }
+    
+    // Trailhead exit logic
+    else if (this.gamePhase === 'toTrailhead') {
       const remaining = this.trailheadDistance - this.distanceTraveled;
       
       // Show early warning at 500 units (text only, no ramp yet)
@@ -1507,7 +1615,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       }
       
       // Find the final exit ramp and check if it's at the van
-      const finalExitRamp = this.activeRamps.find(r => r.type === 'off');
+      const finalExitRamp = this.activeRamps.find(r => r.checkpoint === 'trailhead');
       
       // Check if exit ramp is at the van's level (only check once!)
       if (finalExitRamp && this.finalExitActive && !this.exitDecisionMade) {
@@ -1615,9 +1723,70 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       padding: { x: 3, y: 2 }
     }).setDepth(100);
     
-    const ramp = { graphics, y: this.horizonY + 20, type: 'off' as const, label };
+    const ramp = { graphics, y: this.horizonY + 20, type: 'off' as const, label, checkpoint: 'trailhead' as const };
     this.activeRamps.push(ramp);
     this.updateRampGraphics(ramp);
+  }
+  
+  private createStarbucksExitRamp(starbucksNumber: number) {
+    // Create Starbucks exit ramp
+    const graphics = this.add.graphics();
+    graphics.setDepth(1.5);
+    
+    const labelText = 'EXIT >> STARBUCKS';
+    const label = this.add.text(0, 0, labelText, {
+      fontFamily: 'monospace',
+      fontSize: '7px',
+      color: '#ffffff',
+      backgroundColor: '#00704A', // Starbucks green
+      padding: { x: 3, y: 2 }
+    }).setDepth(100);
+    
+    const checkpoint: 'starbucks1' | 'starbucks2' = starbucksNumber === 1 ? 'starbucks1' : 'starbucks2';
+    const ramp = { graphics, y: this.horizonY + 20, type: 'off' as const, label, checkpoint };
+    console.log('Starbucks ramp created:', { checkpoint, startY: ramp.y, horizonY: this.horizonY });
+    this.activeRamps.push(ramp);
+    this.updateRampGraphics(ramp);
+  }
+  
+  private missedStarbucks1() {
+    // Wrong Starbucks anyway - continue but increase rage
+    this.gamePhase = 'toStarbucks2';
+    this.starbucks1ExitActive = false;
+    
+    // Clean up the exit ramp
+    this.cleanupActiveRamps();
+    
+    // Rage increase for missing
+    this.rageLevel = Math.min(100, this.rageLevel + 15);
+    
+    this.showSpeechBubble("Ceci", "You missed the exit! Ugh, whatever... that wasn't the right one anyway.", 3000);
+  }
+  
+  private missedStarbucks2() {
+    // Missed the correct Starbucks - big rage increase but continue
+    this.gamePhase = 'toTrailhead';
+    this.starbucks2ExitActive = false;
+    
+    // Clean up the exit ramp
+    this.cleanupActiveRamps();
+    
+    // Big rage increase for missing the right Starbucks
+    this.rageLevel = Math.min(100, this.rageLevel + 30);
+    
+    this.showSpeechBubble("Ceci", "WHAT?! You missed MY Starbucks?! I can't hike without coffee!", 4000);
+    
+    // Traffic gets heavier anyway
+    this.carSpawnInterval = 1500;
+  }
+  
+  private cleanupActiveRamps() {
+    // Remove all active ramps (for checkpoint transitions)
+    for (const ramp of this.activeRamps) {
+      ramp.graphics.destroy();
+      ramp.label.destroy();
+    }
+    this.activeRamps = [];
   }
   
   private missedExit() {
@@ -1649,6 +1818,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private arriveAtStarbucks1() {
     // Keep game running - just transition to next phase immediately
     this.gamePhase = 'toStarbucks2';
+    this.starbucks1ExitActive = false;
+    
+    // Clean up the exit ramp
+    this.cleanupActiveRamps();
     
     // Wrong Starbucks dialogue (game keeps running)
     this.showSpeechBubble("Ceci", "Wait... wrong one! I ordered at the OTHER Starbucks!", 3000);
@@ -1660,6 +1833,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private arriveAtStarbucks2() {
     // Keep game running - just transition to next phase immediately
     this.gamePhase = 'toTrailhead';
+    this.starbucks2ExitActive = false;
+    
+    // Clean up the exit ramp
+    this.cleanupActiveRamps();
     
     // Correct Starbucks dialogue (game keeps running)
     this.showSpeechBubble("Ceci", "Finally! Got my coffee!", 2500);
