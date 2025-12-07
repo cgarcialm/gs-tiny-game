@@ -921,7 +921,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private createUI() {
     // Clock (top-left)
-    this.add.text(10, 10, "", {
+    this.add.text(4, 4, "", {
       fontFamily: "monospace",
       fontSize: "12px",
       color: "#ffffff",
@@ -949,10 +949,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Store bar width for update function
     this.registry.set('rageBarWidth', rageBarWidth);
     
-    // Final ETA for hike (top right, opposite of clock)
-    this.add.text(316, 10, "", {
+    // ETA for hike (top right, opposite of clock)
+    this.add.text(316, 4, "", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "12px",
       color: "#ffff00",
       backgroundColor: "#000000",
       padding: { x: 4, y: 2 }
@@ -1870,7 +1870,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         etaHours = Math.floor(etaMinutes / 60);
         etaMins = Math.floor(etaMinutes % 60);
       }
-      etaText.setText(`Final ETA: ${etaHours}:${etaMins.toString().padStart(2, '0')}`);
+      etaText.setText(`Arrive: ${etaHours}:${etaMins.toString().padStart(2, '0')}`);
       
       // Color code ETA: green < 8:00, yellow = 8:00, red > 8:00
       const deadline = 8 * 60; // 8:00 AM in minutes
@@ -1918,7 +1918,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       } else {
         hikeMiles = Math.max(0, remainingToHike / this.unitsPerMile).toFixed(1);
       }
-      hikeDistText.setText(`Hike: ${hikeMiles} mi`);
+      // Show turn arrow when hike is the next destination (no Starbucks showing)
+      const showTurnArrow = this.gamePhase === 'toTrailhead' && !this.finalExitSpawned;
+      hikeDistText.setText(`${showTurnArrow ? '↱ ' : ''}Hike: ${hikeMiles} mi`);
     }
   }
   
