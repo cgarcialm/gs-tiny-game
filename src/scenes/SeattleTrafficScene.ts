@@ -183,9 +183,35 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Seattle skyline
     this.drawSeattleSkyline(skyGraphics);
     
-    // Ground - grass on left side (darker for night)
-    const grassLeft = this.add.rectangle(40, (this.horizonY + this.roadBottomY) / 2, 80, this.roadBottomY - this.horizonY, 0x1a2a1a);
-    grassLeft.setDepth(0);
+    // Ground - grass on left side with gradient texture
+    const grassGraphics = this.add.graphics();
+    grassGraphics.setDepth(0);
+    
+    // Base grass color gradient (darker at horizon, slightly lighter near bottom)
+    for (let y = this.horizonY; y < this.roadBottomY; y++) {
+      const t = (y - this.horizonY) / (this.roadBottomY - this.horizonY);
+      // Gradient from dark to slightly lighter green
+      const r = Math.floor(20 + t * 8);
+      const g = Math.floor(35 + t * 15);
+      const b = Math.floor(20 + t * 8);
+      grassGraphics.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
+      grassGraphics.fillRect(0, y, 80, 1);
+    }
+    
+    // Add grass texture - small dots and dashes for varied look
+    const grassColors = [0x1a3d1a, 0x163316, 0x1f4520, 0x142814, 0x0f1f10];
+    for (let i = 0; i < 200; i++) {
+      const gx = Math.random() * 80;
+      const t = Math.random();
+      const gy = this.horizonY + t * (this.roadBottomY - this.horizonY);
+      const size = 1 + Math.random() * (1 + t); // Bigger dots near bottom
+      
+      grassGraphics.fillStyle(grassColors[Math.floor(Math.random() * grassColors.length)], 0.6 + Math.random() * 0.4);
+      grassGraphics.fillRect(gx, gy, size, size * 1.5);
+    }
+    
+    // Add forest elements (pine trees, bushes, rocks) on left side
+    this.drawForestElements();
     
     // Middle section (between road edges) - draw first so water overlays it
     const middleGround = this.add.rectangle(160, (this.horizonY + this.roadBottomY) / 2, 160, this.roadBottomY - this.horizonY, 0x1a2a1a);
@@ -324,6 +350,126 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     graphics.lineTo(Math.min(295 + offsetX, 320), this.horizonY - 11);
     graphics.closePath();
     graphics.fillPath();
+  }
+  
+  private drawForestElements() {
+    const graphics = this.add.graphics();
+    graphics.setDepth(1); // Above grass, below road
+    
+    // Draw elements from horizon to bottom (far to near)
+    // Elements get larger as they get closer (perspective)
+    
+    // Generate trees following the road curve with random offsets
+    const treeData: { x: number, t: number }[] = [];
+    
+    // Create trees at various depths, positioned relative to road edge
+    for (let i = 0; i < 25; i++) {
+      const t = 0.05 + Math.random() * 0.92; // Random depth from bottom to horizon
+      const roadPos = this.getRoadPosition(t);
+      // Position trees from left edge of screen to just before road, with randomness
+      const maxX = roadPos.left - 8; // Leave gap from road
+      const x = Math.random() * Math.max(5, maxX);
+      treeData.push({ x, t });
+    }
+    
+    // Sort by t (back to front) so closer trees overlap distant ones
+    treeData.sort((a, b) => b.t - a.t);
+    
+    for (const tree of treeData) {
+      const y = this.horizonY + (1 - tree.t) * (this.roadBottomY - this.horizonY);
+      const scale = 0.3 + (1 - tree.t) * 0.7;
+      this.drawPineTree(graphics, tree.x, y, scale);
+    }
+    
+    // Rocks - along highway border, following the curve
+    const rockData: { x: number, t: number }[] = [];
+    
+    for (let i = 0; i < 12; i++) {
+      const t = 0.08 + Math.random() * 0.85;
+      const roadPos = this.getRoadPosition(t);
+      // Position rocks close to the road edge (within 15px of it)
+      const roadEdge = roadPos.left;
+      const x = roadEdge - 5 - Math.random() * 12;
+      rockData.push({ x: Math.max(0, x), t });
+    }
+    
+    // Sort rocks back to front
+    rockData.sort((a, b) => b.t - a.t);
+    
+    for (const rock of rockData) {
+      const y = this.horizonY + (1 - rock.t) * (this.roadBottomY - this.horizonY);
+      const scale = 0.5 + (1 - rock.t) * 0.5;
+      this.drawRock(graphics, rock.x, y, scale);
+    }
+  }
+  
+  private drawPineTree(graphics: Phaser.GameObjects.Graphics, x: number, baseY: number, scale: number) {
+    const trunkWidth = 6 * scale;
+    const trunkHeight = 15 * scale;
+    const treeHeight = 55 * scale;
+    const treeWidth = 26 * scale;
+    
+    // Trunk (brown)
+    graphics.fillStyle(0x3d2817, 1);
+    graphics.fillRect(x - trunkWidth / 2, baseY - trunkHeight, trunkWidth, trunkHeight);
+    
+    // Foliage - 3 triangular layers (bottom darker, top slightly bluer to stand out)
+    const foliageColors = [0x142814, 0x1a3520, 0x1f4530]; // Bottom darkest, top darker teal-green
+    
+    for (let layer = 0; layer < 3; layer++) {
+      const layerY = baseY - trunkHeight - (layer * treeHeight / 4);
+      const layerWidth = treeWidth * (1 - layer * 0.25);
+      const layerHeight = treeHeight / 2.5;
+      
+      graphics.fillStyle(foliageColors[layer], 1);
+      graphics.fillTriangle(
+        x - layerWidth / 2, layerY,           // Bottom left
+        x + layerWidth / 2, layerY,           // Bottom right
+        x, layerY - layerHeight               // Top
+      );
+    }
+  }
+  
+  private drawRock(graphics: Phaser.GameObjects.Graphics, x: number, baseY: number, scale: number) {
+    // Irregular rock shape - bigger and more visible
+    const w = 14 * scale;
+    const h = 9 * scale;
+    
+    // Dark base shadow
+    graphics.fillStyle(0x252525, 1);
+    graphics.fillEllipse(x + 1, baseY - h / 2 + 1, w, h);
+    
+    // Main rock body - lighter gray
+    graphics.fillStyle(0x505050, 1);
+    graphics.fillEllipse(x, baseY - h / 2, w, h);
+    
+    // Highlight on top
+    graphics.fillStyle(0x686868, 1);
+    graphics.fillEllipse(x - w * 0.1, baseY - h / 2 - h * 0.15, w * 0.6, h * 0.5);
+    
+    // Secondary bump
+    graphics.fillStyle(0x454545, 1);
+    graphics.fillEllipse(x + w * 0.35, baseY - h / 2 - h * 0.1, w * 0.5, h * 0.6);
+  }
+  
+  private drawBush(graphics: Phaser.GameObjects.Graphics, x: number, baseY: number, scale: number) {
+    // Rounded bush shape - bigger and more visible
+    const bushColors = [0x2a4a2a, 0x1f3f1f, 0x254525]; // Slightly lighter greens for visibility
+    
+    const w = 24 * scale;
+    const h = 16 * scale;
+    
+    // Multiple overlapping circles for organic shape
+    graphics.fillStyle(bushColors[1], 1);
+    graphics.fillCircle(x, baseY - h / 2, h / 2);
+    graphics.fillStyle(bushColors[0], 1);
+    graphics.fillCircle(x - w * 0.35, baseY - h / 2 + 2, h / 2 * 0.9);
+    graphics.fillCircle(x + w * 0.35, baseY - h / 2 + 2, h / 2 * 0.9);
+    // Extra foliage on top - lighter highlights
+    graphics.fillStyle(bushColors[2], 1);
+    graphics.fillCircle(x, baseY - h * 0.75, h / 2.5);
+    graphics.fillCircle(x - w * 0.2, baseY - h * 0.6, h / 3);
+    graphics.fillCircle(x + w * 0.2, baseY - h * 0.6, h / 3);
   }
   
   private drawSeattleSkyline(graphics: Phaser.GameObjects.Graphics) {
