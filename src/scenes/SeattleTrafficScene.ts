@@ -472,7 +472,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     for (let i = 0; i < 15; i++) {
       const y = this.horizonY + Math.random() * (this.roadBottomY - this.horizonY);
       const type = Math.random() < 0.7 ? 'tree' : 'rock';
-      const xOffset = 3 + Math.random() * 0.6; // Offset within strip (as fraction)
+      const xOffset = 0.15 + Math.random() * 0.5; // In dirt strip area
       this.spawnRightSideElement(y, type as 'tree' | 'rock', xOffset);
     }
   }
@@ -496,7 +496,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private spawnRightSideElement(y: number, type: 'tree' | 'rock', xOffset: number) {
     const graphics = this.add.graphics();
-    graphics.setDepth(1);
+    graphics.setDepth(0.9); // Above underpass (0.8) but below main road (1)
     this.rightSideElements.push({ graphics, y, type, xOffset });
     this.updateRightSideElement({ graphics, y, type, xOffset });
   }
@@ -530,11 +530,22 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     if (t < 0 || t > 1) return;
     
+    // Check if element would be on the underpass road - don't draw if so
+    // Underpass goes from horizon(95) to bottom(300), calculate its X at this Y
+    const underpassHorizonX = 95;
+    const underpassBottomX = 300;
+    const underpassCenterX = underpassHorizonX + (1 - t) * (underpassBottomX - underpassHorizonX);
+    const underpassWidth = 30 + (1 - t) * 60; // 30 at top, 90 at bottom
+    if (x > underpassCenterX - underpassWidth / 2 - 10 && x < underpassCenterX + underpassWidth / 2 + 10) {
+      // Element is on the underpass, don't draw
+      return;
+    }
+    
     if (elem.type === 'tree') {
-      const scale = 0.15 + (1 - t) * 0.35; // Smaller since they're "farther"
+      const scale = 0.25 + (1 - t) * 0.5; // Bigger trees
       this.drawPineTree(elem.graphics, x, elem.y, scale);
     } else {
-      const scale = 0.2 + (1 - t) * 0.3;
+      const scale = 0.3 + (1 - t) * 0.4; // Bigger rocks
       this.drawRock(elem.graphics, x, elem.y, scale);
     }
   }
@@ -571,7 +582,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         this.rightSideElements.splice(i, 1);
         // Spawn new element at horizon
         const type = Math.random() < 0.7 ? 'tree' : 'rock';
-        const xOffset = 0.1 + Math.random() * 0.6;
+        const xOffset = 0.15 + Math.random() * 0.5; // In dirt strip area
         this.spawnRightSideElement(this.horizonY + 5, type as 'tree' | 'rock', xOffset);
       } else {
         this.updateRightSideElement(elem);
