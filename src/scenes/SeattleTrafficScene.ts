@@ -62,6 +62,30 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private skyGraphics!: Phaser.GameObjects.Graphics;
   private starsGraphics!: Phaser.GameObjects.Graphics;
   
+  // ===========================================
+  // RAGE METER CONFIG - Adjust values here
+  // ===========================================
+  private readonly RAGE_CONFIG = {
+    // Collision events
+    hitCar: 15,                    // Hitting another car
+    
+    // Stuck in traffic (per second after 0.5s delay)
+    stuckPerSecond: 2,             // Rage increase per second when stuck
+    stuckDelay: 500,               // ms before stuck rage kicks in
+    
+    // Smooth driving recovery (per second)
+    recoveryPerSecond: 0.5,        // Rage decrease per second when driving smoothly
+    
+    // Starbucks events
+    wrongStarbucks: 50,            // Took exit but wrong Starbucks
+    missedStarbucks1: 75,          // Missed first Starbucks exit
+    missedStarbucks2: 80,          // Missed second Starbucks (the right one!)
+    
+    // Trailhead events
+    missedTrailhead: 100,          // Missed final exit = instant max rage
+  };
+  // ===========================================
+  
   // Game state
   private gamePhase: 'intro' | 'toStarbucks1' | 'atStarbucks1' | 'toStarbucks2' | 'atStarbucks2' | 'toTrailhead' | 'won' | 'lost' = 'intro';
   private distanceTraveled = 0;
@@ -1161,7 +1185,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private hitCar() {
     // Increase rage when hitting car
-    this.rageLevel = Math.min(100, this.rageLevel + 15);
+    this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.hitCar);
     
     // Flash effect
     this.cameras.main.flash(200, 255, 0, 0, false);
@@ -1182,13 +1206,13 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     if (carAhead && carAhead.speed < this.roadSpeed) {
       this.stuckTimer += dt;
-      if (this.stuckTimer > 500) {
-        this.rageLevel = Math.min(100, this.rageLevel + dt / 1000 * 2);
+      if (this.stuckTimer > this.RAGE_CONFIG.stuckDelay) {
+        this.rageLevel = Math.min(100, this.rageLevel + dt / 1000 * this.RAGE_CONFIG.stuckPerSecond);
       }
     } else {
       this.stuckTimer = 0;
       // Slowly decrease rage when driving smoothly
-      this.rageLevel = Math.max(0, this.rageLevel - dt / 1000 * 0.5);
+      this.rageLevel = Math.max(0, this.rageLevel - dt / 1000 * this.RAGE_CONFIG.recoveryPerSecond);
     }
   }
   
@@ -1773,7 +1797,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.cleanupActiveRamps();
     
     // Rage increase for missing
-    this.rageLevel = Math.min(100, this.rageLevel + 15);
+    this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.missedStarbucks1);
     
     this.showSpeechBubble("Ceci", "You missed the exit! Ugh, whatever... that wasn't the right one anyway.", 3000);
   }
@@ -1787,7 +1811,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.cleanupActiveRamps();
     
     // Big rage increase for missing the right Starbucks
-    this.rageLevel = Math.min(100, this.rageLevel + 30);
+    this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.missedStarbucks2);
     
     this.showSpeechBubble("Ceci", "WHAT?! You missed MY Starbucks?! I can't hike without coffee!", 4000);
     
@@ -1809,7 +1833,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.finalExitActive = false;
     
     // Max out rage
-    this.rageLevel = 100;
+    this.rageLevel = this.RAGE_CONFIG.missedTrailhead;
     
     // Grayson's disappointed message (persistent - stays until restart)
     this.showSpeechBubble("Grayson", "Damn, we missed the exit. It's gonna be packed in a bit. Let's not go.", 0, true);
@@ -1857,7 +1881,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
           this.showSpeechBubble("Ceci", "Wait... wrong one! I ordered at the OTHER Starbucks!", 3000);
           
           // Increase rage
-          this.rageLevel = Math.min(100, this.rageLevel + 10);
+          this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.wrongStarbucks);
           
           // Animate van coming back from exit
           this.tweens.add({
@@ -2140,23 +2164,23 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       if (this.gamePhase === 'intro' || this.gamePhase === 'toStarbucks1') {
         const remaining = this.starbucks1Distance - this.distanceTraveled;
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
-        checkpointText.setText(`↱ Starbucks: ${miles} mi`);
+        checkpointText.setText(`↱ ${miles} mi · Starbucks`);
         checkpointText.setColor('#ffffff');
         hikeDistText.setY(56); // Normal position below checkpoint
       } else if (this.gamePhase === 'toStarbucks2') {
         const remaining = this.starbucks2Distance - this.distanceTraveled;
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
-        checkpointText.setText(`↱ Starbucks: ${miles} mi`);
+        checkpointText.setText(`↱ ${miles} mi · Starbucks`);
         checkpointText.setColor('#ffffff');
         hikeDistText.setY(56); // Normal position below checkpoint
       } else if (this.gamePhase === 'toTrailhead') {
         if (this.finalExitActive) {
           // Exit ramp is on screen - urgent!
-          checkpointText.setText('↱ TRAILHEAD EXIT - RIGHT LANE!');
+          checkpointText.setText('↱ EXIT NOW - RIGHT LANE!');
           checkpointText.setColor('#ff0000'); // Red warning
           hikeDistText.setY(56); // Normal position
         } else if (this.finalExitSpawned) {
-          checkpointText.setText('↱ Trailhead exit ahead!');
+          checkpointText.setText('↱ Exit ahead!');
           checkpointText.setColor('#ffff00'); // Yellow warning
           hikeDistText.setY(56); // Normal position
         } else {
@@ -2174,7 +2198,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       }
       // Show turn arrow when hike is the next destination (no Starbucks showing)
       const showTurnArrow = this.gamePhase === 'toTrailhead' && !this.finalExitSpawned;
-      hikeDistText.setText(`${showTurnArrow ? '↱ ' : ''}Hike: ${hikeMiles} mi`);
+      hikeDistText.setText(`${showTurnArrow ? '↱ ' : ''}${hikeMiles} mi · Trailhead`);
     }
   }
   
