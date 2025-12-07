@@ -114,6 +114,21 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.laneMarkers = [];
     this.roadOffset = 0;
     this.roadSpeed = this.laneSpeeds[this.currentLane]; // Set initial speed based on lane
+    
+    // Reset exit flags
+    this.finalExitSpawned = false;
+    this.finalExitActive = false;
+    this.exitDecisionMade = false;
+    this.starbucks1ExitSpawned = false;
+    this.starbucks1ExitActive = false;
+    this.starbucks1ExitDecisionMade = false;
+    this.starbucks2ExitSpawned = false;
+    this.starbucks2ExitActive = false;
+    this.starbucks2ExitDecisionMade = false;
+    
+    // Reset ramps
+    this.activeRamps = [];
+    this.lastRampTime = 7 * 60 + 10;
     this.lastRampTime = 7 * 60 + 10; // Reset ramp timing (5 min before start)
     this.activeRamps = []; // Clear any leftover ramps
     this.finalExitSpawned = false;
