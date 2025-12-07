@@ -931,10 +931,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Clock (top-left)
     this.add.text(4, 4, "", {
       fontFamily: "monospace",
-      fontSize: "12px",
+      fontSize: "9px",
       color: "#ffffff",
       backgroundColor: "#000000",
-      padding: { x: 4, y: 2 }
+      padding: { x: 3, y: 1 }
     }).setDepth(100).setName('clockText');
     
     // Rage meter (bottom) - edit these variables to adjust positioning
@@ -960,28 +960,28 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // ETA for hike (top right, opposite of clock)
     this.add.text(316, 4, "", {
       fontFamily: "monospace",
-      fontSize: "12px",
+      fontSize: "9px",
       color: "#ffff00",
       backgroundColor: "#000000",
-      padding: { x: 4, y: 2 }
+      padding: { x: 3, y: 1 }
     }).setDepth(100).setOrigin(1, 0).setName('etaText');
     
-    // Current checkpoint instruction (over water, lower right)
+    // Current checkpoint instruction (below water line)
     this.add.text(316, 45, "", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "8px",
       color: "#ffffff",
       backgroundColor: "#000000",
-      padding: { x: 4, y: 2 }
+      padding: { x: 3, y: 1 }
     }).setDepth(100).setOrigin(1, 0).setName('checkpointText');
     
-    // Total hike distance (below checkpoint, over water)
-    this.add.text(316, 59, "", {
+    // Total hike distance (just below checkpoint)
+    this.add.text(316, 56, "", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "8px",
       color: "#ffffff",
       backgroundColor: "#000000",
-      padding: { x: 4, y: 2 }
+      padding: { x: 3, y: 1 }
     }).setDepth(100).setOrigin(1, 0).setName('hikeDistText');
     
     this.updateUI();
@@ -1717,10 +1717,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     const label = this.add.text(0, 0, 'EXIT >> TRAILHEAD', {
       fontFamily: 'monospace',
-      fontSize: '7px',
+      fontSize: '5px',
       color: '#ffffff',
       backgroundColor: '#006633',
-      padding: { x: 3, y: 2 }
+      padding: { x: 2, y: 1 }
     }).setDepth(100);
     
     const ramp = { graphics, y: this.horizonY + 20, type: 'off' as const, label, checkpoint: 'trailhead' as const };
@@ -1918,9 +1918,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       this.speechBubble.destroy();
     }
     
-    // Position over the water (right side of screen), in the sky area
-    const bubbleX = 255;
-    const bubbleY = 80;
+    // Position over the water (right side of screen), below the distance signs
+    const bubbleX = 260;
+    const bubbleY = 100;
     
     // Create container
     this.speechBubble = this.add.container(bubbleX, bubbleY);
@@ -2047,7 +2047,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         etaHours = Math.floor(etaMinutes / 60);
         etaMins = Math.floor(etaMinutes % 60);
       }
-      etaText.setText(`Arrive: ${etaHours}:${etaMins.toString().padStart(2, '0')}`);
+      etaText.setText(`Arrive: ${etaHours}:${etaMins.toString().padStart(2, '0')} AM`);
       
       // Color code ETA: green < 8:00, yellow = 8:00, red > 8:00
       const deadline = 8 * 60; // 8:00 AM in minutes
@@ -2065,23 +2065,23 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
         checkpointText.setText(`↱ Starbucks: ${miles} mi`);
         checkpointText.setColor('#ffffff');
-        hikeDistText.setY(59); // Normal position below checkpoint
+        hikeDistText.setY(56); // Normal position below checkpoint
       } else if (this.gamePhase === 'toStarbucks2') {
         const remaining = this.starbucks2Distance - this.distanceTraveled;
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
         checkpointText.setText(`↱ Starbucks: ${miles} mi`);
         checkpointText.setColor('#ffffff');
-        hikeDistText.setY(59); // Normal position below checkpoint
+        hikeDistText.setY(56); // Normal position below checkpoint
       } else if (this.gamePhase === 'toTrailhead') {
         if (this.finalExitActive) {
           // Exit ramp is on screen - urgent!
           checkpointText.setText('↱ TRAILHEAD EXIT - RIGHT LANE!');
           checkpointText.setColor('#ff0000'); // Red warning
-          hikeDistText.setY(59); // Normal position
+          hikeDistText.setY(56); // Normal position
         } else if (this.finalExitSpawned) {
           checkpointText.setText('↱ Trailhead exit ahead!');
           checkpointText.setColor('#ffff00'); // Yellow warning
-          hikeDistText.setY(59); // Normal position
+          hikeDistText.setY(56); // Normal position
         } else {
           checkpointText.setText(''); // No Starbucks stops
           hikeDistText.setY(45); // Move up to where checkpoint was
