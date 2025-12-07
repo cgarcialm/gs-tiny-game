@@ -467,9 +467,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       const nightTopR = 10, nightTopG = 15, nightTopB = 35;
       const nightHorizonR = 50, nightHorizonG = 35, nightHorizonB = 80;
       
-      // Day colors (8:00) - very soft early morning, subtle dawn
-      const dayTopR = 35, dayTopG = 55, dayTopB = 90;
-      const dayHorizonR = 100, dayHorizonG = 80, dayHorizonB = 85;
+      // Day colors (8:00) - soft early morning, gentle dawn
+      const dayTopR = 55, dayTopG = 80, dayTopB = 120;
+      const dayHorizonR = 140, dayHorizonG = 110, dayHorizonB = 100;
       
       // Interpolate between night and day based on time
       const topR = nightTopR + timeProgress * (dayTopR - nightTopR);
