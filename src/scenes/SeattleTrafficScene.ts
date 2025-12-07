@@ -70,6 +70,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private stuckTimer = 0;
   private finalExitSpawned = false;
   private finalExitActive = false;
+  private exitDecisionMade = false; // Ensure exit check only happens once
   
   // Checkpoints - tuned so ETA starts at 8:15 in middle lane (speed 100) at 45x time
   // At speed 100: 8000/100 * 0.75 = 60 game minutes → ETA 8:15
@@ -109,6 +110,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.activeRamps = []; // Clear any leftover ramps
     this.finalExitSpawned = false;
     this.finalExitActive = false;
+    this.exitDecisionMade = false;
     
     // Create road
     this.createRoad();
@@ -1507,10 +1509,13 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       // Find the final exit ramp and check if it's at the van
       const finalExitRamp = this.activeRamps.find(r => r.type === 'off');
       
-      // Check if exit ramp is at the van's level (just slightly ahead)
-      if (finalExitRamp && this.finalExitActive) {
-        const rampAtVan = finalExitRamp.y >= this.vanY - 20; // Ramp is at van level
+      // Check if exit ramp is at the van's level (only check once!)
+      if (finalExitRamp && this.finalExitActive && !this.exitDecisionMade) {
+        // Ramp must be right at the van level
+        const rampAtVan = finalExitRamp.y >= this.vanY - 20 && finalExitRamp.y <= this.vanY + 20;
         if (rampAtVan) {
+          this.exitDecisionMade = true; // Prevent multiple checks
+          // Must be in RIGHT lane (lane 2) to take exit
           if (this.currentLane === 2) {
             this.takeExit();
           } else {
