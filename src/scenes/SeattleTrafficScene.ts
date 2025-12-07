@@ -67,10 +67,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   // ===========================================
   private readonly RAGE_CONFIG = {
     // Collision events
-    hitCar: 15,                    // Hitting another car
+    hitCar: 20,                    // Hitting another car
     
     // Stuck in traffic (per second after 0.5s delay)
-    stuckPerSecond: 2,             // Rage increase per second when stuck
+    stuckPerSecond: 5,             // Rage increase per second when stuck
     stuckDelay: 500,               // ms before stuck rage kicks in
     
     // Smooth driving recovery (per second)
@@ -1200,11 +1200,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Rage increases when stuck behind slow cars
     const carAhead = this.trafficCars.find(car => 
       car.lane === this.currentLane && 
-      car.y > this.vanY - 40 && 
+      car.y > this.vanY - 100 &&  // Large detection range - any car ahead in lane
       car.y < this.vanY
     );
     
-    if (carAhead && carAhead.speed < this.roadSpeed) {
+    // Trigger if any car ahead, regardless of speed (you're in traffic!)
+    if (carAhead) {
       this.stuckTimer += dt;
       if (this.stuckTimer > this.RAGE_CONFIG.stuckDelay) {
         this.rageLevel = Math.min(100, this.rageLevel + dt / 1000 * this.RAGE_CONFIG.stuckPerSecond);
