@@ -1198,12 +1198,16 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private missedExit() {
     this.gamePhase = 'lost';
+    this.finalExitActive = false;
     
-    this.showSpeechBubble("Grayson", "Oops, I missed the exit...", 2500);
+    // Max out rage
+    this.rageLevel = 100;
     
-    this.time.delayedCall(3000, () => {
-      this.scene.restart();
-    });
+    // Grayson's disappointed message
+    this.showSpeechBubble("Grayson", "Damn, we missed the exit. It's gonna be packed in a bit. Let's not go.", 10000);
+    
+    // Show retry prompt after a delay
+    this.showRetryPrompt(3000);
   }
   
   private checkGameOver() {
@@ -1267,21 +1271,44 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private loseByRage() {
     this.gamePhase = 'lost';
     
-    this.showSpeechBubble("Grayson", "I can't deal with this traffic anymore...", 2500);
+    this.showSpeechBubble("Grayson", "I can't deal with this traffic anymore...", 10000);
     
-    this.time.delayedCall(3000, () => {
-      this.scene.restart();
-    });
+    this.showRetryPrompt(3000);
   }
   
   private loseByTime() {
     this.gamePhase = 'lost';
     
-    this.showSpeechBubble("Ceci", "The trail's gonna be packed now...", 2500);
+    this.showSpeechBubble("Ceci", "The trail's gonna be packed now...", 10000);
     
-    this.time.delayedCall(3000, () => {
-      this.scene.restart();
-    });
+    this.showRetryPrompt(3000);
+  }
+  
+  private showRetryPrompt(delay: number) {
+    // Use setTimeout for real time (not affected by game timeScale)
+    setTimeout(() => {
+      // Show retry message
+      const retryBg = this.add.rectangle(160, 100, 220, 70, 0x000000, 0.9).setDepth(300);
+      const retryText = this.add.text(160, 85, "Another try?", {
+        fontFamily: "monospace",
+        fontSize: "18px",
+        color: "#ffffff"
+      }).setOrigin(0.5).setDepth(301);
+      const pressEnter = this.add.text(160, 115, "Press ENTER to restart", {
+        fontFamily: "monospace",
+        fontSize: "11px",
+        color: "#ffff00"
+      }).setOrigin(0.5).setDepth(301);
+      
+      // Wait for Enter key
+      const enterKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+      enterKey?.once('down', () => {
+        retryBg.destroy();
+        retryText.destroy();
+        pressEnter.destroy();
+        this.scene.restart();
+      });
+    }, delay);
   }
   
   private showSpeechBubble(speaker: string, text: string, duration: number = 3000) {
