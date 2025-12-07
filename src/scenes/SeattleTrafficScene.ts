@@ -545,8 +545,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.add.rectangle(rageBarX + rageBarWidth / 2, rageBarY, rageBarWidth, rageBarHeight, 0x111111).setDepth(100); // Background bar
     this.add.rectangle(rageBarX, rageBarY, 0, rageMeterHeight, 0xff0000).setDepth(101).setName('rageMeter').setOrigin(0, 0.5); // Red fill
     // Semi-transparent background for RAGE text
-    this.add.rectangle(22, rageBarY + 1, 28, 12, 0x000000, 0.5).setDepth(101);
-    this.add.text(10, rageBarY + 1, "RAGE", {
+    this.add.rectangle(22, rageBarY, 26, 12, 0x000000, 0.5).setDepth(101);
+    this.add.text(12, rageBarY, "RAGE", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#ff0000"
@@ -581,15 +581,6 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       backgroundColor: "#000000",
       padding: { x: 4, y: 2 }
     }).setDepth(100).setOrigin(1, 0).setName('hikeDistText');
-    
-    // DEBUG: Exit detection info (bottom center)
-    this.add.text(160, 175, "", {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#ffffff",
-      backgroundColor: "#000000aa",
-      padding: { x: 4, y: 2 }
-    }).setDepth(200).setOrigin(0.5, 1).setName('exitDebug');
     
     this.updateUI();
   }
@@ -1122,14 +1113,6 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       
       // Find the final exit ramp and check if it's at the van
       const finalExitRamp = this.activeRamps.find(r => r.type === 'off');
-      
-      // DEBUG: Show exit detection info
-      const debugText = this.children.getByName('exitDebug') as Phaser.GameObjects.Text;
-      if (debugText) {
-        const rampY = finalExitRamp ? finalExitRamp.y.toFixed(0) : 'N/A';
-        debugText.setText(`Lane: ${this.currentLane} | Remaining: ${remaining.toFixed(0)} | Ramp Y: ${rampY}`);
-        debugText.setColor(this.currentLane === 2 ? '#00ff00' : '#ff0000');
-      }
       
       // Check if exit ramp is at the van's level (just slightly ahead)
       if (finalExitRamp && this.finalExitActive) {
