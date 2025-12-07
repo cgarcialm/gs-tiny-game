@@ -1130,10 +1130,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         debugText.setColor(this.currentLane === 2 ? '#00ff00' : '#ff0000');
       }
       
-      // Check if exit ramp has PASSED the van (gone below it)
+      // Check if exit ramp is at the van's level (just slightly ahead)
       if (finalExitRamp && this.finalExitActive) {
-        const rampPassedVan = finalExitRamp.y >= this.vanY + 30; // Ramp has scrolled past van
-        if (rampPassedVan) {
+        const rampAtVan = finalExitRamp.y >= this.vanY - 20; // Ramp is at van level
+        if (rampAtVan) {
           if (this.currentLane === 2) {
             this.takeExit();
           } else {
@@ -1148,32 +1148,74 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.gamePhase = 'won';
     this.finalExitActive = false;
     
+    // Stop ALL scene movement
+    this.roadSpeed = 0;
+    
     // Stop traffic
     this.trafficCars.forEach(car => car.container.destroy());
     this.trafficCars = [];
     
-    // Animate van exiting to the right (onto the ramp)
+    // Ramps will stop because roadSpeed is 0
+    
+    // Animate van sliding right onto the exit ramp
     this.tweens.add({
       targets: this.van,
-      x: this.van.x + 80, // Move right onto ramp
-      y: this.van.y - 30, // Move up slightly (perspective)
-      scale: 0.7, // Get smaller (going into distance)
-      duration: 1000,
+      x: this.van.x + 100, // Slide right onto ramp
+      alpha: 0, // Fade out as it exits
+      duration: 1500,
       ease: 'Sine.easeInOut',
       onComplete: () => {
-        // Fade out
-        this.tweens.add({
-          targets: this.van,
-          alpha: 0,
-          duration: 500,
-          onComplete: () => {
+        // Show victory sign
+        this.showVictorySign();
+      }
+    });
+  }
+  
+  private showVictorySign() {
+    // Create victory sign overlay
+    const overlay = this.add.rectangle(160, 100, 280, 120, 0x000000, 0.85).setDepth(400);
+    
+    const title = this.add.text(160, 70, "🏔️ TRAILHEAD REACHED! 🏔️", {
+      fontFamily: "monospace",
+      fontSize: "14px",
+      color: "#00ff00"
+    }).setOrigin(0.5).setDepth(401);
+    
+    const subtitle = this.add.text(160, 95, "Time to hike!", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#ffffff"
+    }).setOrigin(0.5).setDepth(401);
+    
+    // Show arrival time
+    const hours = Math.floor(this.currentTime / 60);
+    const mins = Math.floor(this.currentTime % 60);
+    const timeText = this.add.text(160, 120, `Arrived at ${hours}:${mins.toString().padStart(2, '0')} AM`, {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffff00"
+    }).setOrigin(0.5).setDepth(401);
+    
+    // Fade in the sign
+    overlay.setAlpha(0);
+    title.setAlpha(0);
+    subtitle.setAlpha(0);
+    timeText.setAlpha(0);
+    
+    this.tweens.add({
+      targets: [overlay, title, subtitle, timeText],
+      alpha: 1,
+      duration: 500,
+      onComplete: () => {
+        // Wait then fade entire scene
+        this.time.delayedCall(2500, () => {
+          this.cameras.main.fadeOut(1000, 0, 0, 0);
+          this.cameras.main.once('camerafadeoutcomplete', () => {
             this.arriveAtTrailhead();
-          }
+          });
         });
       }
     });
-    
-    this.showSpeechBubble("Grayson", "Taking the exit!", 2000);
   }
   
   private createExitRampVisual() {
@@ -1203,8 +1245,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Max out rage
     this.rageLevel = 100;
     
-    // Grayson's disappointed message
-    this.showSpeechBubble("Grayson", "Damn, we missed the exit. It's gonna be packed in a bit. Let's not go.", 10000);
+    // Grayson's disappointed message (persistent - stays until restart)
+    this.showSpeechBubble("Grayson", "Damn, we missed the exit. It's gonna be packed in a bit. Let's not go.", 0, true);
     
     // Show retry prompt after a delay
     this.showRetryPrompt(3000);
@@ -1271,7 +1313,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private loseByRage() {
     this.gamePhase = 'lost';
     
-    this.showSpeechBubble("Grayson", "I can't deal with this traffic anymore...", 10000);
+    this.showSpeechBubble("Grayson", "I can't deal with this traffic anymore...", 0, true);
     
     this.showRetryPrompt(3000);
   }
@@ -1279,7 +1321,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private loseByTime() {
     this.gamePhase = 'lost';
     
-    this.showSpeechBubble("Ceci", "The trail's gonna be packed now...", 10000);
+    this.showSpeechBubble("Ceci", "The trail's gonna be packed now...", 0, true);
     
     this.showRetryPrompt(3000);
   }
@@ -1311,7 +1353,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     }, delay);
   }
   
-  private showSpeechBubble(speaker: string, text: string, duration: number = 3000) {
+  private showSpeechBubble(speaker: string, text: string, duration: number = 3000, persistent: boolean = false) {
     // Remove existing bubble if any
     if (this.speechBubble) {
       this.speechBubble.destroy();
@@ -1379,24 +1421,26 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       ease: 'Back.easeOut'
     });
     
-    // Auto-remove after duration
-    this.time.delayedCall(duration, () => {
-      if (this.speechBubble) {
-        this.tweens.add({
-          targets: this.speechBubble,
-          scale: 0,
-          alpha: 0,
-          duration: 150,
-          ease: 'Back.easeIn',
-          onComplete: () => {
-            if (this.speechBubble) {
-              this.speechBubble.destroy();
-              this.speechBubble = undefined;
+    // Auto-remove after duration (unless persistent)
+    if (!persistent) {
+      this.time.delayedCall(duration, () => {
+        if (this.speechBubble) {
+          this.tweens.add({
+            targets: this.speechBubble,
+            scale: 0,
+            alpha: 0,
+            duration: 150,
+            ease: 'Back.easeIn',
+            onComplete: () => {
+              if (this.speechBubble) {
+                this.speechBubble.destroy();
+                this.speechBubble = undefined;
+              }
             }
-          }
-        });
-      }
-    });
+          });
+        }
+      });
+    }
   }
   
   private updateUI() {
