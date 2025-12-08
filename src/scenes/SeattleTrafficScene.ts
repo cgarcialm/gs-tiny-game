@@ -1199,12 +1199,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private createSideMirrors() {
-    const mirrorY = 135; // Above rage bar
-    const mirrorWidth = 35;
-    const mirrorHeight = 18;
+    const mirrorY = 130; // Above rage bar
+    const mirrorWidth = 45;
+    const mirrorHeight = 25;
     
     // Left mirror (shows lane to the left)
-    const leftMirrorX = 8;
+    const leftMirrorX = 2;
     const leftFrame = this.add.graphics();
     leftFrame.fillStyle(0x222222, 1);
     leftFrame.lineStyle(2, 0x444444, 1);
@@ -1229,7 +1229,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     leftContent.setName('leftMirror');
     
     // Right mirror (shows lane to the right)
-    const rightMirrorX = 275;
+    const rightMirrorX = 270;
     const rightFrame = this.add.graphics();
     rightFrame.fillStyle(0x222222, 1);
     rightFrame.lineStyle(2, 0x444444, 1);
@@ -1312,12 +1312,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Draw left mirror cars (keep within bounds)
     for (const { car, distanceBehind } of leftMirrorCars) {
       const proximity = 1 - (distanceBehind / leftRange);
-      const carWidth = 4 + Math.pow(proximity, 1.5) * 14;  // Wider
-      const carHeight = carWidth * 0.8;  // Shorter (was 1.5)
+      const carWidth = 6 + Math.pow(proximity, 1.5) * 20;  // Bigger
+      const carHeight = carWidth * 0.7;
       // Calculate Y position, ensuring car stays within mirror bounds
       const maxY = leftPos.y + leftPos.h - carHeight - 4;
       const minY = leftPos.y + 2;
-      const carY = minY + (maxY - minY) * (1 - proximity * 0.95);  // More up
+      const carY = minY + (maxY - minY) * (1 - proximity * 0.95);
       leftMirror.fillStyle(car.color, 0.9);
       leftMirror.fillRect(leftPos.x + leftPos.w/2 - carWidth/2, carY, carWidth, carHeight);
     }
@@ -1325,12 +1325,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Draw right mirror cars (keep within bounds)
     for (const { car, distanceBehind } of rightMirrorCars) {
       const proximity = 1 - (distanceBehind / rightRange);
-      const carWidth = 4 + Math.pow(proximity, 1.5) * 14;  // Wider
-      const carHeight = carWidth * 0.8;  // Shorter (was 1.5)
+      const carWidth = 6 + Math.pow(proximity, 1.5) * 20;  // Bigger
+      const carHeight = carWidth * 0.7;
       // Calculate Y position, ensuring car stays within mirror bounds
       const maxY = rightPos.y + rightPos.h - carHeight - 4;
       const minY = rightPos.y + 2;
-      const carY = minY + (maxY - minY) * (1 - proximity * 0.95);  // More up
+      const carY = minY + (maxY - minY) * (1 - proximity * 0.95);
       rightMirror.fillStyle(car.color, 0.9);
       rightMirror.fillRect(rightPos.x + rightPos.w/2 - carWidth/2, carY, carWidth, carHeight);
     }
