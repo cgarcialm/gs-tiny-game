@@ -2010,13 +2010,13 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Create victory sign overlay
     const overlay = this.add.rectangle(160, 100, 280, 120, 0x000000, 0.85).setDepth(400);
     
-    const title = this.add.text(160, 70, "🏔️ TRAILHEAD REACHED! 🏔️", {
+    const title = this.add.text(160, 70, ">>> TRAILHEAD REACHED <<<", {
       fontFamily: "monospace",
       fontSize: "14px",
       color: "#00ff00"
     }).setOrigin(0.5).setDepth(401);
     
-    const subtitle = this.add.text(160, 95, "Time to hike!", {
+    const subtitle = this.add.text(160, 95, "You beat Seattle traffic!", {
       fontFamily: "monospace",
       fontSize: "12px",
       color: "#ffffff"
@@ -2299,7 +2299,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         // Wait at Starbucks (getting coffee)
         this.time.delayedCall(2000, () => {
           // Got coffee dialogue
-          this.showSpeechBubble("Ceci", "Got my coffee! ☕", 2500);
+          this.showSpeechBubble("Ceci", "Got it! I'm a better person now.", 2500);
           
           // Animate van coming back from exit
           this.tweens.add({
@@ -2335,7 +2335,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private winGame() {
     // Victory!
-    this.showSpeechBubble("Ceci", "Made it! Let's go! 🏔️", 2500);
+    this.showSpeechBubble("Ceci", "We made it! Hiking time!", 2500);
     
     // Transition to next level after delay
     this.time.delayedCall(3000, () => {
@@ -2375,8 +2375,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Flash red
     this.cameras.main.flash(300, 255, 0, 0, false);
     
-    // Show "RAGE MAXED!" text that pulses
-    const rageMaxText = this.add.text(160, 85, "🤬 RAGE MAXED! 🤬", {
+    // Show "RAGE QUIT" text that pulses
+    const rageMaxText = this.add.text(160, 85, ">>> RAGE QUIT <<<", {
       fontFamily: "monospace",
       fontSize: "14px",
       color: "#ff0000",
