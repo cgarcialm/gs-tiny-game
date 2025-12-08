@@ -117,7 +117,8 @@ export function createVanSprite(
 }
 
 /**
- * Van sprite from straight behind (for left lane view)
+ * Van sprite for left lane view
+ * Almost straight rear view with tiny hint of left side
  */
 export function createVanSpriteBack(
   scene: Phaser.Scene,
@@ -139,40 +140,44 @@ export function createVanSpriteBack(
   g.fillStyle(0x000000, 0.3);
   g.fillEllipse(0, 17, 20, 6);
 
-  // Hood (longer, visible from behind)
-  g.fillStyle(BURGUNDY, 1);
-  g.fillRect(-8, -22, 16, 8);
-  g.fillStyle(BURGUNDY_LIGHT, 1);
-  g.fillRect(-6, -21, 12, 5);
-
   // Main body
   g.fillStyle(BURGUNDY, 1);
-  g.fillRect(-10, -12, 20, 28);
-  
+  g.fillRect(-9, -10, 18, 26);
+
+  // Tiny left side hint
+  g.fillStyle(BURGUNDY_DARK, 1);
+  g.fillRect(-11, -10, 2, 26);
+
   // Roof
   g.fillStyle(BURGUNDY_DARK, 1);
-  g.fillRect(-9, -17, 18, 5);
+  g.fillRect(-10, -18, 18, 8);
 
-  // Front windshield (peeking above roof)
+  // Hood
+  g.fillStyle(BURGUNDY, 1);
+  g.fillRect(-8, -20, 14, 5);
+  g.fillStyle(BURGUNDY_LIGHT, 1);
+  g.fillRect(-7, -19, 12, 3);
+
+  // Front windshield
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-6, -15, 12, 3);
+  g.fillRect(-8, -15, 15, 4);
   g.fillStyle(WINDOW_SHINE, 0.5);
-  g.fillRect(-2, -14, 4, 2);
+  g.fillRect(-1, -14, 4, 2);
 
   // Body highlight
   g.fillStyle(BURGUNDY_LIGHT, 1);
-  g.fillRoundedRect(-6, -10, 12, 20, 3);
+  g.fillRoundedRect(-5, -8, 10, 18, 3);
 
-  // Rear window (back windshield)
+  // Rear window
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-5, 4, 10, 6);
+  g.fillRect(-6, 4, 12, 6);
   g.fillStyle(WINDOW_SHINE, 0.4);
   g.fillRect(-1, 5, 4, 3);
 
   // Tail lights
   g.fillStyle(TAIL_LIGHT, 1);
-  g.fillRect(-9, 12, 4, 3);
-  g.fillRect(5, 12, 4, 3);
+  g.fillRect(-8, 12, 4, 3);
+  g.fillRect(4, 12, 4, 3);
 
   // License plate
   g.fillStyle(0xdddddd, 1);
@@ -182,15 +187,19 @@ export function createVanSpriteBack(
   g.fillStyle(0x222222, 1);
   g.fillRect(-10, 16, 20, 3);
 
+  // Left front wheel
+  g.fillStyle(BLACK, 1);
+  g.fillRect(-13, -12, 4, 10);
+  g.fillStyle(0x444444, 1);
+  g.fillRect(-12, -10, 2, 6);
+
   // Left rear wheel
   g.fillStyle(BLACK, 1);
   g.fillRect(-13, 6, 4, 10);
 
-  // Right rear wheel
-  g.fillStyle(BLACK, 1);
-  g.fillRect(9, 6, 4, 10);
-
   container.add(g);
+  container.setAngle(-3);  // Barely noticeable lean
+  
   return container;
 }
 
