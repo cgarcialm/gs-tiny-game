@@ -2383,6 +2383,17 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private loseByRage() {
     this.gamePhase = 'lost';
     
+    // Stop any lane change in progress
+    this.tweens.killTweensOf(this.van);
+    this.isChangingLane = false;
+    
+    // Use the target lane position (not mid-animation position)
+    const explosionX = this.getLaneX(this.currentLane);
+    const explosionY = this.van.y;
+    
+    // Snap van to final position
+    this.van.x = explosionX;
+    
     // Slow down to a stop
     this.tweens.add({
       targets: this,
@@ -2411,6 +2422,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Flash red
     this.cameras.main.flash(300, 255, 0, 0, false);
     
+    // Cartoon explosion effect from the car (use captured position)
+    this.createRageExplosion(explosionX, explosionY);
+    
     // Show "RAGE QUIT" text that pulses
     const rageMaxText = this.add.text(160, 85, ">>> RAGE QUIT <<<", {
       fontFamily: "monospace",
@@ -2436,6 +2450,162 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     });
     
     this.showRetryPrompt(3500);
+  }
+  
+  private createRageExplosion(vanX: number, vanY: number) {
+    const pixelSize = 2; // Smaller pixels for more detail
+    
+    // Colors matching the reference image
+    const YELLOW_BRIGHT = 0xffffaa;
+    const YELLOW_LIGHT = 0xffee88;
+    const YELLOW = 0xffcc44;
+    const ORANGE_LIGHT = 0xffaa44;
+    const ORANGE = 0xff8833;
+    const ORANGE_DARK = 0xdd5522;
+    const RED_DARK = 0xaa3311;
+    const BROWN = 0x884422;
+    const GRAY_LIGHT = 0xaaaaaa;
+    const GRAY = 0x777777;
+    const GRAY_DARK = 0x555555;
+    
+    const cloud = this.add.graphics().setDepth(150);
+    
+    // Initial flash
+    const flash = this.add.rectangle(160, 100, 320, 200, 0xffffff, 1).setDepth(149);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 500,
+      onComplete: () => flash.destroy()
+    });
+    
+    // Animation state
+    let progress = 0;
+    const duration = 4000; // 4 seconds
+    
+    // Helper to draw pixelated ellipse (more rounded)
+    const drawPixelEllipse = (cx: number, cy: number, rx: number, ry: number, color: number) => {
+      cloud.fillStyle(color, 1);
+      for (let angle = 0; angle < Math.PI * 2; angle += 0.15) {
+        for (let r = 0; r < 1; r += 0.1) {
+          const x = cx + Math.cos(angle) * rx * r;
+          const y = cy + Math.sin(angle) * ry * r;
+          cloud.fillRect(Math.floor(x / pixelSize) * pixelSize, Math.floor(y / pixelSize) * pixelSize, pixelSize, pixelSize);
+        }
+      }
+    };
+    
+    // Helper for pixelated rect
+    const drawPixelRect = (x: number, y: number, w: number, h: number, color: number) => {
+      cloud.fillStyle(color, 1);
+      for (let px = 0; px < w; px += pixelSize) {
+        for (let py = 0; py < h; py += pixelSize) {
+          cloud.fillRect(x + px, y + py, pixelSize, pixelSize);
+        }
+      }
+    };
+    
+    // Animate the mushroom cloud
+    const animateCloud = this.time.addEvent({
+      delay: 16,
+      repeat: duration / 16,
+      callback: () => {
+        progress += 16 / duration;
+        const t = Math.min(progress, 1);
+        
+        cloud.clear();
+        
+        const baseY = vanY + 10;
+        const centerX = vanX;
+        const scale = 1.1; // Explosion size
+        
+        // Ground dust/debris (gray pixels at base)
+        if (t > 0.05) {
+          const dustT = Math.min(t * 3, 1);
+          drawPixelEllipse(centerX, baseY, 40 * scale * dustT, 8 * scale * dustT, GRAY_DARK);
+          drawPixelEllipse(centerX, baseY - 2, 35 * scale * dustT, 6 * scale * dustT, GRAY);
+          drawPixelEllipse(centerX, baseY - 4, 25 * scale * dustT, 4 * scale * dustT, GRAY_LIGHT);
+        }
+        
+        // Stem (grows upward) - tapered shape
+        const stemHeight = 70 * scale * t;
+        const stemBottomW = 24 * scale * Math.min(t * 1.5, 1);
+        const stemTopW = 16 * scale * Math.min(t * 1.5, 1);
+        
+        // Draw stem with taper (darker outer, brighter inner)
+        for (let sy = 0; sy < stemHeight; sy += pixelSize) {
+          const ratio = sy / stemHeight;
+          const w = stemBottomW + (stemTopW - stemBottomW) * ratio;
+          const y = baseY - sy;
+          drawPixelRect(centerX - w/2, y - pixelSize, w, pixelSize, ORANGE_DARK);
+          drawPixelRect(centerX - w/2 + pixelSize*2, y - pixelSize, w - pixelSize*4, pixelSize, ORANGE);
+          drawPixelRect(centerX - pixelSize*2, y - pixelSize, pixelSize*4, pixelSize, YELLOW);
+        }
+        
+        // Ring around stem base
+        if (t > 0.15) {
+          const ringT = Math.min((t - 0.15) * 4, 1);
+          drawPixelEllipse(centerX, baseY - stemHeight * 0.15, 30 * scale * ringT, 10 * scale * ringT, ORANGE_DARK);
+          drawPixelEllipse(centerX, baseY - stemHeight * 0.15, 24 * scale * ringT, 7 * scale * ringT, ORANGE);
+        }
+        
+        // Mushroom cap (big bulbous shape)
+        if (t > 0.15) {
+          const capT = Math.min((t - 0.15) / 0.6, 1);
+          const capY = baseY - stemHeight - 10 * scale * capT;
+          const capW = 75 * scale * capT;
+          const capH = 50 * scale * capT;
+          
+          // Main cap - outer layer (dark orange/red edge)
+          drawPixelEllipse(centerX, capY, capW, capH * 0.7, RED_DARK);
+          drawPixelEllipse(centerX, capY, capW - 4, capH * 0.65, ORANGE_DARK);
+          drawPixelEllipse(centerX, capY, capW - 10, capH * 0.55, ORANGE);
+          drawPixelEllipse(centerX, capY, capW - 18, capH * 0.45, ORANGE_LIGHT);
+          drawPixelEllipse(centerX, capY + 4, capW - 28, capH * 0.3, YELLOW_LIGHT);
+          drawPixelEllipse(centerX, capY + 6, capW - 40, capH * 0.2, YELLOW_BRIGHT);
+          
+          // Top bulges (rounded bumps on top)
+          const bulgeY = capY - capH * 0.4;
+          drawPixelEllipse(centerX - capW * 0.25, bulgeY, capW * 0.35, capH * 0.4, ORANGE_DARK);
+          drawPixelEllipse(centerX + capW * 0.25, bulgeY, capW * 0.35, capH * 0.4, ORANGE_DARK);
+          drawPixelEllipse(centerX, bulgeY - capH * 0.15, capW * 0.3, capH * 0.35, ORANGE_DARK);
+          
+          // Inner bulge highlights
+          drawPixelEllipse(centerX - capW * 0.25, bulgeY + 2, capW * 0.28, capH * 0.32, ORANGE);
+          drawPixelEllipse(centerX + capW * 0.25, bulgeY + 2, capW * 0.28, capH * 0.32, ORANGE);
+          drawPixelEllipse(centerX, bulgeY - capH * 0.12, capW * 0.22, capH * 0.28, ORANGE);
+          
+          // Bright core highlights on bulges
+          drawPixelEllipse(centerX - capW * 0.25, bulgeY + 4, capW * 0.18, capH * 0.2, YELLOW_LIGHT);
+          drawPixelEllipse(centerX + capW * 0.25, bulgeY + 4, capW * 0.18, capH * 0.2, YELLOW_LIGHT);
+          drawPixelEllipse(centerX, bulgeY - capH * 0.08, capW * 0.14, capH * 0.18, YELLOW_LIGHT);
+          
+          // Side wisps/curls
+          if (capT > 0.5) {
+            const wispT = (capT - 0.5) / 0.5;
+            drawPixelEllipse(centerX - capW - 8 * wispT, capY + capH * 0.2, 15 * wispT, 10 * wispT, ORANGE_DARK);
+            drawPixelEllipse(centerX + capW + 8 * wispT, capY + capH * 0.2, 15 * wispT, 10 * wispT, ORANGE_DARK);
+            drawPixelEllipse(centerX - capW - 4 * wispT, capY + capH * 0.2, 10 * wispT, 6 * wispT, ORANGE);
+            drawPixelEllipse(centerX + capW + 4 * wispT, capY + capH * 0.2, 10 * wispT, 6 * wispT, ORANGE);
+          }
+          
+          // Bottom underbelly of cap
+          drawPixelEllipse(centerX, capY + capH * 0.5, capW * 0.7, capH * 0.25, BROWN);
+          drawPixelEllipse(centerX, capY + capH * 0.5, capW * 0.5, capH * 0.18, ORANGE_DARK);
+        }
+        
+        // Fade out at the end
+        if (t > 0.8) {
+          cloud.setAlpha(1 - (t - 0.8) / 0.2);
+        }
+      }
+    });
+    
+    // Cleanup after animation
+    this.time.delayedCall(duration + 500, () => {
+      cloud.destroy();
+      animateCloud.destroy();
+    });
   }
   
   private loseByTime() {
