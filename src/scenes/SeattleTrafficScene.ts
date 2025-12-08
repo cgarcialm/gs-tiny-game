@@ -998,16 +998,16 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Current checkpoint instruction (below water line)
     this.add.text(316, 45, "", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: "9px",
       color: "#000000",
       backgroundColor: "#ffffff",
       padding: { x: 3, y: 1 }
     }).setDepth(100).setOrigin(1, 0).setName('checkpointText');
     
     // Total hike distance (just below checkpoint)
-    this.add.text(316, 56, "", {
+    this.add.text(316, 57, "", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: "9px",
       color: "#000000",
       backgroundColor: "#ffffff",
       padding: { x: 3, y: 1 }
@@ -1741,7 +1741,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
           console.log('SB1 Exit DETECTED! Lane:', this.currentLane);
           this.starbucks1ExitDecisionMade = true;
           if (this.currentLane === 2) {
-            this.arriveAtStarbucks1();
+      this.arriveAtStarbucks1();
           } else {
             this.missedStarbucks1();
           }
@@ -1780,7 +1780,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         if (rampAtVan) {
           this.starbucks2ExitDecisionMade = true;
           if (this.currentLane === 2) {
-            this.arriveAtStarbucks2();
+      this.arriveAtStarbucks2();
           } else {
             this.missedStarbucks2();
           }
@@ -1899,7 +1899,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         this.time.delayedCall(2500, () => {
           this.cameras.main.fadeOut(1000, 0, 0, 0);
           this.cameras.main.once('camerafadeoutcomplete', () => {
-            this.arriveAtTrailhead();
+      this.arriveAtTrailhead();
           });
         });
       }
@@ -2036,8 +2036,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         this.time.delayedCall(1500, () => {
           // Wrong Starbucks dialogue
           this.showSpeechBubble("Ceci", "Wait... wrong one! I ordered at the OTHER Starbucks!", 3000);
-          
-          // Increase rage
+        
+        // Increase rage
           this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.wrongStarbucks);
           
           // Animate van coming back from exit
@@ -2049,11 +2049,11 @@ export default class SeattleTrafficScene extends Phaser.Scene {
             ease: 'Sine.easeOut',
             onComplete: () => {
               // Resume gameplay
-              this.gamePhase = 'toStarbucks2';
+          this.gamePhase = 'toStarbucks2';
               this.roadSpeed = savedSpeed;
             }
-          });
         });
+      });
       }
     });
   }
@@ -2093,12 +2093,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
             ease: 'Sine.easeOut',
             onComplete: () => {
               // Resume gameplay with heavier traffic
-              this.gamePhase = 'toTrailhead';
+          this.gamePhase = 'toTrailhead';
               this.roadSpeed = savedSpeed;
-              this.carSpawnInterval = 1500;
+          this.carSpawnInterval = 1500;
             }
-          });
         });
+      });
       }
     });
   }
@@ -2149,7 +2149,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       // Show retry message
       const retryBg = this.add.rectangle(160, 100, 220, 70, 0x000000, 0.9).setDepth(300);
       const retryText = this.add.text(160, 85, "Another try?", {
-        fontFamily: "monospace",
+      fontFamily: "monospace",
         fontSize: "18px",
         color: "#ffffff"
       }).setOrigin(0.5).setDepth(301);
@@ -2165,8 +2165,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         retryBg.destroy();
         retryText.destroy();
         pressEnter.destroy();
-        this.scene.restart();
-      });
+      this.scene.restart();
+    });
     }, delay);
   }
   
