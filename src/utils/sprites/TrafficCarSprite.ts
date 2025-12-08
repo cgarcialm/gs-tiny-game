@@ -51,60 +51,66 @@ function drawSedan(g: Phaser.GameObjects.Graphics, color: number, dark: number, 
 
   // Shadow
   g.fillStyle(0x000000, 0.25);
-  g.fillEllipse(1, 13, 18, 5);
+  g.fillEllipse(1, 8, 16, 4);
 
-  // Left front wheel (behind body)
+  // Left front wheel
   g.fillStyle(BLACK, 1);
-  g.fillRect(-13, -13, 4, 10);
+  g.fillRect(-11, -8, 3, 7);
 
-  // Left side of hood (above wheel)
+  // Left side of hood
   g.fillStyle(dark, 1);
-  g.fillRect(-10, -18, 3, 5);
+  g.fillRect(-9, -12, 2, 4);
 
-  // Main body
+  // Main body (shorter, wider - sedan shape)
   g.fillStyle(color, 1);
-  g.fillRect(-7, -10, 13, 23);
+  g.fillRect(-6, -6, 12, 14);
 
   // Left side
   g.fillStyle(dark, 1);
-  g.fillRect(-10, -10, 4, 23);
+  g.fillRect(-9, -6, 3, 14);
 
-  // Roof
+  // Roof (shorter - doesn't reach back)
   g.fillStyle(dark, 1);
-  g.fillRect(-8, -16, 14, 5);
+  g.fillRect(-7, -10, 10, 4);
 
-  // Hood
+  // Hood (longer)
   g.fillStyle(color, 1);
-  g.fillRect(-7, -18, 12, 4);
+  g.fillRect(-6, -12, 10, 3);
 
   // Front windshield
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-5, -14, 10, 4);
+  g.fillRect(-5, -9, 9, 3);
 
   // Left side window
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-9, -12, 3, 16);
+  g.fillRect(-8, -7, 2, 8);
 
-  // Rear windshield
+  // Trunk area (behind roof)
+  g.fillStyle(color, 1);
+  g.fillRect(-5, -6, 10, 4);
+  g.fillStyle(light, 1);
+  g.fillRect(-4, -5, 8, 3);
+
+  // Rear windshield (visible, slanted)
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-4, -1, 8, 5);
+  g.fillRect(-4, -2, 7, 3);
 
   // Body highlight
   g.fillStyle(light, 1);
-  g.fillRect(-4, -8, 8, 16);
+  g.fillRect(-3, 1, 7, 5);
 
   // Tail lights
   g.fillStyle(TAIL_LIGHT, 1);
-  g.fillRect(-5, 9, 4, 3);
-  g.fillRect(3, 9, 4, 3);
+  g.fillRect(-5, 5, 3, 2);
+  g.fillRect(3, 5, 3, 2);
 
   // Left rear wheel
   g.fillStyle(BLACK, 1);
-  g.fillRect(-13, 3, 4, 10);
+  g.fillRect(-11, 1, 3, 7);
 
   // Right rear wheel
   g.fillStyle(BLACK, 1);
-  g.fillRect(7, 5, 3, 7);
+  g.fillRect(6, 2, 2, 5);
 }
 
 function drawSUV(g: Phaser.GameObjects.Graphics, color: number, dark: number, light: number) {
@@ -114,64 +120,66 @@ function drawSUV(g: Phaser.GameObjects.Graphics, color: number, dark: number, li
 
   // Shadow
   g.fillStyle(0x000000, 0.25);
-  g.fillEllipse(1, 16, 21, 6);
+  g.fillEllipse(1, 14, 18, 5);
 
   // Left front wheel
   g.fillStyle(BLACK, 1);
-  g.fillRect(-14, -16, 4, 12);
+  g.fillRect(-12, -12, 4, 10);
 
   // Left side of hood
   g.fillStyle(dark, 1);
-  g.fillRect(-12, -21, 3, 5);
+  g.fillRect(-10, -17, 3, 5);
 
   // Main body
   g.fillStyle(color, 1);
-  g.fillRect(-8, -13, 16, 29);
+  g.fillRect(-7, -10, 14, 24);
 
   // Left side
   g.fillStyle(dark, 1);
-  g.fillRect(-12, -13, 4, 29);
+  g.fillRect(-10, -10, 3, 24);
 
-  // Roof
+  // Roof (shorter)
   g.fillStyle(dark, 1);
-  g.fillRect(-9, -18, 17, 5);
+  g.fillRect(-8, -14, 12, 4);
 
   // Hood
   g.fillStyle(color, 1);
-  g.fillRect(-8, -21, 14, 4);
+  g.fillRect(-7, -17, 12, 4);
 
   // Front windshield
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-7, -17, 13, 4);
+  g.fillRect(-6, -13, 11, 3);
 
-  // Left side windows
+  // Left side windows (shorter)
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-10, -14, 3, 21);
+  g.fillRect(-9, -11, 2, 12);
 
-  // Rear windshield
+  // Rear section
+  g.fillStyle(color, 1);
+  g.fillRect(-6, -10, 12, 6);
+  g.fillStyle(light, 1);
+  g.fillRect(-5, -9, 10, 4);
+
+  // Rear windshield (visible)
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-5, -1, 10, 7);
-
-  // Roof rail
-  g.fillStyle(0x444444, 1);
-  g.fillRect(-8, -13, 3, 8);
+  g.fillRect(-5, -4, 9, 4);
 
   // Body highlight
   g.fillStyle(light, 1);
-  g.fillRect(-5, -10, 10, 21);
+  g.fillRect(-4, 0, 9, 11);
 
   // Tail lights
   g.fillStyle(TAIL_LIGHT, 1);
-  g.fillRect(-7, 12, 4, 3);
-  g.fillRect(4, 12, 4, 3);
+  g.fillRect(-6, 10, 4, 3);
+  g.fillRect(3, 10, 4, 3);
 
   // Left rear wheel
   g.fillStyle(BLACK, 1);
-  g.fillRect(-14, 4, 4, 12);
+  g.fillRect(-12, 4, 4, 10);
 
   // Right rear wheel
   g.fillStyle(BLACK, 1);
-  g.fillRect(8, 7, 3, 8);
+  g.fillRect(7, 6, 3, 7);
 }
 
 function drawCompact(g: Phaser.GameObjects.Graphics, color: number, dark: number, light: number) {
@@ -179,62 +187,68 @@ function drawCompact(g: Phaser.GameObjects.Graphics, color: number, dark: number
   const TAIL_LIGHT = 0xff3333;
   const BLACK = 0x111111;
 
-  // Shadow
+  // Shadow (small)
   g.fillStyle(0x000000, 0.25);
-  g.fillEllipse(1, 10, 16, 4);
+  g.fillEllipse(1, 6, 12, 3);
 
   // Left front wheel
   g.fillStyle(BLACK, 1);
-  g.fillRect(-9, -10, 3, 8);
+  g.fillRect(-8, -6, 2, 5);
 
   // Left side of hood
   g.fillStyle(dark, 1);
-  g.fillRect(-8, -14, 3, 4);
+  g.fillRect(-7, -9, 2, 3);
 
-  // Main body
+  // Main body (short hatchback)
   g.fillStyle(color, 1);
-  g.fillRect(-5, -8, 10, 18);
+  g.fillRect(-5, -4, 9, 10);
 
   // Left side
   g.fillStyle(dark, 1);
-  g.fillRect(-8, -8, 3, 18);
+  g.fillRect(-7, -4, 2, 10);
 
-  // Roof
+  // Roof (shorter - doesn't reach back)
   g.fillStyle(dark, 1);
-  g.fillRect(-7, -12, 12, 4);
+  g.fillRect(-6, -7, 8, 3);
 
-  // Hood
+  // Hood (short)
   g.fillStyle(color, 1);
-  g.fillRect(-5, -14, 9, 4);
+  g.fillRect(-5, -9, 8, 3);
 
   // Front windshield
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-4, -10, 8, 3);
+  g.fillRect(-4, -6, 7, 2);
 
-  // Left side window
+  // Left side window (shorter)
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-7, -9, 3, 12);
+  g.fillRect(-6, -5, 2, 5);
 
-  // Rear windshield
+  // Trunk/rear area
+  g.fillStyle(color, 1);
+  g.fillRect(-4, -4, 7, 3);
+  g.fillStyle(light, 1);
+  g.fillRect(-3, -3, 5, 2);
+
+  // Rear windshield (visible)
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-3, 0, 7, 4);
+  g.fillRect(-3, -1, 5, 2);
 
   // Body highlight
   g.fillStyle(light, 1);
-  g.fillRect(-3, -5, 7, 12);
+  g.fillRect(-3, 1, 6, 4);
 
   // Tail lights
   g.fillStyle(TAIL_LIGHT, 1);
-  g.fillRect(-4, 7, 3, 3);
-  g.fillRect(3, 7, 3, 3);
+  g.fillRect(-4, 4, 2, 2);
+  g.fillRect(2, 4, 2, 2);
 
   // Left rear wheel
   g.fillStyle(BLACK, 1);
-  g.fillRect(-9, 3, 3, 8);
+  g.fillRect(-8, 1, 2, 5);
 
   // Right rear wheel
   g.fillStyle(BLACK, 1);
-  g.fillRect(5, 4, 3, 5);
+  g.fillRect(4, 2, 2, 4);
 }
 
 function drawPickup(g: Phaser.GameObjects.Graphics, color: number, dark: number, light: number) {

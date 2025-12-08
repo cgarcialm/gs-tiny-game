@@ -49,7 +49,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number, color: number, carType: number, exiting?: boolean }[] = [];
   
   // Car size multipliers by type: 0=sedan, 1=SUV, 2=compact, 3=pickup
-  private carSizeMultipliers = [1.1, 1.3, 1, 1.2];
+  // Car size multipliers by type: 0=sedan, 1=SUV, 2=compact, 3=pickup
+  private carSizeMultipliers = [1.4, 1.6, 1.2, 1.5];
   private carSpawnTimer = 0;
   private carSpawnInterval = 2000; // Spawn every 2 seconds
   
