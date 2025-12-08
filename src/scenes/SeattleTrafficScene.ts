@@ -753,25 +753,6 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     graphics.fillEllipse(x + w * 0.35, baseY - h / 2 - h * 0.1, w * 0.5, h * 0.6);
   }
   
-  private drawBush(graphics: Phaser.GameObjects.Graphics, x: number, baseY: number, scale: number) {
-    // Rounded bush shape - bigger and more visible
-    const bushColors = [0x2a4a2a, 0x1f3f1f, 0x254525]; // Slightly lighter greens for visibility
-    
-    const w = 24 * scale;
-    const h = 16 * scale;
-    
-    // Multiple overlapping circles for organic shape
-    graphics.fillStyle(bushColors[1], 1);
-    graphics.fillCircle(x, baseY - h / 2, h / 2);
-    graphics.fillStyle(bushColors[0], 1);
-    graphics.fillCircle(x - w * 0.35, baseY - h / 2 + 2, h / 2 * 0.9);
-    graphics.fillCircle(x + w * 0.35, baseY - h / 2 + 2, h / 2 * 0.9);
-    // Extra foliage on top - lighter highlights
-    graphics.fillStyle(bushColors[2], 1);
-    graphics.fillCircle(x, baseY - h * 0.75, h / 2.5);
-    graphics.fillCircle(x - w * 0.2, baseY - h * 0.6, h / 3);
-    graphics.fillCircle(x + w * 0.2, baseY - h * 0.6, h / 3);
-  }
   
   private drawSeattleSkyline(graphics: Phaser.GameObjects.Graphics) {
     const skylineY = this.horizonY;
@@ -1018,8 +999,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.add.text(316, 45, "", {
       fontFamily: "monospace",
       fontSize: "8px",
-      color: "#ffffff",
-      backgroundColor: "#000000",
+      color: "#000000",
+      backgroundColor: "#ffffff",
       padding: { x: 3, y: 1 }
     }).setDepth(100).setOrigin(1, 0).setName('checkpointText');
     
@@ -1027,8 +1008,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.add.text(316, 56, "", {
       fontFamily: "monospace",
       fontSize: "8px",
-      color: "#ffffff",
-      backgroundColor: "#000000",
+      color: "#000000",
+      backgroundColor: "#ffffff",
       padding: { x: 3, y: 1 }
     }).setDepth(100).setOrigin(1, 0).setName('hikeDistText');
     
@@ -1305,8 +1286,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const rightRange = 80; // Right lane cars stay behind longer
     
     // Collect cars for each mirror, then sort by distance (farther first)
-    const leftMirrorCars: { car: typeof this.trafficCars[0], distanceBehind: number }[] = [];
-    const rightMirrorCars: { car: typeof this.trafficCars[0], distanceBehind: number }[] = [];
+    type TrafficCar = { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number, color: number, exiting?: boolean };
+    const leftMirrorCars: { car: TrafficCar, distanceBehind: number }[] = [];
+    const rightMirrorCars: { car: TrafficCar, distanceBehind: number }[] = [];
     
     for (const car of this.trafficCars) {
       // Only show cars BEHIND the player (y > vanY)
@@ -1469,8 +1451,6 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const pos = this.getRoadPosition(t);
     
     // === RAMP CONFIGURATION - Adjust these to change ramp appearance ===
-    const rampWidth = 8 + (1 - t) * 12;      // Width of the ramp road
-    
     // RAMP ANGLE: Higher = more horizontal, Lower = more vertical
     // Try values between 0.5 (steep) and 3.0 (very horizontal)
     const rampAngle = 2;
@@ -2342,23 +2322,23 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         const remaining = this.starbucks1Distance - this.distanceTraveled;
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
         checkpointText.setText(`↱ ${miles} mi · Starbucks`);
-        checkpointText.setColor('#ffffff');
+        checkpointText.setColor('#000000');
         hikeDistText.setY(56); // Normal position below checkpoint
       } else if (this.gamePhase === 'toStarbucks2') {
         const remaining = this.starbucks2Distance - this.distanceTraveled;
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
         checkpointText.setText(`↱ ${miles} mi · Starbucks`);
-        checkpointText.setColor('#ffffff');
+        checkpointText.setColor('#000000');
         hikeDistText.setY(56); // Normal position below checkpoint
       } else if (this.gamePhase === 'toTrailhead') {
         if (this.finalExitActive) {
           // Exit ramp is on screen - urgent!
           checkpointText.setText('↱ EXIT NOW - RIGHT LANE!');
-          checkpointText.setColor('#ff0000'); // Red warning
+          checkpointText.setColor('#cc0000'); // Dark red warning
           hikeDistText.setY(56); // Normal position
         } else if (this.finalExitSpawned) {
           checkpointText.setText('↱ Exit ahead!');
-          checkpointText.setColor('#ffff00'); // Yellow warning
+          checkpointText.setColor('#996600'); // Dark yellow/orange warning
           hikeDistText.setY(56); // Normal position
         } else {
           checkpointText.setText(''); // No Starbucks stops
