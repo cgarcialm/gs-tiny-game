@@ -46,7 +46,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private laneSpeeds = [150, 100, 50]; // Lane 0 (left), 1 (middle), 2 (right)
   
   // Traffic cars
-  private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number, color: number, exiting?: boolean }[] = [];
+  private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number, color: number, carType: number, exiting?: boolean }[] = [];
+  
+  // Car size multipliers by type: 0=sedan, 1=SUV, 2=compact, 3=pickup
+  private carSizeMultipliers = [1.1, 1.3, 1, 1.2];
   private carSpawnTimer = 0;
   private carSpawnInterval = 2000; // Spawn every 2 seconds
   
@@ -1147,16 +1150,18 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       carY = this.horizonY + 10;
     }
     
-    this.trafficCars.push({ container, lane, speed, y: carY, color });
+    this.trafficCars.push({ container, lane, speed, y: carY, color, carType });
     this.updateCarPosition(this.trafficCars[this.trafficCars.length - 1]);
   }
   
-  private updateCarPosition(car: { container: Phaser.GameObjects.Container, lane: number, y: number, merging?: boolean }) {
+  private updateCarPosition(car: { container: Phaser.GameObjects.Container, lane: number, y: number, carType?: number, merging?: boolean }) {
     // Calculate perspective factor (0 at horizon, 1 at bottom)
     const t = (car.y - this.horizonY) / (this.roadBottomY - this.horizonY);
     
     // Scale based on distance (smaller at horizon, larger at bottom)
-    const scale = 0.2 + t * 0.8; // 0.2 to 1.0
+    // Use car-type specific size multiplier
+    const carSizeMultiplier = this.carSizeMultipliers[car.carType ?? 0];
+    const scale = (0.2 + t * 0.8) * carSizeMultiplier;
     car.container.setScale(scale);
     
     // Skip X position update if car is merging (tween is controlling it)
@@ -1677,7 +1682,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const carY = Math.max(this.horizonY + 15, Math.min(rampY + 10, this.roadBottomY - 30));
     const speed = this.laneSpeeds[2] + (Math.random() * 20 - 10); // Right lane speed
     
-    const car = { container, lane: 2, speed, y: carY, color, exiting: false, merging: true };
+    const car = { container, lane: 2, speed, y: carY, color, carType, exiting: false, merging: true };
     this.trafficCars.push(car);
     
     // Position off-screen to the right, slightly above target Y (coming from ramp curve)
@@ -1686,9 +1691,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const startY = carY - 15; // Start slightly higher (coming from ramp)
     container.setPosition(startX, startY);
     
-    // Calculate perspective scale
+    // Calculate perspective scale using car-type specific multiplier
     const t = (carY - this.horizonY) / (this.roadBottomY - this.horizonY);
-    container.setScale(0.2 + t * 0.8);
+    const carSizeMultiplier = this.carSizeMultipliers[carType];
+    container.setScale((0.2 + t * 0.8) * carSizeMultiplier);
     
     // Fast diagonal merge animation into the right lane
     this.tweens.add({
