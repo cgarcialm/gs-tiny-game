@@ -41,6 +41,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private roadSpeed = 100; // Current scrolling speed (changes with lane)
   private roadOffset = 0;
   private laneMarkers: Phaser.GameObjects.Graphics[] = [];
+  private laneChevrons: Phaser.GameObjects.Graphics[] = [];
   
   // Lane speed rules: left=fast, middle=medium, right=slow
   private laneSpeeds = [150, 100, 50]; // Lane 0 (left), 1 (middle), 2 (right)
@@ -896,6 +897,68 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     }
     
     this.updateLaneMarkers();
+    this.createLaneChevrons();
+  }
+  
+  private createLaneChevrons() {
+    // Create one scrolling chevron marker per lane
+    // Left lane: 3 ^, Middle: 2 ^, Right: 1 ^
+    for (let lane = 0; lane < 3; lane++) {
+      const chevron = this.add.graphics();
+      chevron.setDepth(2);
+      this.laneChevrons.push(chevron);
+      chevron.setData('lane', lane);
+      chevron.setData('count', 3 - lane); // Left=3, Middle=2, Right=1
+    }
+    
+    this.updateLaneChevrons();
+  }
+  
+  private updateLaneChevrons() {
+    const scrollRange = this.roadBottomY - this.horizonY;
+    
+    this.laneChevrons.forEach((chevron) => {
+      chevron.clear();
+      
+      const lane = chevron.getData('lane') as number;
+      const count = chevron.getData('count') as number;
+      
+      // Calculate Y position - scrolls with road (same speed as lane markers)
+      const baseY = this.horizonY + (this.roadOffset % scrollRange);
+      
+      if (baseY < this.horizonY + 15 || baseY > this.roadBottomY - 30) return;
+      
+      // Calculate t for road position
+      const t = 1 - (baseY - this.horizonY) / (this.roadBottomY - this.horizonY);
+      const pos = this.getRoadPosition(t);
+      
+      // Lane center X position
+      const lanePositions = [1/6, 3/6, 5/6];
+      const laneX = pos.left + pos.width * lanePositions[lane];
+      
+      // Chevron size scales with perspective (bigger)
+      const scale = 0.4 + (1 - t) * 0.6;
+      const chevronWidth = 16 * scale;
+      const chevronHeight = 8 * scale;
+      const chevronSpacing = 10 * scale;
+      
+      // Draw chevrons (^ shapes stacked vertically) - white color
+      chevron.lineStyle(2 * scale, 0xffffff, 0.9);
+      
+      const leftShift = 2 * scale; // How much the top chevron shifts left
+      
+      for (let i = 0; i < count; i++) {
+        const y = baseY + i * chevronSpacing;
+        // Offset: top chevron shifts left most, bottom stays centered
+        const offsetX = (count - 1 - i) * leftShift / (count > 1 ? count - 1 : 1);
+        // Draw ^ shape
+        chevron.beginPath();
+        chevron.moveTo(laneX - chevronWidth / 2 - offsetX, y + chevronHeight);
+        chevron.lineTo(laneX - offsetX, y);
+        chevron.lineTo(laneX + chevronWidth / 2 - offsetX, y + chevronHeight);
+        chevron.strokePath();
+      }
+    });
   }
   
   private updateLaneMarkers() {
@@ -1034,6 +1097,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     // Update lane markers animation
     this.updateLaneMarkers();
+    this.updateLaneChevrons();
   }
   
   private changeLane(direction: number) {
