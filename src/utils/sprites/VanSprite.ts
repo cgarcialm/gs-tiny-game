@@ -45,7 +45,7 @@ export function createVanSprite(
 
   // === ROOF ===
   g.fillStyle(BURGUNDY_DARK, 1);
-  g.fillRect(-10, -16, 18, 6);
+  g.fillRect(-11, -16, 18, 6);
 
   // === HOOD ===
   g.fillStyle(BURGUNDY, 1);
@@ -55,9 +55,9 @@ export function createVanSprite(
 
   // === FRONT WINDSHIELD ===
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-8, -15, 14, 4);
+  g.fillRect(-8, -15, 13, 4);  // Narrower to not stick past pillar
   g.fillStyle(WINDOW_SHINE, 0.5);
-  g.fillRect(-2, -14, 6, 2);
+  g.fillRect(-3, -14, 5, 2);
 
   // === LEFT SIDE WINDOWS (extended upward) ===
   g.fillStyle(WINDOW, 1);
