@@ -1136,15 +1136,16 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     container.add([body, windshield]);
     
     // Spawn position relative to player's lane:
-    // - Lanes to the LEFT of player: spawn from bottom, faster cars overtake toward horizon
-    // - Same lane as player: spawn from top, similar speed
-    // - Lanes to the RIGHT of player: spawn from top, slower cars that player catches up to
+    // STRICT RULE: Cars in player's current lane ALWAYS spawn ahead (never behind)
     let carY: number;
-    if (lane < this.currentLane) {
-      // Car is in a lane to the LEFT of player - faster, comes from behind
+    if (lane === this.currentLane) {
+      // SAME lane - always spawn ahead at horizon
+      carY = this.horizonY + 10;
+    } else if (lane < this.currentLane) {
+      // Lane to the LEFT - faster cars, spawn from behind
       carY = this.roadBottomY - 5;
     } else {
-      // Same lane or lanes to the RIGHT - spawn at horizon
+      // Lane to the RIGHT - slower cars, spawn ahead at horizon
       carY = this.horizonY + 10;
     }
     
@@ -1183,6 +1184,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private checkCarCollision(car: { container: Phaser.GameObjects.Container, lane: number, y: number }): boolean {
     // Simple collision: same lane and overlapping Y
     if (car.lane !== this.currentLane) return false;
+    
+    // Don't collide with cars coming from behind in same lane
+    // Only collide if car is ahead or overlapping from front
+    if (car.y > this.vanY + 10) return false;
     
     const distance = Math.abs(car.y - this.vanY);
     return distance < 25;
@@ -1289,7 +1294,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     // Find cars behind the player (y > vanY) in adjacent lanes
     for (const car of this.trafficCars) {
-      if (car.y > this.vanY && car.y < this.vanY + 250) {
+      if (car.y > this.vanY && car.y < this.vanY + 600) {
         // Car is behind us, check which mirror
         const distanceBehind = car.y - this.vanY;
         const proximity = 1 - (distanceBehind / 80); // 1 = very close, 0 = far
