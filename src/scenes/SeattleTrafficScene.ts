@@ -44,7 +44,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private laneSpeeds = [150, 100, 50]; // Lane 0 (left), 1 (middle), 2 (right)
   
   // Traffic cars
-  private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number, exiting?: boolean }[] = [];
+  private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number, color: number, exiting?: boolean }[] = [];
   private carSpawnTimer = 0;
   private carSpawnInterval = 2000; // Spawn every 2 seconds
   
@@ -204,6 +204,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       this.updateClock(dt);
       this.updateRage(dt);
       this.updateSky();
+      this.updateMirrors();
       this.checkRamps();
       this.checkCheckpoints();
       this.checkGameOver();
@@ -996,6 +997,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Store bar width for update function
     this.registry.set('rageBarWidth', rageBarWidth);
     
+    // Side mirrors (above rage bar)
+    this.createSideMirrors();
+    
     // ETA for hike (top right, opposite of clock)
     this.add.text(316, 4, "", {
       fontFamily: "monospace",
@@ -1124,8 +1128,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const container = this.add.container(0, 0);
     container.setDepth(5);
     
-    // Car body
-    const body = this.add.rectangle(0, 0, 16, 28, this.getRandomCarColor());
+    // Car body with random color
+    const color = this.getRandomCarColor();
+    const body = this.add.rectangle(0, 0, 16, 28, color);
     const windshield = this.add.rectangle(0, -6, 12, 8, 0x87CEEB);
     
     container.add([body, windshield]);
@@ -1143,7 +1148,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       carY = this.horizonY + 10;
     }
     
-    this.trafficCars.push({ container, lane, speed, y: carY });
+    this.trafficCars.push({ container, lane, speed, y: carY, color });
     this.updateCarPosition(this.trafficCars[this.trafficCars.length - 1]);
   }
   
@@ -1197,6 +1202,126 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private checkRageLimit() {
     if (this.rageLevel >= 100 && this.gamePhase !== 'lost') {
       this.loseByRage();
+    }
+  }
+  
+  private createSideMirrors() {
+    const mirrorY = 135; // Above rage bar
+    const mirrorWidth = 35;
+    const mirrorHeight = 18;
+    
+    // Left mirror (shows lane to the left)
+    const leftMirrorX = 8;
+    const leftFrame = this.add.graphics();
+    leftFrame.fillStyle(0x222222, 1);
+    leftFrame.lineStyle(2, 0x444444, 1);
+    // Trapezoid shape (wider at top for perspective)
+    leftFrame.fillPoints([
+      { x: leftMirrorX, y: mirrorY },
+      { x: leftMirrorX + mirrorWidth + 4, y: mirrorY },
+      { x: leftMirrorX + mirrorWidth, y: mirrorY + mirrorHeight },
+      { x: leftMirrorX + 4, y: mirrorY + mirrorHeight }
+    ], true);
+    leftFrame.strokePoints([
+      { x: leftMirrorX, y: mirrorY },
+      { x: leftMirrorX + mirrorWidth + 4, y: mirrorY },
+      { x: leftMirrorX + mirrorWidth, y: mirrorY + mirrorHeight },
+      { x: leftMirrorX + 4, y: mirrorY + mirrorHeight }
+    ], true);
+    leftFrame.setDepth(100);
+    
+    // Left mirror content (will show cars)
+    const leftContent = this.add.graphics();
+    leftContent.setDepth(101);
+    leftContent.setName('leftMirror');
+    
+    // Right mirror (shows lane to the right)
+    const rightMirrorX = 275;
+    const rightFrame = this.add.graphics();
+    rightFrame.fillStyle(0x222222, 1);
+    rightFrame.lineStyle(2, 0x444444, 1);
+    // Trapezoid shape (mirrored)
+    rightFrame.fillPoints([
+      { x: rightMirrorX, y: mirrorY },
+      { x: rightMirrorX + mirrorWidth + 4, y: mirrorY },
+      { x: rightMirrorX + mirrorWidth, y: mirrorY + mirrorHeight },
+      { x: rightMirrorX + 4, y: mirrorY + mirrorHeight }
+    ], true);
+    rightFrame.strokePoints([
+      { x: rightMirrorX, y: mirrorY },
+      { x: rightMirrorX + mirrorWidth + 4, y: mirrorY },
+      { x: rightMirrorX + mirrorWidth, y: mirrorY + mirrorHeight },
+      { x: rightMirrorX + 4, y: mirrorY + mirrorHeight }
+    ], true);
+    rightFrame.setDepth(100);
+    
+    // Right mirror content
+    const rightContent = this.add.graphics();
+    rightContent.setDepth(101);
+    rightContent.setName('rightMirror');
+    
+    // Store mirror positions for update
+    this.registry.set('leftMirrorPos', { x: leftMirrorX + 4, y: mirrorY + 2, w: mirrorWidth - 4, h: mirrorHeight - 4 });
+    this.registry.set('rightMirrorPos', { x: rightMirrorX + 4, y: mirrorY + 2, w: mirrorWidth - 4, h: mirrorHeight - 4 });
+  }
+  
+  private updateMirrors() {
+    const leftMirror = this.children.getByName('leftMirror') as Phaser.GameObjects.Graphics;
+    const rightMirror = this.children.getByName('rightMirror') as Phaser.GameObjects.Graphics;
+    
+    if (!leftMirror || !rightMirror) return;
+    
+    leftMirror.clear();
+    rightMirror.clear();
+    
+    const leftPos = this.registry.get('leftMirrorPos');
+    const rightPos = this.registry.get('rightMirrorPos');
+    
+    // Fill mirror backgrounds with dark tint
+    leftMirror.fillStyle(0x1a1a2a, 0.8);
+    leftMirror.fillRect(leftPos.x, leftPos.y, leftPos.w, leftPos.h);
+    rightMirror.fillStyle(0x1a1a2a, 0.8);
+    rightMirror.fillRect(rightPos.x, rightPos.y, rightPos.w, rightPos.h);
+    
+    // Check for cars approaching from behind in adjacent lanes
+    const leftLane = this.currentLane - 1;
+    const rightLane = this.currentLane + 1;
+    
+    // Find cars behind the player (y > vanY) in adjacent lanes
+    for (const car of this.trafficCars) {
+      if (car.y > this.vanY && car.y < this.vanY + 80) {
+        // Car is behind us, check which mirror
+        const distanceBehind = car.y - this.vanY;
+        const proximity = 1 - (distanceBehind / 80); // 1 = very close, 0 = far
+        
+        if (car.lane === leftLane && leftLane >= 0) {
+          // Show in left mirror with actual car color
+          const carY = leftPos.y + leftPos.h * (1 - proximity * 0.8);
+          const carSize = 4 + proximity * 4;
+          leftMirror.fillStyle(car.color, 0.9);
+          leftMirror.fillRect(leftPos.x + leftPos.w/2 - carSize/2, carY, carSize, carSize * 1.5);
+        }
+        
+        if (car.lane === rightLane && rightLane <= 2) {
+          // Show in right mirror with actual car color
+          const carY = rightPos.y + rightPos.h * (1 - proximity * 0.8);
+          const carSize = 4 + proximity * 4;
+          rightMirror.fillStyle(car.color, 0.9);
+          rightMirror.fillRect(rightPos.x + rightPos.w/2 - carSize/2, carY, carSize, carSize * 1.5);
+        }
+      }
+    }
+    
+    // Show "no lane" indicator if at edge
+    if (this.currentLane === 0) {
+      // No left lane - show forest hint
+      leftMirror.fillStyle(0x2a4a2a, 0.5);
+      leftMirror.fillRect(leftPos.x, leftPos.y, leftPos.w, leftPos.h);
+    }
+    if (this.currentLane === 2) {
+      // No right lane - show water hint
+      rightMirror.fillStyle(0x1a2a4a, 0.5);
+      rightMirror.fillRect(rightPos.x, rightPos.y, rightPos.w, rightPos.h);
     }
   }
   
@@ -1519,7 +1644,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const carY = Math.max(this.horizonY + 15, Math.min(rampY + 10, this.roadBottomY - 30));
     const speed = this.laneSpeeds[2] + (Math.random() * 20 - 10); // Right lane speed
     
-    const car = { container, lane: 2, speed, y: carY, exiting: false, merging: true };
+    const car = { container, lane: 2, speed, y: carY, color: 0x0000ff, exiting: false, merging: true };
     this.trafficCars.push(car);
     
     // Position off-screen to the right, slightly above target Y (coming from ramp curve)
