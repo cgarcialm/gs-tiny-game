@@ -484,10 +484,15 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   // Get road position at a given t (0 = bottom, 1 = top/horizon)
   private getRoadPosition(t: number): { y: number, centerX: number, width: number, left: number, right: number } {
     // Use easing for more natural curve (ease-in curve to the left)
-    const curveT = Math.pow(t, 1.5); // Curve accelerates toward horizon
+    // Handle negative t (below road bottom) by clamping curve calculation
+    const clampedT = Math.max(0, t);
+    const curveT = Math.pow(clampedT, 1.5); // Curve accelerates toward horizon
     
     const y = this.roadBottomY - t * (this.roadBottomY - this.horizonY);
-    const centerX = this.roadCenterX + curveT * (this.horizonCenterX - this.roadCenterX);
+    // For positions below road (t < 0), extrapolate centerX linearly from bottom
+    const centerX = t < 0 
+      ? this.roadCenterX  // Keep at road center for off-screen cars
+      : this.roadCenterX + curveT * (this.horizonCenterX - this.roadCenterX);
     const width = this.roadBottomWidth - t * (this.roadBottomWidth - this.roadTopWidth);
     
     return {
@@ -1099,7 +1104,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       this.updateCarPosition(car);
       
       // Remove if past screen (bottom) or near horizon (cars that pulled ahead)
-      if (car.y > this.roadBottomY + 20 || car.y < this.horizonY + 8) {
+      // Extended to allow left lane cars to spawn far behind
+      if (car.y > this.roadBottomY + 150 || car.y < this.horizonY + 8) {
         car.container.destroy();
         this.trafficCars.splice(i, 1);
         continue;
@@ -1142,8 +1148,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       // SAME lane - always spawn ahead at horizon
       carY = this.horizonY + 10;
     } else if (lane < this.currentLane) {
-      // Lane to the LEFT - faster cars, spawn from behind
-      carY = this.roadBottomY - 5;
+      // Lane to the LEFT - faster cars, spawn far behind for 3+ sec visibility
+      // At ~50px/sec relative speed, need 150px for 3 seconds
+      carY = this.roadBottomY + 120;
     } else {
       // Lane to the RIGHT - slower cars, spawn ahead at horizon
       carY = this.horizonY + 10;
@@ -1288,30 +1295,37 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     rightMirror.fillStyle(0x1a1a2a, 0.8);
     rightMirror.fillRect(rightPos.x, rightPos.y, rightPos.w, rightPos.h);
     
-    // Check for cars approaching from behind in adjacent lanes
+    // Check for cars in adjacent lanes
     const leftLane = this.currentLane - 1;
     const rightLane = this.currentLane + 1;
     
-    // Find cars behind the player (y > vanY) in adjacent lanes
+    // Detection ranges (matched to proximity calculation)
+    // Left lane cars spawn at roadBottomY+120=300, van at 140, so 160px behind
+    const leftRange = 170; // Show from spawn to passing (~3+ seconds)
+    const rightRange = 80; // Right lane cars stay behind longer
+    
     for (const car of this.trafficCars) {
-      if (car.y > this.vanY && car.y < this.vanY + 600) {
-        // Car is behind us, check which mirror
+      // Only show cars BEHIND the player (y > vanY)
+      if (car.y <= this.vanY) continue;
+      
+      // LEFT mirror: fast cars coming from behind
+      if (car.lane === leftLane && leftLane >= 0) {
         const distanceBehind = car.y - this.vanY;
-        const proximity = 1 - (distanceBehind / 80); // 1 = very close, 0 = far
-        
-        if (car.lane === leftLane && leftLane >= 0) {
-          // Show in left mirror with actual car color
+        if (distanceBehind < leftRange) {
+          const proximity = 1 - (distanceBehind / leftRange);
           const carY = leftPos.y + leftPos.h * (1 - proximity * 0.8);
-          // Dramatic size increase: use squared proximity for exponential growth
           const carSize = 3 + Math.pow(proximity, 1.5) * 12;
           leftMirror.fillStyle(car.color, 0.9);
           leftMirror.fillRect(leftPos.x + leftPos.w/2 - carSize/2, carY, carSize, carSize * 1.5);
         }
-        
-        if (car.lane === rightLane && rightLane <= 2) {
-          // Show in right mirror with actual car color
+      }
+      
+      // RIGHT mirror: slower cars you've passed
+      if (car.lane === rightLane && rightLane <= 2) {
+        const distanceBehind = car.y - this.vanY;
+        if (distanceBehind < rightRange) {
+          const proximity = 1 - (distanceBehind / rightRange);
           const carY = rightPos.y + rightPos.h * (1 - proximity * 0.8);
-          // Dramatic size increase: use squared proximity for exponential growth
           const carSize = 3 + Math.pow(proximity, 1.5) * 12;
           rightMirror.fillStyle(car.color, 0.9);
           rightMirror.fillRect(rightPos.x + rightPos.w/2 - carSize/2, carY, carSize, carSize * 1.5);
