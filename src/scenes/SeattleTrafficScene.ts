@@ -939,18 +939,58 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.van = this.add.container(this.getLaneX(1), this.vanY);
     this.van.setDepth(10);
     
-    // Van sprite (burgundy) - larger since it's in foreground
-    const body = this.add.rectangle(0, 0, 24, 36, 0x8B0000); // Burgundy
-    const windshield = this.add.rectangle(0, -10, 20, 10, 0x87CEEB); // Light blue
-    const wheels = this.add.graphics();
-    wheels.fillStyle(0x000000, 1);
-    wheels.fillRect(-12, 12, 6, 8); // Left wheel
-    wheels.fillRect(6, 12, 6, 8); // Right wheel
+    const g = this.add.graphics();
     
-    // Add some detail - roof rack
-    const rack = this.add.rectangle(0, -16, 18, 3, 0x333333);
+    // Shadow under van
+    g.fillStyle(0x000000, 0.3);
+    g.fillEllipse(0, 20, 28, 8);
     
-    this.van.add([body, windshield, wheels, rack]);
+    // Main van body (burgundy) - boxy van shape
+    g.fillStyle(0x6B0000, 1); // Dark burgundy base
+    g.fillRoundedRect(-13, -16, 26, 38, 3);
+    
+    // Body highlight (lighter burgundy)
+    g.fillStyle(0x8B0000, 1);
+    g.fillRoundedRect(-11, -14, 22, 34, 2);
+    
+    // Roof (slightly darker)
+    g.fillStyle(0x5B0000, 1);
+    g.fillRoundedRect(-10, -18, 20, 8, 2);
+    
+    // Rear window (dark tint)
+    g.fillStyle(0x203040, 1);
+    g.fillRoundedRect(-8, -8, 16, 10, 1);
+    
+    // Window shine
+    g.fillStyle(0x4080a0, 0.5);
+    g.fillRect(-6, -6, 4, 6);
+    
+    // Roof rack
+    g.fillStyle(0x222222, 1);
+    g.fillRect(-9, -20, 18, 2);
+    g.fillRect(-7, -20, 2, 4);
+    g.fillRect(5, -20, 2, 4);
+    
+    // Rear lights
+    g.fillStyle(0xff3333, 1);
+    g.fillRect(-11, 16, 4, 3);
+    g.fillRect(7, 16, 4, 3);
+    
+    // License plate area
+    g.fillStyle(0xeeeeee, 1);
+    g.fillRect(-4, 17, 8, 3);
+    
+    // Wheels (visible from back)
+    g.fillStyle(0x111111, 1);
+    g.fillRect(-14, 10, 5, 8);
+    g.fillRect(9, 10, 5, 8);
+    
+    // Wheel rims
+    g.fillStyle(0x444444, 1);
+    g.fillRect(-13, 12, 3, 4);
+    g.fillRect(10, 12, 3, 4);
+    
+    this.van.add([g]);
   }
   
   private createUI() {
@@ -1115,12 +1155,13 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const container = this.add.container(0, 0);
     container.setDepth(5);
     
-    // Car body with random color
+    // Create varied car shapes
     const color = this.getRandomCarColor();
-    const body = this.add.rectangle(0, 0, 16, 28, color);
-    const windshield = this.add.rectangle(0, -6, 12, 8, 0x87CEEB);
+    const carType = Math.floor(Math.random() * 4); // 0=sedan, 1=SUV, 2=compact, 3=truck
     
-    container.add([body, windshield]);
+    const g = this.add.graphics();
+    this.drawCarGraphics(g, carType, color);
+    container.add([g]);
     
     // Spawn position relative to player's lane:
     // STRICT RULE: Cars in player's current lane ALWAYS spawn ahead (never behind)
@@ -1165,8 +1206,96 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private getRandomCarColor(): number {
-    const colors = [0x0000ff, 0xff0000, 0xffffff, 0x000000, 0xffff00, 0x808080];
+    const colors = [
+      0x2244aa, 0xaa2222, 0xeeeeee, 0x222222, 0xddcc33, 0x666666,
+      0x44aa44, 0x884488, 0xdd6633, 0x336688, 0x888888, 0x553322
+    ];
     return colors[Math.floor(Math.random() * colors.length)];
+  }
+  
+  private drawCarGraphics(g: Phaser.GameObjects.Graphics, carType: number, color: number) {
+    // Darken color for shadow/outline
+    const darkerColor = ((color >> 1) & 0x7f7f7f);
+    
+    switch (carType) {
+      case 0: // Sedan - classic car shape
+        g.fillStyle(darkerColor, 1);
+        g.fillRoundedRect(-7, -12, 14, 26, 2);
+        g.fillStyle(color, 1);
+        g.fillRoundedRect(-6, -11, 12, 24, 2);
+        // Roof
+        g.fillStyle(darkerColor, 1);
+        g.fillRoundedRect(-5, -8, 10, 10, 1);
+        // Rear window
+        g.fillStyle(0x304050, 1);
+        g.fillRoundedRect(-4, -4, 8, 6, 1);
+        // Tail lights
+        g.fillStyle(0xff4444, 1);
+        g.fillRect(-6, 10, 3, 2);
+        g.fillRect(3, 10, 3, 2);
+        break;
+        
+      case 1: // SUV - bigger, boxy
+        g.fillStyle(darkerColor, 1);
+        g.fillRoundedRect(-8, -14, 16, 30, 2);
+        g.fillStyle(color, 1);
+        g.fillRoundedRect(-7, -13, 14, 28, 2);
+        // Boxy roof
+        g.fillStyle(darkerColor, 1);
+        g.fillRect(-6, -12, 12, 14);
+        // Rear window (bigger)
+        g.fillStyle(0x304050, 1);
+        g.fillRect(-5, -6, 10, 8);
+        // Roof rails
+        g.fillStyle(0x444444, 1);
+        g.fillRect(-6, -13, 2, 12);
+        g.fillRect(4, -13, 2, 12);
+        // Tail lights
+        g.fillStyle(0xff4444, 1);
+        g.fillRect(-7, 12, 4, 2);
+        g.fillRect(3, 12, 4, 2);
+        break;
+        
+      case 2: // Compact - small and round
+        g.fillStyle(darkerColor, 1);
+        g.fillRoundedRect(-5, -10, 10, 20, 3);
+        g.fillStyle(color, 1);
+        g.fillRoundedRect(-4, -9, 8, 18, 3);
+        // Small roof
+        g.fillStyle(darkerColor, 1);
+        g.fillRoundedRect(-3, -6, 6, 8, 2);
+        // Rear window
+        g.fillStyle(0x304050, 1);
+        g.fillRoundedRect(-2, -3, 4, 5, 1);
+        // Tail lights (small)
+        g.fillStyle(0xff4444, 1);
+        g.fillRect(-4, 6, 2, 2);
+        g.fillRect(2, 6, 2, 2);
+        break;
+        
+      case 3: // Pickup truck
+        // Bed (back)
+        g.fillStyle(darkerColor, 1);
+        g.fillRect(-7, 2, 14, 12);
+        g.fillStyle(color, 1);
+        g.fillRect(-6, 3, 12, 10);
+        // Bed interior (darker)
+        g.fillStyle(0x222222, 1);
+        g.fillRect(-5, 4, 10, 7);
+        // Cab
+        g.fillStyle(darkerColor, 1);
+        g.fillRoundedRect(-7, -12, 14, 16, 2);
+        g.fillStyle(color, 1);
+        g.fillRoundedRect(-6, -11, 12, 14, 2);
+        // Rear window
+        g.fillStyle(0x304050, 1);
+        g.fillRect(-4, -4, 8, 5);
+        // Tail lights
+        g.fillStyle(0xff4444, 1);
+        g.fillRect(-6, 11, 3, 2);
+        g.fillRect(3, 11, 3, 2);
+        break;
+    }
   }
   
   private checkCarCollision(car: { container: Phaser.GameObjects.Container, lane: number, y: number }): boolean {
@@ -1657,9 +1786,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     // Get color first so body and car.color match
     const color = this.getRandomCarColor();
-    const body = this.add.rectangle(0, 0, 16, 28, color);
-    const windshield = this.add.rectangle(0, -6, 12, 8, 0x87CEEB);
-    container.add([body, windshield]);
+    const carType = Math.floor(Math.random() * 4);
+    const g = this.add.graphics();
+    this.drawCarGraphics(g, carType, color);
+    container.add([g]);
     
     // Spawn near the ramp position (find the on-ramp if exists)
     const onRamp = this.activeRamps.find(r => r.type === 'on');
