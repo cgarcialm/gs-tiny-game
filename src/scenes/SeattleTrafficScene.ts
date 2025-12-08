@@ -1327,22 +1327,30 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     leftMirrorCars.sort((a, b) => b.distanceBehind - a.distanceBehind);
     rightMirrorCars.sort((a, b) => b.distanceBehind - a.distanceBehind);
     
-    // Draw left mirror cars
+    // Draw left mirror cars (keep within bounds)
     for (const { car, distanceBehind } of leftMirrorCars) {
       const proximity = 1 - (distanceBehind / leftRange);
-      const carY = leftPos.y + leftPos.h * (1 - proximity * 0.8);
-      const carSize = 3 + Math.pow(proximity, 1.5) * 12;
+      const carWidth = 4 + Math.pow(proximity, 1.5) * 14;  // Wider
+      const carHeight = carWidth * 0.8;  // Shorter (was 1.5)
+      // Calculate Y position, ensuring car stays within mirror bounds
+      const maxY = leftPos.y + leftPos.h - carHeight - 4;
+      const minY = leftPos.y + 2;
+      const carY = minY + (maxY - minY) * (1 - proximity * 0.95);  // More up
       leftMirror.fillStyle(car.color, 0.9);
-      leftMirror.fillRect(leftPos.x + leftPos.w/2 - carSize/2, carY, carSize, carSize * 1.5);
+      leftMirror.fillRect(leftPos.x + leftPos.w/2 - carWidth/2, carY, carWidth, carHeight);
     }
     
-    // Draw right mirror cars
+    // Draw right mirror cars (keep within bounds)
     for (const { car, distanceBehind } of rightMirrorCars) {
       const proximity = 1 - (distanceBehind / rightRange);
-      const carY = rightPos.y + rightPos.h * (1 - proximity * 0.8);
-      const carSize = 3 + Math.pow(proximity, 1.5) * 12;
+      const carWidth = 4 + Math.pow(proximity, 1.5) * 14;  // Wider
+      const carHeight = carWidth * 0.8;  // Shorter (was 1.5)
+      // Calculate Y position, ensuring car stays within mirror bounds
+      const maxY = rightPos.y + rightPos.h - carHeight - 4;
+      const minY = rightPos.y + 2;
+      const carY = minY + (maxY - minY) * (1 - proximity * 0.95);  // More up
       rightMirror.fillStyle(car.color, 0.9);
-      rightMirror.fillRect(rightPos.x + rightPos.w/2 - carSize/2, carY, carSize, carSize * 1.5);
+      rightMirror.fillRect(rightPos.x + rightPos.w/2 - carWidth/2, carY, carWidth, carHeight);
     }
     
     // Show "no lane" indicator if at edge
