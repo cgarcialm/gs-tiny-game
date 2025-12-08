@@ -2392,32 +2392,52 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         etaText.setColor('#ff0000'); // Red - late
       }
       
+      // === ADJUST THESE VALUES ===
+      const navBlueThreshold = 5; // miles - turn blue when under this distance
+      const hikeSignY = 57; // Y position of hike sign when below checkpoint
+      const hikeSignYUp = 45; // Y position when hike moves up (same as Starbucks at Y=45)
+      
       // Current checkpoint instruction
       if (this.gamePhase === 'intro' || this.gamePhase === 'toStarbucks1') {
         const remaining = this.starbucks1Distance - this.distanceTraveled;
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
         checkpointText.setText(`↱ ${miles} mi · Starbucks`);
-        checkpointText.setColor('#000000');
-        hikeDistText.setY(56); // Normal position below checkpoint
+        if (remaining / this.unitsPerMile < navBlueThreshold) {
+          checkpointText.setBackgroundColor('#2196F3');
+          checkpointText.setColor('#ffffff');
+        } else {
+          checkpointText.setBackgroundColor('#ffffff');
+          checkpointText.setColor('#000000');
+        }
+        hikeDistText.setY(hikeSignY); // Normal position below checkpoint
       } else if (this.gamePhase === 'toStarbucks2') {
         const remaining = this.starbucks2Distance - this.distanceTraveled;
         const miles = Math.max(0, remaining / this.unitsPerMile).toFixed(1);
         checkpointText.setText(`↱ ${miles} mi · Starbucks`);
-        checkpointText.setColor('#000000');
-        hikeDistText.setY(56); // Normal position below checkpoint
+        if (remaining / this.unitsPerMile < navBlueThreshold) {
+          checkpointText.setBackgroundColor('#2196F3');
+          checkpointText.setColor('#ffffff');
+        } else {
+          checkpointText.setBackgroundColor('#ffffff');
+          checkpointText.setColor('#000000');
+        }
+        hikeDistText.setY(hikeSignY); // Normal position below checkpoint
       } else if (this.gamePhase === 'toTrailhead') {
         if (this.finalExitActive) {
           // Exit ramp is on screen - urgent!
           checkpointText.setText('↱ EXIT NOW - RIGHT LANE!');
+          checkpointText.setBackgroundColor('#ffffff');
           checkpointText.setColor('#cc0000'); // Dark red warning
           hikeDistText.setY(56); // Normal position
         } else if (this.finalExitSpawned) {
           checkpointText.setText('↱ Exit ahead!');
+          checkpointText.setBackgroundColor('#ffffff');
           checkpointText.setColor('#996600'); // Dark yellow/orange warning
           hikeDistText.setY(56); // Normal position
         } else {
           checkpointText.setText(''); // No Starbucks stops
-          hikeDistText.setY(45); // Move up to where checkpoint was
+          checkpointText.setBackgroundColor('#ffffff');
+          hikeDistText.setY(hikeSignYUp); // Move up to where checkpoint was
         }
       }
       
@@ -2431,6 +2451,15 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       // Show turn arrow when hike is the next destination (no Starbucks showing)
       const showTurnArrow = this.gamePhase === 'toTrailhead' && !this.finalExitSpawned;
       hikeDistText.setText(`${showTurnArrow ? '↱ ' : ''}${hikeMiles} mi · Trailhead`);
+      
+      // Turn hike sign blue when approaching
+      if (this.gamePhase === 'toTrailhead' && remainingToHike / this.unitsPerMile < navBlueThreshold && !this.finalExitActive) {
+        hikeDistText.setBackgroundColor('#2196F3');
+        hikeDistText.setColor('#ffffff');
+      } else {
+        hikeDistText.setBackgroundColor('#ffffff');
+        hikeDistText.setColor('#000000');
+      }
     }
   }
   
