@@ -43,9 +43,15 @@ export function createVanSprite(
   g.fillStyle(BURGUNDY_DARK, 1);
   g.fillRect(-12, -10, 3, 26);
 
-  // === ROOF ===
+  // === ROOF (diagonal shape) ===
   g.fillStyle(BURGUNDY_DARK, 1);
-  g.fillRect(-11, -16, 18, 6);
+  g.beginPath();
+  g.moveTo(-11, -16);  // Top left
+  g.lineTo(4, -18);    // Top right (higher, diagonal)
+  g.lineTo(8, -10);    // Bottom right
+  g.lineTo(-11, -10);  // Bottom left
+  g.closePath();
+  g.fill();
 
   // === HOOD ===
   g.fillStyle(BURGUNDY, 1);
