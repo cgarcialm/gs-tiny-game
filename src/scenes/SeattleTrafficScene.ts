@@ -1288,6 +1288,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     rightMirror.fillStyle(0x1a1a2a, 0.8);
     rightMirror.fillRect(rightPos.x, rightPos.y, rightPos.w, rightPos.h);
     
+    // Mirror shine lines (diagonal in top-left corner)
+    leftMirror.lineStyle(2, 0x6a7a8a, 0.5);
+    leftMirror.lineBetween(leftPos.x + 2, leftPos.y + 8, leftPos.x + 10, leftPos.y + 2);
+    leftMirror.lineBetween(leftPos.x + 2, leftPos.y + 14, leftPos.x + 16, leftPos.y + 2);
+    rightMirror.lineStyle(2, 0x6a7a8a, 0.5);
+    rightMirror.lineBetween(rightPos.x + 2, rightPos.y + 8, rightPos.x + 10, rightPos.y + 2);
+    rightMirror.lineBetween(rightPos.x + 2, rightPos.y + 14, rightPos.x + 16, rightPos.y + 2);
+    
     // Check for cars in adjacent lanes
     const leftLane = this.currentLane - 1;
     const rightLane = this.currentLane + 1;
