@@ -2094,8 +2094,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Check rage limit
     this.checkRageLimit();
     
-    // Lose if time reaches 8:00 AM
-    if (this.currentTime >= 8 * 60) {
+    // Lose if time reaches 8:01 AM (allow arriving at 8:00)
+    if (this.currentTime >= 8 * 60 + 1) {
       this.loseByTime();
     }
   }
@@ -2197,8 +2197,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.trafficCars.forEach(car => car.container.destroy());
     this.trafficCars = [];
     
-    // Check if made it before 8 AM
-    if (this.currentTime < 8 * 60) {
+    // Check if made it before 8:01 AM (arriving at 8:00 is OK)
+    if (this.currentTime < 8 * 60 + 1) {
       this.winGame();
     } else {
       this.loseByTime();
