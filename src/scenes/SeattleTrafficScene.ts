@@ -1075,11 +1075,47 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private startIntroSequence() {
-    // TODO: Show Grayson, Ceci, Ebo getting in van
-    // For now, just start driving after 1 second
-    this.time.delayedCall(1000, () => {
-      this.gamePhase = 'toStarbucks1';
-    });
+    // Create instruction overlay
+    const overlay = this.add.rectangle(160, 100, 300, 150, 0x000000, 0.9)
+      .setDepth(300);
+    
+    const title = this.add.text(160, 45, "SEATTLE TRAFFIC", {
+      fontFamily: "monospace",
+      fontSize: "14px",
+      color: "#00ffff"
+    }).setOrigin(0.5).setDepth(301);
+    
+    const instructions = [
+      "Reach trailhead before 8 AM!",
+      "",
+      "LEFT/RIGHT - Change lanes",
+      "(Left=fast, Right=slow)",
+      "",
+      "Manage RAGE: stop for Ceci's coffee,",
+      "find empty lanes, don't crash!",
+      "",
+      "Press ENTER to start"
+    ].join("\n");
+    
+    const text = this.add.text(160, 110, instructions, {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffffff",
+      align: "center",
+      lineSpacing: 1
+    }).setOrigin(0.5).setDepth(301);
+    
+    // Wait for ENTER to start
+    const waitForStart = () => {
+      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+        this.events.off('update', waitForStart);
+        overlay.destroy();
+        title.destroy();
+        text.destroy();
+        this.gamePhase = 'toStarbucks1';
+      }
+    };
+    this.events.on('update', waitForStart);
   }
   
   private updateDriving(dt: number) {
