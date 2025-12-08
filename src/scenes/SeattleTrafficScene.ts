@@ -1189,6 +1189,15 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     // Flash effect
     this.cameras.main.flash(200, 255, 0, 0, false);
+    
+    // Immediate rage check
+    this.checkRageLimit();
+  }
+  
+  private checkRageLimit() {
+    if (this.rageLevel >= 100 && this.gamePhase !== 'lost') {
+      this.loseByRage();
+    }
   }
   
   private updateClock(dt: number) {
@@ -1209,6 +1218,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       this.stuckTimer += dt;
       if (this.stuckTimer > this.RAGE_CONFIG.stuckDelay) {
         this.rageLevel = Math.min(100, this.rageLevel + dt / 1000 * this.RAGE_CONFIG.stuckPerSecond);
+        this.checkRageLimit(); // Immediate check
       }
     } else {
       this.stuckTimer = 0;
@@ -1844,10 +1854,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private checkGameOver() {
-    // Lose if rage maxes out
-    if (this.rageLevel >= 100) {
-      this.loseByRage();
-    }
+    // Check rage limit
+    this.checkRageLimit();
     
     // Lose if time reaches 8:00 AM
     if (this.currentTime >= 8 * 60) {
