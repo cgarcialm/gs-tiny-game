@@ -1289,7 +1289,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     // Find cars behind the player (y > vanY) in adjacent lanes
     for (const car of this.trafficCars) {
-      if (car.y > this.vanY && car.y < this.vanY + 80) {
+      if (car.y > this.vanY && car.y < this.vanY + 250) {
         // Car is behind us, check which mirror
         const distanceBehind = car.y - this.vanY;
         const proximity = 1 - (distanceBehind / 80); // 1 = very close, 0 = far
@@ -1297,7 +1297,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         if (car.lane === leftLane && leftLane >= 0) {
           // Show in left mirror with actual car color
           const carY = leftPos.y + leftPos.h * (1 - proximity * 0.8);
-          const carSize = 4 + proximity * 4;
+          // Dramatic size increase: use squared proximity for exponential growth
+          const carSize = 3 + Math.pow(proximity, 1.5) * 12;
           leftMirror.fillStyle(car.color, 0.9);
           leftMirror.fillRect(leftPos.x + leftPos.w/2 - carSize/2, carY, carSize, carSize * 1.5);
         }
@@ -1305,7 +1306,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         if (car.lane === rightLane && rightLane <= 2) {
           // Show in right mirror with actual car color
           const carY = rightPos.y + rightPos.h * (1 - proximity * 0.8);
-          const carSize = 4 + proximity * 4;
+          // Dramatic size increase: use squared proximity for exponential growth
+          const carSize = 3 + Math.pow(proximity, 1.5) * 12;
           rightMirror.fillStyle(car.color, 0.9);
           rightMirror.fillRect(rightPos.x + rightPos.w/2 - carSize/2, carY, carSize, carSize * 1.5);
         }
