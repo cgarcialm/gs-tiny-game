@@ -6,7 +6,7 @@ import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 import { HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import { HELP_HINT_TEXT_STYLE } from "../config/textStyles";
-import { createVanSprite } from "../utils/sprites/VanSprite";
+import { createVanSprite, createVanSpriteBack, createVanSpriteFromRight } from "../utils/sprites/VanSprite";
 import { createTrafficCarSprite, getRandomCarColor } from "../utils/sprites/TrafficCarSprite";
 import type { GameControls } from "../utils/controls";
 import type { HelpMenu } from "../utils/helpMenu";
@@ -1044,6 +1044,22 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       duration: 300,
       ease: "Sine.easeInOut"
     });
+    
+    // Swap van sprite based on lane
+    const oldX = this.van.x;
+    const oldY = this.van.y;
+    const oldDepth = this.van.depth;
+    this.van.destroy();
+    
+    // Left lane: view from back, Center: diagonal left, Right: diagonal right
+    if (this.currentLane === 0) {
+      this.van = createVanSpriteBack(this, oldX, oldY);
+    } else if (this.currentLane === 2) {
+      this.van = createVanSpriteFromRight(this, oldX, oldY);
+    } else {
+      this.van = createVanSprite(this, oldX, oldY);
+    }
+    this.van.setDepth(oldDepth);
     
     this.tweens.add({
       targets: this.van,
