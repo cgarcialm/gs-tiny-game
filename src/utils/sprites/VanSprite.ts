@@ -21,9 +21,9 @@ export function createVanSprite(
   const TAIL_LIGHT = 0xff3333;
   const BLACK = 0x111111;
 
-  // Shadow (not rotated, stays flat)
+  // Shadow (shifted left to match diagonal, narrower)
   g.fillStyle(0x000000, 0.3);
-  g.fillEllipse(2, 18, 26, 7);
+  g.fillEllipse(-4, 17, 18, 6);
 
   // === LEFT FRONT WHEEL (draw first, behind body) ===
   g.fillStyle(BLACK, 1);
@@ -49,10 +49,9 @@ export function createVanSprite(
 
   // === HOOD ===
   g.fillStyle(BURGUNDY, 1);
-  g.fillRect(-9, -20, 14, 5);  // Shorter on right
-  g.fillRect(3, -18, 2, 3);    // Small step down on right edge
+  g.fillRoundedRect(-9, -20, 12, 5, 2);  // Rounded corners, shorter
   g.fillStyle(BURGUNDY_LIGHT, 1);
-  g.fillRect(-7, -19, 10, 3);
+  g.fillRoundedRect(-7, -19, 8, 3, 1);
 
   // === FRONT WINDSHIELD ===
   g.fillStyle(WINDOW, 1);
@@ -60,19 +59,21 @@ export function createVanSprite(
   g.fillStyle(WINDOW_SHINE, 0.5);
   g.fillRect(-2, -14, 6, 2);
 
-  // === LEFT SIDE WINDOWS ===
+  // === LEFT SIDE WINDOWS (extended upward) ===
   g.fillStyle(WINDOW, 1);
-  g.fillRect(-11, -12, 2, 16);
-
-  // === REAR WINDOW (back windshield) ===
-  g.fillStyle(WINDOW, 1);
-  g.fillRect(-6, -2, 12, 6);
-  g.fillStyle(WINDOW_SHINE, 0.4);
-  g.fillRect(2, -1, 3, 4);
+  g.fillRect(-8, -8, 2, 17);
 
   // === BODY HIGHLIGHT ===
   g.fillStyle(BURGUNDY_LIGHT, 1);
-  g.fillRect(-5, -8, 10, 18);
+  g.fillRoundedRect(-4, -8, 11, 18, 10);
+
+  // === REAR WINDOW (back windshield, drawn after highlight) ===
+  // g.fillStyle(0x101820, 1);  // Dark border
+  // g.fillRect(-5, 0, 9, 7);
+  g.fillStyle(WINDOW, 1);
+  g.fillRect(-4, 5, 11, 5);
+  g.fillStyle(WINDOW_SHINE, 0.4);
+  g.fillRect(0, 5, 3, 3);
 
   // === ROOF RACK ===
   g.fillStyle(0x333333, 1);
