@@ -2130,9 +2130,59 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private loseByRage() {
     this.gamePhase = 'lost';
     
-    this.showSpeechBubble("Grayson", "Seattle wins, I quit.", 0, true);
+    // Slow down to a stop
+    this.tweens.add({
+      targets: this,
+      roadSpeed: 0,
+      duration: 1500,
+      ease: 'Cubic.easeOut'
+    });
     
-    this.showRetryPrompt(3000);
+    // Get rage meter and make it pulse/flash
+    const rageMeter = this.children.getByName('rageMeter') as Phaser.GameObjects.Rectangle;
+    if (rageMeter) {
+      // Pulse the rage meter (scale and color flash)
+      this.tweens.add({
+        targets: rageMeter,
+        scaleY: 1.5,
+        duration: 200,
+        yoyo: true,
+        repeat: 5,
+        ease: 'Sine.easeInOut'
+      });
+    }
+    
+    // Screen shake
+    this.cameras.main.shake(500, 0.01);
+    
+    // Flash red
+    this.cameras.main.flash(300, 255, 0, 0, false);
+    
+    // Show "RAGE MAXED!" text that pulses
+    const rageMaxText = this.add.text(160, 85, "🤬 RAGE MAXED! 🤬", {
+      fontFamily: "monospace",
+      fontSize: "14px",
+      color: "#ff0000",
+      backgroundColor: "#000000",
+      padding: { x: 8, y: 4 }
+    }).setOrigin(0.5).setDepth(200);
+    
+    // Pulse the text
+    this.tweens.add({
+      targets: rageMaxText,
+      scale: 1.15,
+      duration: 300,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+    
+    // Show speech bubble after a moment
+    this.time.delayedCall(800, () => {
+      this.showSpeechBubble("Grayson", "Seattle wins, I quit.", 0, true);
+    });
+    
+    this.showRetryPrompt(3500);
   }
   
   private loseByTime() {
