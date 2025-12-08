@@ -1700,7 +1700,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       
       // Show warning at 500 units
       if (remaining <= 500 && remaining > 50 && !this.starbucks1ExitSpawned) {
-        this.showSpeechBubble("Ceci", "Starbucks exit coming up! Get in the right lane!", 3000);
+        this.showSpeechBubble("Ceci", "Starbucks! Move right!", 3000);
         this.starbucks1ExitSpawned = true;
       }
       
@@ -1755,7 +1755,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       
       // Show warning at 500 units
       if (remaining <= 500 && remaining > 50 && !this.starbucks2ExitSpawned) {
-        this.showSpeechBubble("Ceci", "There's the right Starbucks! Exit right!", 3000);
+        this.showSpeechBubble("Ceci", "That's my Starbucks! Exit!", 3000);
         this.starbucks2ExitSpawned = true;
       }
       
@@ -1794,7 +1794,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       
       // Show early warning at 500 units (text only, no ramp yet)
       if (remaining <= 500 && remaining > 50 && !this.finalExitSpawned) {
-        this.showSpeechBubble("Ceci", "Our exit is coming up! Get ready to move right!", 3000);
+        this.showSpeechBubble("Ceci", "Exit soon! Get right!", 3000);
         this.finalExitSpawned = true;
       }
       
@@ -1907,7 +1907,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private createExitRampVisual() {
-    this.showSpeechBubble("Ceci", "That's our exit! RIGHT LANE NOW!", 2000);
+    this.showSpeechBubble("Ceci", "NOW! Exit right!", 2000);
     
     // Create the trailhead exit ramp
     const graphics = this.add.graphics();
@@ -1958,7 +1958,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Rage increase for missing
     this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.missedStarbucks1);
     
-    this.showSpeechBubble("Ceci", "You missed the exit! Ugh, whatever... that wasn't the right one anyway.", 3000);
+    this.showSpeechBubble("Ceci", "Missed it... whatever, wrong one", 3000);
   }
   
   private missedStarbucks2() {
@@ -1972,7 +1972,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Big rage increase for missing the right Starbucks
     this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.missedStarbucks2);
     
-    this.showSpeechBubble("Ceci", "WHAT?! You missed MY Starbucks?! I can't hike without coffee!", 4000);
+    this.showSpeechBubble("Ceci", "WHAT?! My coffee!!", 3000);
     
     // Traffic gets heavier anyway
     this.carSpawnInterval = 1500;
@@ -1995,7 +1995,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.rageLevel = this.RAGE_CONFIG.missedTrailhead;
     
     // Grayson's disappointed message (persistent - stays until restart)
-    this.showSpeechBubble("Grayson", "Damn, we missed the exit. It's gonna be packed in a bit. Let's not go.", 0, true);
+    this.showSpeechBubble("Grayson", "Missed it. Trail's packed. Forget it.", 0, true);
     
     // Show retry prompt after a delay
     this.showRetryPrompt(3000);
@@ -2035,7 +2035,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         // Wait at Starbucks
         this.time.delayedCall(1500, () => {
           // Wrong Starbucks dialogue
-          this.showSpeechBubble("Ceci", "Wait... wrong one! I ordered at the OTHER Starbucks!", 3000);
+          this.showSpeechBubble("Ceci", "Wrong one! Mine's next!", 3000);
         
         // Increase rage
           this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.wrongStarbucks);
@@ -2082,7 +2082,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         // Wait at Starbucks (getting coffee)
         this.time.delayedCall(2000, () => {
           // Got coffee dialogue
-          this.showSpeechBubble("Ceci", "Finally! Got my coffee! ☕", 2500);
+          this.showSpeechBubble("Ceci", "Got my coffee! ☕", 2500);
           
           // Animate van coming back from exit
           this.tweens.add({
@@ -2118,7 +2118,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private winGame() {
     // Victory!
-    this.showSpeechBubble("Ceci", "We made it! Let's hike!", 2500);
+    this.showSpeechBubble("Ceci", "Made it! Let's go! 🏔️", 2500);
     
     // Transition to next level after delay
     this.time.delayedCall(3000, () => {
@@ -2130,7 +2130,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private loseByRage() {
     this.gamePhase = 'lost';
     
-    this.showSpeechBubble("Grayson", "I can't deal with this traffic anymore...", 0, true);
+    this.showSpeechBubble("Grayson", "Seattle wins, I quit.", 0, true);
     
     this.showRetryPrompt(3000);
   }
@@ -2138,7 +2138,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private loseByTime() {
     this.gamePhase = 'lost';
     
-    this.showSpeechBubble("Ceci", "The trail's gonna be packed now...", 0, true);
+    this.showSpeechBubble("Grayson", "Too late... trail's packed", 0, true);
     
     this.showRetryPrompt(3000);
   }
