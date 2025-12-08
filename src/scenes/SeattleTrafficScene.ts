@@ -140,6 +140,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.distanceTraveled = 0;
     this.currentTime = 7 * 60 + 15;
     this.rageLevel = 0;
+    this.rageCheckDelayed = false;
     this.stuckTimer = 0;
     this.trafficCars = [];
     this.laneMarkers = [];
@@ -1176,8 +1177,23 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private spawnTrafficCar() {
     let lane = Math.floor(Math.random() * 3);
     
-    // During final exit, don't spawn cars in the right lane (keep it clear)
-    if (this.finalExitActive && lane === 2) {
+    // Check if approaching any exit - keep right lane clear
+    const exitClearDistance = 800; // Distance before exit to clear right lane
+    let nearExit = false;
+    
+    if (this.gamePhase === 'toStarbucks1' || this.gamePhase === 'intro') {
+      const remaining = this.starbucks1Distance - this.distanceTraveled;
+      if (remaining < exitClearDistance && remaining > 0) nearExit = true;
+    } else if (this.gamePhase === 'toStarbucks2') {
+      const remaining = this.starbucks2Distance - this.distanceTraveled;
+      if (remaining < exitClearDistance && remaining > 0) nearExit = true;
+    } else if (this.gamePhase === 'toTrailhead') {
+      const remaining = this.trailheadDistance - this.distanceTraveled;
+      if (remaining < exitClearDistance && remaining > 0) nearExit = true;
+    }
+    
+    // During exit approach or active exit, don't spawn cars in the right lane
+    if ((nearExit || this.finalExitActive || this.starbucks1ExitActive || this.starbucks2ExitActive) && lane === 2) {
       lane = Math.floor(Math.random() * 2); // Only lanes 0 or 1
     }
     
@@ -1258,6 +1274,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private hitCar() {
+    // Don't add rage if we're in the delayed loss state
+    if (this.rageCheckDelayed) return;
+    
     // Increase rage when hitting car
     this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.hitCar);
     this.showRagePopup(this.RAGE_CONFIG.hitCar, this.van.x, this.van.y - 20);
@@ -1269,8 +1288,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.checkRageLimit();
   }
   
+  private rageCheckDelayed = false; // Delay rage check to show dialogue first
+  
   private checkRageLimit() {
-    if (this.rageLevel >= 100 && this.gamePhase !== 'lost') {
+    if (this.rageLevel >= 100 && this.gamePhase !== 'lost' && !this.rageCheckDelayed) {
       this.loseByRage();
     }
   }
@@ -1460,6 +1481,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private stuckRageAccumulator = 0; // Track accumulated stuck rage for popup
   
   private updateRage(dt: number) {
+    // Don't update rage if we're in the delayed loss state
+    if (this.rageCheckDelayed) return;
+    
     // Rage increases when stuck behind slow cars
     const carAhead = this.trafficCars.find(car => 
       car.lane === this.currentLane && 
@@ -1859,9 +1883,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       if (starbucks1Exit && this.starbucks1ExitActive && !this.starbucks1ExitDecisionMade) {
         const rampAtVan = starbucks1Exit.y >= this.vanY - 20 && starbucks1Exit.y <= this.vanY + 20;
         if (rampAtVan) {
-          console.log('SB1 Exit DETECTED! Lane:', this.currentLane);
+          console.log('SB1 Exit DETECTED! Lane:', this.currentLane, 'Changing:', this.isChangingLane);
           this.starbucks1ExitDecisionMade = true;
-          if (this.currentLane === 2) {
+          // Must be fully in right lane (not mid-change)
+          if (this.currentLane === 2 && !this.isChangingLane) {
       this.arriveAtStarbucks1();
           } else {
             this.missedStarbucks1();
@@ -1900,7 +1925,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         const rampAtVan = starbucks2Exit.y >= this.vanY - 20 && starbucks2Exit.y <= this.vanY + 20;
         if (rampAtVan) {
           this.starbucks2ExitDecisionMade = true;
-          if (this.currentLane === 2) {
+          // Must be fully in right lane (not mid-change)
+          if (this.currentLane === 2 && !this.isChangingLane) {
       this.arriveAtStarbucks2();
           } else {
             this.missedStarbucks2();
@@ -1942,8 +1968,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         const rampAtVan = finalExitRamp.y >= this.vanY - 20 && finalExitRamp.y <= this.vanY + 20;
         if (rampAtVan) {
           this.exitDecisionMade = true; // Prevent multiple checks
-          // Must be in RIGHT lane (lane 2) to take exit
-          if (this.currentLane === 2) {
+          // Must be fully in RIGHT lane (lane 2), not mid-change
+          if (this.currentLane === 2 && !this.isChangingLane) {
             this.takeExit();
           } else {
             this.missedExit();
@@ -2086,6 +2112,23 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.showRagePopup(this.RAGE_CONFIG.missedStarbucks1, rampX, rampY);
     
     this.showSpeechBubble("Ceci", "Missed it... whatever, wrong one", 3000);
+    
+    // If rage maxed out, slow down and show rage loss
+    if (this.rageLevel >= 100) {
+      this.rageLevel = 100; // Lock at 100
+      this.rageCheckDelayed = true;
+      // Slow down to show player they've lost
+      this.tweens.add({
+        targets: this,
+        roadSpeed: 20,
+        duration: 1500,
+        ease: 'Cubic.easeOut'
+      });
+      this.time.delayedCall(3000, () => {
+        this.rageCheckDelayed = false;
+        this.checkRageLimit();
+      });
+    }
   }
   
   private missedStarbucks2() {
@@ -2107,8 +2150,25 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     
     this.showSpeechBubble("Ceci", "WHAT?! My coffee!!", 3000);
     
-    // Traffic gets heavier anyway
-    this.carSpawnInterval = 1500;
+    // If rage maxed out, slow down and show rage loss
+    if (this.rageLevel >= 100) {
+      this.rageLevel = 100; // Lock at 100
+      this.rageCheckDelayed = true;
+      // Slow down to show player they've lost
+      this.tweens.add({
+        targets: this,
+        roadSpeed: 20,
+        duration: 1500,
+        ease: 'Cubic.easeOut'
+      });
+      this.time.delayedCall(3000, () => {
+        this.rageCheckDelayed = false;
+        this.checkRageLimit();
+      });
+    } else {
+      // Traffic gets heavier anyway (only if still playing)
+      this.carSpawnInterval = 1500;
+    }
   }
   
   private cleanupActiveRamps() {
@@ -2176,9 +2236,26 @@ export default class SeattleTrafficScene extends Phaser.Scene {
           // Wrong Starbucks dialogue
           this.showSpeechBubble("Ceci", "Wrong one! Mine's next!", 3000);
         
-        // Increase rage (popup from ramp area - right side of road)
+          // Increase rage (popup from ramp area - right side of road)
           this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.wrongStarbucks);
           this.showRagePopup(this.RAGE_CONFIG.wrongStarbucks, 280, this.vanY);
+          
+          // If rage maxed out, slow down and show rage loss
+          if (this.rageLevel >= 100) {
+            this.rageLevel = 100;
+            this.rageCheckDelayed = true;
+            this.tweens.add({
+              targets: this,
+              roadSpeed: 20,
+              duration: 1500,
+              ease: 'Cubic.easeOut'
+            });
+            this.time.delayedCall(3000, () => {
+              this.rageCheckDelayed = false;
+              this.checkRageLimit();
+            });
+            return; // Don't resume gameplay
+          }
           
           // Animate van coming back from exit
           this.tweens.add({
@@ -2189,11 +2266,11 @@ export default class SeattleTrafficScene extends Phaser.Scene {
             ease: 'Sine.easeOut',
             onComplete: () => {
               // Resume gameplay
-          this.gamePhase = 'toStarbucks2';
+              this.gamePhase = 'toStarbucks2';
               this.roadSpeed = savedSpeed;
             }
+          });
         });
-      });
       }
     });
   }
