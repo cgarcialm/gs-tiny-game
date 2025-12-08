@@ -1304,33 +1304,45 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const leftRange = 170; // Show from spawn to passing (~3+ seconds)
     const rightRange = 80; // Right lane cars stay behind longer
     
+    // Collect cars for each mirror, then sort by distance (farther first)
+    const leftMirrorCars: { car: typeof this.trafficCars[0], distanceBehind: number }[] = [];
+    const rightMirrorCars: { car: typeof this.trafficCars[0], distanceBehind: number }[] = [];
+    
     for (const car of this.trafficCars) {
       // Only show cars BEHIND the player (y > vanY)
       if (car.y <= this.vanY) continue;
       
-      // LEFT mirror: fast cars coming from behind
-      if (car.lane === leftLane && leftLane >= 0) {
-        const distanceBehind = car.y - this.vanY;
-        if (distanceBehind < leftRange) {
-          const proximity = 1 - (distanceBehind / leftRange);
-          const carY = leftPos.y + leftPos.h * (1 - proximity * 0.8);
-          const carSize = 3 + Math.pow(proximity, 1.5) * 12;
-          leftMirror.fillStyle(car.color, 0.9);
-          leftMirror.fillRect(leftPos.x + leftPos.w/2 - carSize/2, carY, carSize, carSize * 1.5);
-        }
+      const distanceBehind = car.y - this.vanY;
+      
+      if (car.lane === leftLane && leftLane >= 0 && distanceBehind < leftRange) {
+        leftMirrorCars.push({ car, distanceBehind });
       }
       
-      // RIGHT mirror: slower cars you've passed
-      if (car.lane === rightLane && rightLane <= 2) {
-        const distanceBehind = car.y - this.vanY;
-        if (distanceBehind < rightRange) {
-          const proximity = 1 - (distanceBehind / rightRange);
-          const carY = rightPos.y + rightPos.h * (1 - proximity * 0.8);
-          const carSize = 3 + Math.pow(proximity, 1.5) * 12;
-          rightMirror.fillStyle(car.color, 0.9);
-          rightMirror.fillRect(rightPos.x + rightPos.w/2 - carSize/2, carY, carSize, carSize * 1.5);
-        }
+      if (car.lane === rightLane && rightLane <= 2 && distanceBehind < rightRange) {
+        rightMirrorCars.push({ car, distanceBehind });
       }
+    }
+    
+    // Sort by distance descending (farther cars first, closer cars drawn on top)
+    leftMirrorCars.sort((a, b) => b.distanceBehind - a.distanceBehind);
+    rightMirrorCars.sort((a, b) => b.distanceBehind - a.distanceBehind);
+    
+    // Draw left mirror cars
+    for (const { car, distanceBehind } of leftMirrorCars) {
+      const proximity = 1 - (distanceBehind / leftRange);
+      const carY = leftPos.y + leftPos.h * (1 - proximity * 0.8);
+      const carSize = 3 + Math.pow(proximity, 1.5) * 12;
+      leftMirror.fillStyle(car.color, 0.9);
+      leftMirror.fillRect(leftPos.x + leftPos.w/2 - carSize/2, carY, carSize, carSize * 1.5);
+    }
+    
+    // Draw right mirror cars
+    for (const { car, distanceBehind } of rightMirrorCars) {
+      const proximity = 1 - (distanceBehind / rightRange);
+      const carY = rightPos.y + rightPos.h * (1 - proximity * 0.8);
+      const carSize = 3 + Math.pow(proximity, 1.5) * 12;
+      rightMirror.fillStyle(car.color, 0.9);
+      rightMirror.fillRect(rightPos.x + rightPos.w/2 - carSize/2, carY, carSize, carSize * 1.5);
     }
     
     // Show "no lane" indicator if at edge
@@ -1655,7 +1667,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const container = this.add.container(0, 0);
     container.setDepth(5);
     
-    const body = this.add.rectangle(0, 0, 16, 28, this.getRandomCarColor());
+    // Get color first so body and car.color match
+    const color = this.getRandomCarColor();
+    const body = this.add.rectangle(0, 0, 16, 28, color);
     const windshield = this.add.rectangle(0, -6, 12, 8, 0x87CEEB);
     container.add([body, windshield]);
     
@@ -1665,7 +1679,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const carY = Math.max(this.horizonY + 15, Math.min(rampY + 10, this.roadBottomY - 30));
     const speed = this.laneSpeeds[2] + (Math.random() * 20 - 10); // Right lane speed
     
-    const car = { container, lane: 2, speed, y: carY, color: 0x0000ff, exiting: false, merging: true };
+    const car = { container, lane: 2, speed, y: carY, color, exiting: false, merging: true };
     this.trafficCars.push(car);
     
     // Position off-screen to the right, slightly above target Y (coming from ramp curve)
