@@ -1260,6 +1260,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private hitCar() {
     // Increase rage when hitting car
     this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.hitCar);
+    this.showRagePopup(this.RAGE_CONFIG.hitCar, this.van.x, this.van.y - 20);
     
     // Flash effect
     this.cameras.main.flash(200, 255, 0, 0, false);
@@ -1272,6 +1273,25 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     if (this.rageLevel >= 100 && this.gamePhase !== 'lost') {
       this.loseByRage();
     }
+  }
+  
+  private showRagePopup(amount: number, x: number, y: number) {
+    const text = this.add.text(x, y, `+${amount}`, {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#ff0000",
+      fontStyle: "bold"
+    }).setOrigin(0.5).setDepth(200);
+    
+    // Animate upward and fade out
+    this.tweens.add({
+      targets: text,
+      y: y - 30,
+      alpha: 0,
+      duration: 1000,
+      ease: 'Power2',
+      onComplete: () => text.destroy()
+    });
   }
   
   private createSideMirrors() {
@@ -1437,6 +1457,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.currentTime += dt / 1000 * 45 / 60; // Convert to minutes
   }
   
+  private stuckRageAccumulator = 0; // Track accumulated stuck rage for popup
+  
   private updateRage(dt: number) {
     // Rage increases when stuck behind slow cars
     const carAhead = this.trafficCars.find(car => 
@@ -1449,11 +1471,21 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     if (carAhead) {
       this.stuckTimer += dt;
       if (this.stuckTimer > this.RAGE_CONFIG.stuckDelay) {
-        this.rageLevel = Math.min(100, this.rageLevel + dt / 1000 * this.RAGE_CONFIG.stuckPerSecond);
+        const rageIncrease = dt / 1000 * this.RAGE_CONFIG.stuckPerSecond;
+        this.rageLevel = Math.min(100, this.rageLevel + rageIncrease);
+        this.stuckRageAccumulator += rageIncrease;
+        
+        // Show popup every 5 rage points accumulated
+        if (this.stuckRageAccumulator >= 5) {
+          this.showRagePopup(5, carAhead.container.x, carAhead.container.y - 10);
+          this.stuckRageAccumulator -= 5;
+        }
+        
         this.checkRageLimit(); // Immediate check
       }
     } else {
       this.stuckTimer = 0;
+      this.stuckRageAccumulator = 0;
       // Slowly decrease rage when driving smoothly
       this.rageLevel = Math.max(0, this.rageLevel - dt / 1000 * this.RAGE_CONFIG.recoveryPerSecond);
     }
@@ -2041,11 +2073,17 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.gamePhase = 'toStarbucks2';
     this.starbucks1ExitActive = false;
     
+    // Get ramp position before cleanup
+    const ramp = this.activeRamps.find(r => r.checkpoint === 'starbucks1');
+    const rampX = ramp ? ramp.graphics.x + 50 : this.van.x;
+    const rampY = ramp ? ramp.y : this.van.y - 20;
+    
     // Clean up the exit ramp
     this.cleanupActiveRamps();
     
     // Rage increase for missing
     this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.missedStarbucks1);
+    this.showRagePopup(this.RAGE_CONFIG.missedStarbucks1, rampX, rampY);
     
     this.showSpeechBubble("Ceci", "Missed it... whatever, wrong one", 3000);
   }
@@ -2055,11 +2093,17 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.gamePhase = 'toTrailhead';
     this.starbucks2ExitActive = false;
     
+    // Get ramp position before cleanup
+    const ramp = this.activeRamps.find(r => r.checkpoint === 'starbucks2');
+    const rampX = ramp ? ramp.graphics.x + 50 : this.van.x;
+    const rampY = ramp ? ramp.y : this.van.y - 20;
+    
     // Clean up the exit ramp
     this.cleanupActiveRamps();
     
     // Big rage increase for missing the right Starbucks
     this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.missedStarbucks2);
+    this.showRagePopup(this.RAGE_CONFIG.missedStarbucks2, rampX, rampY);
     
     this.showSpeechBubble("Ceci", "WHAT?! My coffee!!", 3000);
     
@@ -2080,8 +2124,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.gamePhase = 'lost';
     this.finalExitActive = false;
     
+    // Get ramp position before it's gone
+    const ramp = this.activeRamps.find(r => r.checkpoint === 'trailhead');
+    const rampX = ramp ? ramp.graphics.x + 50 : this.van.x;
+    const rampY = ramp ? ramp.y : this.van.y - 20;
+    
     // Max out rage
     this.rageLevel = this.RAGE_CONFIG.missedTrailhead;
+    this.showRagePopup(this.RAGE_CONFIG.missedTrailhead, rampX, rampY);
     
     // Grayson's disappointed message (persistent - stays until restart)
     this.showSpeechBubble("Grayson", "Missed it. Trail's packed. Forget it.", 0, true);
@@ -2126,8 +2176,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
           // Wrong Starbucks dialogue
           this.showSpeechBubble("Ceci", "Wrong one! Mine's next!", 3000);
         
-        // Increase rage
+        // Increase rage (popup from ramp area - right side of road)
           this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.wrongStarbucks);
+          this.showRagePopup(this.RAGE_CONFIG.wrongStarbucks, 280, this.vanY);
           
           // Animate van coming back from exit
           this.tweens.add({
