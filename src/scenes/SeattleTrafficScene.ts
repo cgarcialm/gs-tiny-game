@@ -74,11 +74,11 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   // ===========================================
   private readonly RAGE_CONFIG = {
     // Collision events
-    hitCar: 20,                    // Hitting another car
+    hitCar: 100,                   // Hitting another car = instant loss
     
-    // Stuck in traffic (per second after 0.5s delay)
+    // Stuck in traffic (per second after short delay)
     stuckPerSecond: 5,             // Rage increase per second when stuck
-    stuckDelay: 500,               // ms before stuck rage kicks in
+    stuckDelay: 200,               // ms before stuck rage kicks in (reduced for faster feedback)
     
     // Smooth driving recovery (per second)
     recoveryPerSecond: 0.5,        // Rage decrease per second when driving smoothly
@@ -1310,12 +1310,13 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private hitCar() {
-    // Don't add rage if we're in the delayed loss state
-    if (this.rageCheckDelayed) return;
+    // Don't add rage if we're in the delayed loss state or already lost
+    if (this.rageCheckDelayed || this.gamePhase === 'lost') return;
     
     // Increase rage when hitting car
     this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.hitCar);
-    this.showRagePopup(this.RAGE_CONFIG.hitCar, this.van.x, this.van.y - 20);
+    // Use target lane position (not mid-animation position)
+    this.showRagePopup(this.RAGE_CONFIG.hitCar, this.getLaneX(this.currentLane), this.vanY - 20);
     
     // Flash effect
     this.cameras.main.flash(200, 255, 0, 0, false);
@@ -1335,19 +1336,31 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private showRagePopup(amount: number, x: number, y: number) {
     const text = this.add.text(x, y, `+${amount}`, {
       fontFamily: "monospace",
-      fontSize: "12px",
-      color: "#ff0000",
-      fontStyle: "bold"
-    }).setOrigin(0.5).setDepth(200);
+      fontSize: "14px",
+      color: "#ff3333",
+      fontStyle: "bold",
+      stroke: "#000000",
+      strokeThickness: 2
+    }).setOrigin(0.5).setDepth(250).setScale(0.8); // Depth 250 to appear above dialogue (200)
     
-    // Animate upward and fade out
+    // Pop in scale effect
     this.tweens.add({
       targets: text,
-      y: y - 30,
-      alpha: 0,
-      duration: 1000,
-      ease: 'Power2',
-      onComplete: () => text.destroy()
+      scale: 1.2,
+      duration: 500,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        // Then animate upward and fade out (slower)
+        this.tweens.add({
+          targets: text,
+          y: y - 30,
+          scale: 1,
+          alpha: 0,
+          duration: 2500,
+          ease: 'Power1',
+          onComplete: () => text.destroy()
+        });
+      }
     });
   }
   
@@ -1535,10 +1548,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         this.rageLevel = Math.min(100, this.rageLevel + rageIncrease);
         this.stuckRageAccumulator += rageIncrease;
         
-        // Show popup every 5 rage points accumulated
-        if (this.stuckRageAccumulator >= 5) {
-          this.showRagePopup(5, carAhead.container.x, carAhead.container.y - 10);
-          this.stuckRageAccumulator -= 5;
+        // Show popup every 3 rage points accumulated (more frequent feedback)
+        if (this.stuckRageAccumulator >= 3) {
+          this.showRagePopup(3, carAhead.container.x, carAhead.container.y - 10);
+          this.stuckRageAccumulator -= 3;
         }
         
         this.checkRageLimit(); // Immediate check
@@ -2135,17 +2148,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.gamePhase = 'toStarbucks2';
     this.starbucks1ExitActive = false;
     
-    // Get ramp position before cleanup
-    const ramp = this.activeRamps.find(r => r.checkpoint === 'starbucks1');
-    const rampX = ramp ? ramp.graphics.x + 50 : this.van.x;
-    const rampY = ramp ? ramp.y : this.van.y - 20;
-    
     // Clean up the exit ramp
     this.cleanupActiveRamps();
     
-    // Rage increase for missing
+    // Rage increase for missing (show popup on right side, above dialogue with depth 250)
     this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.missedStarbucks1);
-    this.showRagePopup(this.RAGE_CONFIG.missedStarbucks1, rampX, rampY);
+    this.showRagePopup(this.RAGE_CONFIG.missedStarbucks1, this.getLaneX(2) + 40, this.vanY - 60);
     
     this.showSpeechBubble("Ceci", "Missed it... whatever, wrong one", 3000);
     
@@ -2172,17 +2180,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.gamePhase = 'toTrailhead';
     this.starbucks2ExitActive = false;
     
-    // Get ramp position before cleanup
-    const ramp = this.activeRamps.find(r => r.checkpoint === 'starbucks2');
-    const rampX = ramp ? ramp.graphics.x + 50 : this.van.x;
-    const rampY = ramp ? ramp.y : this.van.y - 20;
-    
     // Clean up the exit ramp
     this.cleanupActiveRamps();
     
-    // Big rage increase for missing the right Starbucks
+    // Big rage increase for missing the right Starbucks (show popup on right side, above dialogue)
     this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.missedStarbucks2);
-    this.showRagePopup(this.RAGE_CONFIG.missedStarbucks2, rampX, rampY);
+    this.showRagePopup(this.RAGE_CONFIG.missedStarbucks2, this.getLaneX(2) + 40, this.vanY - 60);
     
     this.showSpeechBubble("Ceci", "WHAT?! My coffee!!", 3000);
     
@@ -2220,10 +2223,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.gamePhase = 'lost';
     this.finalExitActive = false;
     
-    // Get ramp position before it's gone
-    const ramp = this.activeRamps.find(r => r.checkpoint === 'trailhead');
-    const rampX = ramp ? ramp.graphics.x + 50 : this.van.x;
-    const rampY = ramp ? ramp.y : this.van.y - 20;
+    // Show popup at exit ramp area (right side, above van so it's visible)
+    const rampX = this.getLaneX(2) + 40;
+    const rampY = this.vanY - 60;
     
     // Max out rage
     this.rageLevel = this.RAGE_CONFIG.missedTrailhead;
