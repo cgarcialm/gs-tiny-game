@@ -2427,8 +2427,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Cartoon explosion effect from the car (use captured position)
     this.createRageExplosion(explosionX, explosionY);
     
-    // Show "RAGE QUIT" text that pulses
-    const rageMaxText = this.add.text(160, 85, ">>> RAGE QUIT <<<", {
+    // Show "RAGE QUIT" text that pulses (positioned higher to not cover scene)
+    const rageMaxText = this.add.text(160, 35, ">>> RAGE QUIT <<<", {
       fontFamily: "monospace",
       fontSize: "14px",
       color: "#ff0000",
