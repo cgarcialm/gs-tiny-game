@@ -165,10 +165,52 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.spawnSkates();
     this.spawnHockeyStick();
     
-    // Grayson enters the field
-    this.time.delayedCall(500, () => {
-      this.graysonEntersField();
-    });
+    // Show intro overlay first
+    this.showIntroOverlay();
+  }
+  
+  private introActive = true;
+  
+  private showIntroOverlay() {
+    const overlay = this.add.rectangle(160, 90, 200, 80, 0x000000, 0.9)
+      .setDepth(300);
+    
+    const title = this.add.text(160, 60, "ICE HOCKEY", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#00ffff"
+    }).setOrigin(0.5).setDepth(301);
+    
+    const instructions = this.add.text(160, 85, "Wrong place, wrong time\nDodge pucks, shoot back!", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffffff",
+      align: "center"
+    }).setOrigin(0.5).setDepth(301);
+    
+    const pressEnter = this.add.text(160, 115, "Press ENTER", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffff00"
+    }).setOrigin(0.5).setDepth(301);
+    
+    // Wait for ENTER to start
+    const waitForStart = () => {
+      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+        this.events.off('update', waitForStart);
+        overlay.destroy();
+        title.destroy();
+        instructions.destroy();
+        pressEnter.destroy();
+        this.introActive = false;
+        
+        // Now start the game - Grayson enters the field
+        this.time.delayedCall(500, () => {
+          this.graysonEntersField();
+        });
+      }
+    };
+    this.events.on('update', waitForStart);
   }
   
   private createMinimap() {
@@ -953,6 +995,9 @@ export default class IceHockeyScene extends Phaser.Scene {
     if (this.levelCompleted) {
       return;
     }
+    
+    // Wait for intro to finish
+    if (this.introActive) return;
     
     // Handle menu input (ESC for pause, H for help, M for mute)
     if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, this._cheatConsole, this.gameState)) {
