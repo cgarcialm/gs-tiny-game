@@ -99,6 +99,48 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // UI
     this.createUI();
+    
+    // Show intro overlay
+    this.showIntroOverlay();
+  }
+  
+  private introActive = true;
+  
+  private showIntroOverlay() {
+    const overlay = this.add.rectangle(160, 90, 200, 80, 0x000000, 0.9)
+      .setDepth(300);
+    
+    const title = this.add.text(160, 60, "NORTHGATE STATION", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#00ffff"
+    }).setOrigin(0.5).setDepth(301);
+    
+    const instructions = this.add.text(160, 85, "Find Ceci in the station", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffffff",
+      align: "center"
+    }).setOrigin(0.5).setDepth(301);
+    
+    const pressEnter = this.add.text(160, 110, "Press ENTER", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffff00"
+    }).setOrigin(0.5).setDepth(301);
+    
+    // Wait for ENTER to start
+    const waitForStart = () => {
+      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+        this.events.off('update', waitForStart);
+        overlay.destroy();
+        title.destroy();
+        instructions.destroy();
+        pressEnter.destroy();
+        this.introActive = false;
+      }
+    };
+    this.events.on('update', waitForStart);
   }
   
   private createStationBackground() {
@@ -431,6 +473,9 @@ export default class NorthgateScene extends Phaser.Scene {
 
   update() {
     if (!this.player || !this.playerSprite) return;
+    
+    // Wait for intro to finish
+    if (this.introActive) return;
     
     const dt = this.game.loop.delta / 1000;
     

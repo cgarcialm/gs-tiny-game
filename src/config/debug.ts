@@ -18,7 +18,7 @@ import { SCENES, type SceneName } from "./sceneConstants";
  * "FarmersMarket" = Skip to Farmers Market Pac-Man scene
  * "Camping" = Skip to Camping scene
  */
-export const DEBUG_START_SCENE: SceneName = SCENES.GAME;
+export const DEBUG_START_SCENE: SceneName = SCENES.NORTHGATE;
 
 /**
  * Set to desired level number to skip ahead in GameScene (only applies if starting in "Game")
