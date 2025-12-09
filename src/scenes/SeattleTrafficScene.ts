@@ -2451,7 +2451,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       this.showSpeechBubble("Grayson", "Seattle wins, I quit.", 0, true);
     });
     
-    this.showRetryPrompt(3500);
+    this.showRetryPrompt(5500); // After explosion animation (4s) completes
   }
   
   private createRageExplosion(vanX: number, vanY: number) {
