@@ -1372,8 +1372,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Left mirror (shows lane to the left)
     const leftMirrorX = 2;
     const leftFrame = this.add.graphics();
-    leftFrame.fillStyle(0x222222, 1);
-    leftFrame.lineStyle(2, 0x444444, 1);
+    leftFrame.fillStyle(0x1a1a2e, 1); // Dark blue-gray interior
+    leftFrame.lineStyle(3, 0x5a0000, 1); // Dark burgundy border to match van
     // Trapezoid shape (wider at top for perspective)
     leftFrame.fillPoints([
       { x: leftMirrorX, y: mirrorY },
@@ -1397,8 +1397,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Right mirror (shows lane to the right)
     const rightMirrorX = 270;
     const rightFrame = this.add.graphics();
-    rightFrame.fillStyle(0x222222, 1);
-    rightFrame.lineStyle(2, 0x444444, 1);
+    rightFrame.fillStyle(0x1a1a2e, 1); // Dark blue-gray interior
+    rightFrame.lineStyle(3, 0x5a0000, 1); // Dark burgundy border to match van
     // Trapezoid shape (mirrored)
     rightFrame.fillPoints([
       { x: rightMirrorX, y: mirrorY },
