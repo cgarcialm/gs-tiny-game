@@ -50,8 +50,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number, color: number, carType: number, exiting?: boolean }[] = [];
   
   // Car size multipliers by type: 0=sedan, 1=SUV, 2=compact, 3=pickup
-  // Car size multipliers by type: 0=sedan, 1=SUV, 2=compact, 3=pickup
-  private carSizeMultipliers = [1.4, 1.6, 1.2, 1.5];
+  private carSizeMultipliers = [2, 1.5, 2, 1.7];
   private carSpawnTimer = 0;
   private carSpawnInterval = 2000; // Spawn every 2 seconds
   
@@ -1276,10 +1275,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const t = (car.y - this.horizonY) / (this.roadBottomY - this.horizonY);
     
     // Scale based on distance (smaller at horizon, larger at bottom)
-    // Use car-type specific size multiplier
+    // Use car-type specific size multiplier (base * 2.5 for visibility since sprites are small)
     const carSizeMultiplier = this.carSizeMultipliers[car.carType ?? 0];
     const scale = (0.2 + t * 0.8) * carSizeMultiplier;
     car.container.setScale(scale);
+    
+    // Tilt varies by lane (more rotation for right lanes)
+    const laneRotations = [-0.06, -0.10, -0.14]; // left, middle, right
+    car.container.setRotation(laneRotations[car.lane] ?? -0.10);
     
     // Skip X position update if car is merging (tween is controlling it)
     if (car.merging) {
@@ -1301,12 +1304,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Simple collision: same lane and overlapping Y
     if (car.lane !== this.currentLane) return false;
     
-    // Don't collide with cars coming from behind in same lane
-    // Only collide if car is ahead or overlapping from front
-    if (car.y > this.vanY + 10) return false;
+    // Don't collide with cars far behind (coming from behind)
+    if (car.y > this.vanY + 30) return false;
     
+    // Collision distance - increased for larger sprites
     const distance = Math.abs(car.y - this.vanY);
-    return distance < 25;
+    return distance < 45;
   }
   
   private hitCar() {
@@ -1873,6 +1876,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const t = (carY - this.horizonY) / (this.roadBottomY - this.horizonY);
     const carSizeMultiplier = this.carSizeMultipliers[carType];
     container.setScale((0.2 + t * 0.8) * carSizeMultiplier);
+    container.setRotation(-0.14); // Right lane rotation
     
     // Fast diagonal merge animation into the right lane
     this.tweens.add({

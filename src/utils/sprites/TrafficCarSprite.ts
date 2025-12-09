@@ -35,9 +35,6 @@ export function createTrafficCarSprite(
 
   container.add(g);
   
-  // Scale up for better visibility
-  container.setScale(2);
-  
   // Rotate for diagonal effect
   container.setAngle(-12);
   
