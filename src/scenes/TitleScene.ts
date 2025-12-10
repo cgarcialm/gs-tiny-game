@@ -301,7 +301,7 @@ export default class TitleScene extends Phaser.Scene {
     );
 
     if (distance < APPROACH_DISTANCE) {
-      this.showDialog("Ceci: I made you an anniversary card! Press ENTER to look at it.");
+      this.showDialog("Ceci: I made you a one-year-memories card! Press ENTER to look at it.");
       this.sceneState = "card_ready";
     }
   }
