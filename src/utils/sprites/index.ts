@@ -15,4 +15,5 @@ export { createSmushPacManSprite, animateSmushChomp } from "./SmushPacManSprite"
 export { createPieSliceSprite } from "./PieSliceSprite";
 export { createShopperSprite } from "./ShopperSprite";
 export { createVanSprite, createVanSpriteBack, createVanSpriteFromRight } from "./VanSprite";
+export { createVanSideSprite } from "./VanSideSprite";
 export { createTrafficCarSprite, getRandomCarColor } from "./TrafficCarSprite";

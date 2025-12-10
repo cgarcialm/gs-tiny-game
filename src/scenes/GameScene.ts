@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite, createCeciSprite, createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
+import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite, createCeciSprite, createCardPieceSprite, spawnCardPieceSparkles, createVanSideSprite } from "../utils/sprites";
 import { createCrowdPersonSprite, getRandomCrowdColors } from "../utils/sprites/CrowdPersonSprite";
 import { getHorizontalAxis, getVerticalAxis, shouldCloseDialogue, HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
@@ -286,65 +286,36 @@ export default class GameScene extends Phaser.Scene {
         break;
         
       case 2:
-        // Level 2: After Ice Hockey - Intro to Seattle Traffic memory
-        // Clean scene - only Grayson
+        // Level 2: After Ice Hockey - Seattle Traffic memory intro
+        // Full animated scene: card pickup -> van emerges -> loading scene -> drive off
         this.player = createGraysonSprite(this, -30, 90);
         this.player.setScale(-1, 1); // Face right
         
-        // No other NPCs or objects
+        // Card piece on floor (center)
+        this.cardPiece = createCardPieceSprite(this, 160, 110);
+        this.cardPiece.setVisible(true);
+        
+        // No other NPCs initially
         this.npc = undefined as any;
         this.cat = undefined as any;
         this.ceci = undefined as any;
-        this.cardPiece = undefined as any;
         
-        // Grayson walks in from left to center
+        // Grayson walks in to card
         this.time.delayedCall(500, () => {
-          // Animate walking
           const walkTimer = this.time.addEvent({
             delay: 150,
             repeat: 12,
-            callback: () => {
-              updateGraysonWalk(this.player, true);
-            }
+            callback: () => updateGraysonWalk(this.player, true)
           });
           
           this.tweens.add({
             targets: this.player,
-            x: 160,
+            x: 140,
             duration: 2000,
             ease: "Linear",
             onComplete: () => {
               walkTimer.destroy();
-              
-              // Transition to Seattle Traffic scene
-              this.time.delayedCall(500, () => {
-                const promptText = this.add.text(160, 90, "Press ENTER to continue", {
-                  fontSize: '14px',
-                  fontFamily: 'monospace',
-                  color: '#ffffff',
-                  backgroundColor: '#000000',
-                  padding: { x: 10, y: 8 },
-                  align: 'center'
-                });
-                promptText.setOrigin(0.5);
-                promptText.setDepth(100);
-                
-                // Wait for ENTER
-                const generation = this.sceneGeneration; // Capture current generation
-                const continueCheck = () => {
-                  if (generation !== this.sceneGeneration) {
-                    this.events.off('update', continueCheck); // Scene restarted, stop listening
-                    return;
-                  }
-                  if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
-                    this.events.off('update', continueCheck);
-                    promptText.destroy();
-                    // Go to Seattle Traffic scene
-                    fadeToScene(this, SCENES.SEATTLE_TRAFFIC, 1000);
-                  }
-                };
-                this.events.on('update', continueCheck);
-              });
+              this.startSeattleTrafficIntro();
             }
           });
         });
@@ -854,6 +825,202 @@ export default class GameScene extends Phaser.Scene {
     // Start Ceci's dialogue (will advance with ENTER/SPACE)
     this.dialogIndex = 0;
     this.showDialog(this.currentDialogLines[this.dialogIndex]);
+  }
+  
+  // Seattle Traffic intro - van loading scene
+  private seattleVan?: Phaser.GameObjects.Container;
+  private seattleEbo?: Phaser.GameObjects.Container;
+  private seattleCeci?: Phaser.GameObjects.Container;
+  
+  private startSeattleTrafficIntro() {
+    const generation = this.sceneGeneration;
+    let pickedUp = false;
+    
+    const checkPickup = () => {
+      if (generation !== this.sceneGeneration || pickedUp) return;
+      
+      if (Phaser.Input.Keyboard.JustDown(this.controls.interact)) {
+        pickedUp = true;
+        this.events.off('update', checkPickup);
+        
+        // Memory collected
+        spawnCardPieceSparkles(this, 160, 110);
+        this.cardPiece?.destroy();
+        this.cardPiecesCollected++;
+        this.updateMemoryCounter();
+        
+        // "Memory collected!" text
+        const pickupText = this.add.text(160, 100, "Memory collected!", FLOATING_MESSAGE_STYLE)
+          .setOrigin(0.5);
+        this.tweens.add({
+          targets: pickupText,
+          y: 80,
+          alpha: 0,
+          duration: 1500,
+          ease: "Power2",
+          onComplete: () => {
+            pickupText.destroy();
+            this.showVanFromMemory();
+          }
+        });
+      }
+    };
+    this.events.on('update', checkPickup);
+  }
+  
+  private showVanFromMemory() {
+    // Van emerges from where card was
+    this.seattleVan = createVanSideSprite(this, 160, 110);
+    this.seattleVan.setScale(0);
+    this.seattleVan.setDepth(5);
+    
+    // Scale up animation (van emerging from memory)
+    this.tweens.add({
+      targets: this.seattleVan,
+      scale: 0.8,
+      duration: 800,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        // Move van to right side, Grayson waits by it
+        this.time.delayedCall(500, () => {
+          this.setupLoadingScene();
+        });
+      }
+    });
+  }
+  
+  private setupLoadingScene() {
+    // Move van to right side
+    this.tweens.add({
+      targets: this.seattleVan,
+      x: 220,
+      y: 100,
+      scale: 1,
+      duration: 800,
+      ease: "Sine.easeInOut"
+    });
+    
+    // Grayson moves to van and waits (face left, looking impatient)
+    const walkTimer = this.time.addEvent({
+      delay: 150,
+      repeat: 8,
+      callback: () => updateGraysonWalk(this.player, true)
+    });
+    
+    this.tweens.add({
+      targets: this.player,
+      x: 190,
+      duration: 1200,
+      ease: "Linear",
+      onComplete: () => {
+        walkTimer.destroy();
+        this.player.setScale(1, 1); // Face left (waiting for Ceci)
+        
+        // Ceci and Ebo run in from left
+        this.time.delayedCall(800, () => {
+          this.ceciAndEboArrive();
+        });
+      }
+    });
+  }
+  
+  private seattleDialogueLines = [
+    "Grayson: Finally! Let's go!",
+    "Ceci: Had to get Ebo ready...",
+    "Grayson: We need to leave NOW!",
+    "Ceci: ...and I need coffee on the way."
+  ];
+  private seattleDialogueIndex = 0;
+  
+  private ceciAndEboArrive() {
+    // Create Ceci and Ebo on left side
+    this.seattleCeci = createCeciSprite(this, -30, 95);
+    this.seattleCeci.setScale(-1, 1); // Face right
+    
+    this.seattleEbo = createEboshiSprite(this, -60, 100);
+    this.seattleEbo.setScale(-1, 1); // Face right
+    
+    // Ceci runs in
+    this.tweens.add({
+      targets: this.seattleCeci,
+      x: 160,
+      duration: 1500,
+      ease: "Linear"
+    });
+    
+    // Ebo follows behind
+    this.tweens.add({
+      targets: this.seattleEbo,
+      x: 130,
+      duration: 1800,
+      ease: "Linear",
+      onComplete: () => {
+        // Start dialogue sequence with ENTER to advance
+        this.time.delayedCall(300, () => {
+          this.seattleDialogueIndex = 0;
+          this.showSeattleDialogue();
+        });
+      }
+    });
+  }
+  
+  private showSeattleDialogue() {
+    if (this.seattleDialogueIndex < this.seattleDialogueLines.length) {
+      this.dialogueManager.show(this.seattleDialogueLines[this.seattleDialogueIndex]);
+      
+      const generation = this.sceneGeneration;
+      const checkAdvance = () => {
+        if (generation !== this.sceneGeneration) {
+          this.events.off('update', checkAdvance);
+          return;
+        }
+        if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+          this.events.off('update', checkAdvance);
+          this.seattleDialogueIndex++;
+          this.showSeattleDialogue();
+        }
+      };
+      this.events.on('update', checkAdvance);
+    } else {
+      // Dialogue done, get in the van
+      this.dialogueManager.hide();
+      this.everyoneGetsInVan();
+    }
+  }
+  
+  private everyoneGetsInVan() {
+    // Everyone moves to van and disappears behind it
+    this.tweens.add({
+      targets: [this.player, this.seattleCeci, this.seattleEbo],
+      x: 220,
+      duration: 800,
+      ease: "Sine.easeIn",
+      onComplete: () => {
+        // Hide sprites (they're "in" the van)
+        this.player.setVisible(false);
+        this.seattleCeci?.setVisible(false);
+        this.seattleEbo?.setVisible(false);
+        
+        // Van drives off
+        this.time.delayedCall(500, () => {
+          this.vanDrivesOff();
+        });
+      }
+    });
+  }
+  
+  private vanDrivesOff() {
+    // Van drives off to the right
+    this.tweens.add({
+      targets: this.seattleVan,
+      x: 400,
+      duration: 1500,
+      ease: "Quad.easeIn",
+      onComplete: () => {
+        // Fade to Seattle Traffic
+        fadeToScene(this, SCENES.SEATTLE_TRAFFIC, 1000);
+      }
+    });
   }
   
   private showCeciCardPiece() {
