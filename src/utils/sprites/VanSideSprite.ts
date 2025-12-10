@@ -15,7 +15,7 @@ export function createVanSideSprite(
   // Colors matching the pixel art reference
   const BURGUNDY = 0x6b2020;       // Main body
   const BURGUNDY_DARK = 0x4a1515;  // Shadows/accents
-  const BURGUNDY_LIGHT = 0x8b3030; // Highlights
+  // const BURGUNDY_LIGHT = 0x8b3030; // Highlights (unused)
   const WINDOW = 0x4a7a7a;         // Teal-ish windows
   const BLACK = 0x1a1a1a;          // Outlines, wheel wells
   const WHEEL_DARK = 0x2a2a2a;     // Tire

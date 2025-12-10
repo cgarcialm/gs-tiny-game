@@ -223,6 +223,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     }
   }
   
+  // @ts-ignore - Debug function, uncomment call in update() to use
   private drawDebugHitboxes() {
     // Create or clear debug graphics
     if (!this.debugHitboxGraphics) {
