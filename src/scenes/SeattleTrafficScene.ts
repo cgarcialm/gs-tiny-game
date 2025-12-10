@@ -44,10 +44,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private laneChevrons: Phaser.GameObjects.Graphics[] = [];
   
   // Lane speed rules: left=fast, middle=medium, right=slow
-  private laneSpeeds = [150, 100, 50]; // Lane 0 (left), 1 (middle), 2 (right)
+  private laneSpeeds = [180, 120, 50]; // Lane 0 (left), 1 (middle), 2 (right)
   
   // Traffic cars
-  private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number, color: number, carType: number, exiting?: boolean }[] = [];
+  private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number, color: number, carType: number, exiting?: boolean, merging?: boolean }[] = [];
   
   // Car size multipliers by type: 0=sedan, 1=SUV, 2=compact, 3=pickup
   private carSizeMultipliers = [2, 1.5, 2, 1.7];
@@ -113,6 +113,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private starbucks2ExitActive = false;
   private starbucks2ExitDecisionMade = false;
   
+  // Protection after Starbucks - skip the next merge ramp
+  private skipNextMerge = false;
+  
   // Checkpoints - tuned so ETA starts at 8:15 in middle lane (speed 100) at 45x time
   // At speed 100: 8000/100 * 0.75 = 60 game minutes → ETA 8:15
   private starbucks1Distance = 2667;   // 1/3 of total distance (~20 miles)
@@ -159,6 +162,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.starbucks2ExitSpawned = false;
     this.starbucks2ExitActive = false;
     this.starbucks2ExitDecisionMade = false;
+    this.skipNextMerge = false;
     
     // Reset ramps
     this.activeRamps = [];
@@ -245,12 +249,34 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     );
     
     // Draw traffic car hitboxes
+    // Base hitbox sizes per car type: 0=sedan, 1=SUV, 2=compact, 3=pickup
+    const baseHitboxSizes = [
+      { w: 16, h: 22 },  // sedan
+      { w: 18, h: 28 },  // SUV
+      { w: 10, h: 14 },  // compact (smaller)
+      { w: 17, h: 26 },  // pickup
+    ];
+    
     this.trafficCars.forEach(car => {
       const carX = car.container.x;
       const carY = car.y;
       
-      // Color based on lane match
-      if (car.lane === this.currentLane) {
+      // Calculate perspective scale (same as car rendering)
+      const t = (carY - this.horizonY) / (this.roadBottomY - this.horizonY);
+      const carSizeMultiplier = this.carSizeMultipliers[car.carType ?? 0];
+      const scale = (0.2 + t * 0.8) * carSizeMultiplier;
+      
+      // Hitbox size scales with perspective AND uses car-type-specific base size
+      const baseSize = baseHitboxSizes[car.carType ?? 0];
+      const hitboxWidth = baseSize.w * scale;
+      const hitboxHeight = baseSize.h * scale;
+      
+      // Color based on lane match (use actual X position for merging cars)
+      const isInPlayerLane = car.merging 
+        ? Math.abs(carX - this.getLaneX(this.currentLane, carY)) < 25  // Check actual position
+        : car.lane === this.currentLane;
+      
+      if (isInPlayerLane) {
         // Same lane - red (can collide)
         this.debugHitboxGraphics!.lineStyle(2, 0xff0000, 1);
       } else {
@@ -258,12 +284,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         this.debugHitboxGraphics!.lineStyle(2, 0xffff00, 0.5);
       }
       
-      // Draw car hitbox
+      // Draw car hitbox (scaled)
       this.debugHitboxGraphics!.strokeRect(
-        carX - 15,
-        carY - 20,
-        30,
-        40
+        carX - hitboxWidth / 2,
+        carY - hitboxHeight / 2,
+        hitboxWidth,
+        hitboxHeight
       );
       
       // Draw Y value text
@@ -1658,6 +1684,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       this.lastRampTime = this.currentTime;
       
       // Trigger EXIT first, then MERGE after a short delay (like real interchanges)
+      // But skip the merge if we just came from a Starbucks exit
       this.triggerOffRamp();
       this.time.delayedCall(1000, () => {
         this.triggerOnRamp();
@@ -1883,6 +1910,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private triggerOnRamp() {
+    // Skip this merge if flag is set (coming back from Starbucks)
+    if (this.skipNextMerge) {
+      this.skipNextMerge = false;
+      return;
+    }
+    
     // Create visual ramp
     this.createRampGraphics('on');
     
@@ -2365,9 +2398,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
             duration: 800,
             ease: 'Sine.easeOut',
             onComplete: () => {
-              // Resume gameplay
+              // Resume gameplay - skip next merge to give player breathing room
               this.gamePhase = 'toStarbucks2';
               this.roadSpeed = savedSpeed;
+              this.skipNextMerge = true;
             }
           });
         });
@@ -2409,13 +2443,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
             duration: 800,
             ease: 'Sine.easeOut',
             onComplete: () => {
-              // Resume gameplay with heavier traffic
-          this.gamePhase = 'toTrailhead';
+              // Resume gameplay with heavier traffic - skip next merge
+              this.gamePhase = 'toTrailhead';
               this.roadSpeed = savedSpeed;
-          this.carSpawnInterval = 1500;
+              this.carSpawnInterval = 1500;
+              this.skipNextMerge = true;
             }
+          });
         });
-      });
       }
     });
   }
