@@ -291,8 +291,8 @@ export default class GameScene extends Phaser.Scene {
         this.player = createGraysonSprite(this, -30, 90);
         this.player.setScale(-1, 1); // Face right
         
-        // Card piece on floor (center)
-        this.cardPiece = createCardPieceSprite(this, 160, 110);
+        // Card piece on floor (to the right)
+        this.cardPiece = createCardPieceSprite(this, 200, 110);
         this.cardPiece.setVisible(true);
         
         // No other NPCs initially
@@ -300,7 +300,7 @@ export default class GameScene extends Phaser.Scene {
         this.cat = undefined as any;
         this.ceci = undefined as any;
         
-        // Grayson walks in to card
+        // Grayson walks in to left of card
         this.time.delayedCall(500, () => {
           const walkTimer = this.time.addEvent({
             delay: 150,
@@ -310,7 +310,7 @@ export default class GameScene extends Phaser.Scene {
           
           this.tweens.add({
             targets: this.player,
-            x: 140,
+            x: 160,
             duration: 2000,
             ease: "Linear",
             onComplete: () => {
@@ -843,23 +843,13 @@ export default class GameScene extends Phaser.Scene {
         pickedUp = true;
         this.events.off('update', checkPickup);
         
-        // Memory collected
-        spawnCardPieceSparkles(this, 160, 110);
-        this.cardPiece?.destroy();
-        this.cardPiecesCollected++;
-        this.updateMemoryCounter();
-        
-        // "Memory collected!" text
-        const pickupText = this.add.text(160, 100, "Memory collected!", FLOATING_MESSAGE_STYLE)
-          .setOrigin(0.5);
+        // Move Grayson to the left first so van doesn't cover him
         this.tweens.add({
-          targets: pickupText,
-          y: 80,
-          alpha: 0,
-          duration: 1500,
-          ease: "Power2",
+          targets: this.player,
+          x: 100,
+          duration: 500,
+          ease: "Sine.easeOut",
           onComplete: () => {
-            pickupText.destroy();
             this.showVanFromMemory();
           }
         });
@@ -869,21 +859,49 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private showVanFromMemory() {
-    // Van emerges from where card was
-    this.seattleVan = createVanSideSprite(this, 160, 110);
-    this.seattleVan.setScale(0);
-    this.seattleVan.setDepth(5);
+    // Van starts at card position (right side), very small
+    this.seattleVan = createVanSideSprite(this, 200, 110);
+    this.seattleVan.setScale(0.05);
+    this.seattleVan.setDepth(4); // Behind card initially
     
-    // Scale up animation (van emerging from memory)
+    // Scale up while moving up (van emerging from card)
     this.tweens.add({
       targets: this.seattleVan,
       scale: 0.8,
-      duration: 800,
-      ease: "Back.easeOut",
+      y: 80,
+      duration: 1000,
+      ease: "Power2.easeOut",
+      onStart: () => {
+        // Bring van to front as it emerges
+        this.time.delayedCall(200, () => {
+          this.seattleVan?.setDepth(10);
+        });
+      },
       onComplete: () => {
-        // Move van to right side, Grayson waits by it
-        this.time.delayedCall(500, () => {
-          this.setupLoadingScene();
+        // Then sparkles
+        spawnCardPieceSparkles(this, 200, 110);
+        
+        // Card disappears
+        this.cardPiece?.destroy();
+        this.cardPiecesCollected++;
+        this.updateMemoryCounter();
+        
+        // "Memory collected!" text
+        const pickupText = this.add.text(200, 70, "Memory collected!", FLOATING_MESSAGE_STYLE)
+          .setOrigin(0.5);
+        this.tweens.add({
+          targets: pickupText,
+          y: 65,
+          alpha: 0,
+          duration: 1200,
+          ease: "Power2",
+          onComplete: () => {
+            pickupText.destroy();
+            // Move van to right side, Grayson waits by it
+            this.time.delayedCall(300, () => {
+              this.setupLoadingScene();
+            });
+          }
         });
       }
     });
@@ -925,10 +943,8 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private seattleDialogueLines = [
-    "Grayson: Finally! Let's go!",
-    "Ceci: Had to get Ebo ready...",
-    "Grayson: We need to leave NOW!",
-    "Ceci: ...and I need coffee on the way."
+    "Grayson: What took so long??",
+    "Ceci: Ebo needed her sweater."
   ];
   private seattleDialogueIndex = 0;
   
