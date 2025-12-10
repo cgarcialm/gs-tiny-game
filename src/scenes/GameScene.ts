@@ -942,10 +942,6 @@ export default class GameScene extends Phaser.Scene {
     });
   }
   
-  private seattleDialogueLines = [
-    "Grayson: What took so long??",
-    "Ceci: Ebo needed her sweater."
-  ];
   private seattleDialogueIndex = 0;
   
   private ceciAndEboArrive() {
@@ -971,7 +967,7 @@ export default class GameScene extends Phaser.Scene {
       duration: 1800,
       ease: "Linear",
       onComplete: () => {
-        // Start dialogue sequence with ENTER to advance
+        // Start dialogue sequence
         this.time.delayedCall(300, () => {
           this.seattleDialogueIndex = 0;
           this.showSeattleDialogue();
@@ -981,15 +977,13 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private showSeattleDialogue() {
-    if (this.seattleDialogueIndex < this.seattleDialogueLines.length) {
-      this.dialogueManager.show(this.seattleDialogueLines[this.seattleDialogueIndex]);
-      
-      const generation = this.sceneGeneration;
+    const generation = this.sceneGeneration;
+    
+    if (this.seattleDialogueIndex === 0) {
+      // Grayson: What took so long??
+      this.dialogueManager.show("Grayson: What took so long??");
       const checkAdvance = () => {
-        if (generation !== this.sceneGeneration) {
-          this.events.off('update', checkAdvance);
-          return;
-        }
+        if (generation !== this.sceneGeneration) { this.events.off('update', checkAdvance); return; }
         if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
           this.events.off('update', checkAdvance);
           this.seattleDialogueIndex++;
@@ -997,26 +991,65 @@ export default class GameScene extends Phaser.Scene {
         }
       };
       this.events.on('update', checkAdvance);
-    } else {
-      // Dialogue done, get in the van
-      this.dialogueManager.hide();
-      this.everyoneGetsInVan();
+    } else if (this.seattleDialogueIndex === 1) {
+      // Ceci: Ebo needed her sweater.
+      this.dialogueManager.show("Ceci: Ebo needed her sweater.");
+      const checkAdvance = () => {
+        if (generation !== this.sceneGeneration) { this.events.off('update', checkAdvance); return; }
+        if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+          this.events.off('update', checkAdvance);
+          this.dialogueManager.hide();
+          // Ceci gets in the van
+          this.ceciGetsInVan();
+        }
+      };
+      this.events.on('update', checkAdvance);
+    } else if (this.seattleDialogueIndex === 2) {
+      // Grayson: The hike is gonna be PACKED
+      this.dialogueManager.show("Grayson: The hike is gonna be PACKED");
+      const checkAdvance = () => {
+        if (generation !== this.sceneGeneration) { this.events.off('update', checkAdvance); return; }
+        if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+          this.events.off('update', checkAdvance);
+          this.dialogueManager.hide();
+          this.graysonGetsInVan();
+        }
+      };
+      this.events.on('update', checkAdvance);
     }
   }
   
-  private everyoneGetsInVan() {
-    // Everyone moves to van and disappears behind it
+  private ceciGetsInVan() {
+    // Ceci and Ebo move to van together
     this.tweens.add({
-      targets: [this.player, this.seattleCeci, this.seattleEbo],
+      targets: [this.seattleCeci, this.seattleEbo],
+      x: 220,
+      duration: 600,
+      ease: "Sine.easeIn",
+      onComplete: () => {
+        this.seattleCeci?.setVisible(false);
+        this.seattleEbo?.setVisible(false);
+        // Now Grayson says his line
+        this.time.delayedCall(300, () => {
+          this.seattleDialogueIndex = 2;
+          this.showSeattleDialogue();
+        });
+      }
+    });
+  }
+  
+  private graysonGetsInVan() {
+    // Turn Grayson to face right before getting in
+    this.player.setScale(-1, 1);
+    
+    // Grayson moves to van
+    this.tweens.add({
+      targets: this.player,
       x: 220,
       duration: 800,
       ease: "Sine.easeIn",
       onComplete: () => {
-        // Hide sprites (they're "in" the van)
         this.player.setVisible(false);
-        this.seattleCeci?.setVisible(false);
-        this.seattleEbo?.setVisible(false);
-        
         // Van drives off
         this.time.delayedCall(500, () => {
           this.vanDrivesOff();
