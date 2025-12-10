@@ -44,7 +44,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private laneChevrons: Phaser.GameObjects.Graphics[] = [];
   
   // Lane speed rules: left=fast, middle=medium, right=slow
-  private laneSpeeds = [180, 120, 50]; // Lane 0 (left), 1 (middle), 2 (right)
+  private laneSpeeds = [160, 100, 50]; // Lane 0 (left), 1 (middle), 2 (right)
   
   // Traffic cars
   private trafficCars: { container: Phaser.GameObjects.Container, lane: number, speed: number, y: number, color: number, carType: number, exiting?: boolean, merging?: boolean }[] = [];
@@ -113,8 +113,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private starbucks2ExitActive = false;
   private starbucks2ExitDecisionMade = false;
   
-  // Protection after Starbucks - skip the next merge ramp
-  private skipNextMerge = false;
+  // Protection after Starbucks - block middle lane spawning temporarily
+  private blockMiddleLane = false;
   
   // Checkpoints - tuned so ETA starts at 8:15 in middle lane (speed 100) at 45x time
   // At speed 100: 8000/100 * 0.75 = 60 game minutes → ETA 8:15
@@ -162,7 +162,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.starbucks2ExitSpawned = false;
     this.starbucks2ExitActive = false;
     this.starbucks2ExitDecisionMade = false;
-    this.skipNextMerge = false;
+    this.blockMiddleLane = false;
     
     // Reset ramps
     this.activeRamps = [];
@@ -1256,6 +1256,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       ease: "Sine.easeInOut",
       onComplete: () => {
         this.isChangingLane = false;
+        
+        // Slow down cars behind us in the new lane to avoid rear collision
+        this.trafficCars.forEach(car => {
+          if (car.lane === this.currentLane && car.y > this.vanY) {
+            // Car is behind us in our lane - slow it down
+            car.speed = Math.min(car.speed, this.roadSpeed - 20);
+          }
+        });
       }
     });
   }
@@ -1314,6 +1322,11 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // During exit approach or active exit, don't spawn cars in the right lane
     if ((nearExit || this.finalExitActive || this.starbucks1ExitActive || this.starbucks2ExitActive) && lane === 2) {
       lane = Math.floor(Math.random() * 2); // Only lanes 0 or 1
+    }
+    
+    // After returning from Starbucks, block middle lane to give player clear path
+    if (this.blockMiddleLane && lane === 1) {
+      lane = 0; // Force to left lane only
     }
     
     // Cars match their lane speed (with small variation)
@@ -1384,56 +1397,125 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   
-  private checkCarCollision(car: { container: Phaser.GameObjects.Container, lane: number, y: number }): boolean {
-    // Simple collision: same lane and overlapping Y
+  private checkCarCollision(car: { container: Phaser.GameObjects.Container, lane: number, y: number, carType?: number }): boolean {
+    // Don't check collision while mid-lane-change (van hasn't arrived yet)
+    if (this.isChangingLane) return false;
+    
+    // Simple collision: same lane
     if (car.lane !== this.currentLane) return false;
     
-    // Don't collide with cars far behind (coming from behind)
-    if (car.y > this.vanY + 30) return false;
+    // Calculate car hitbox using same logic as debug visualization
+    const carX = car.container.x;
+    const carY = car.y;
+    const t = (carY - this.horizonY) / (this.roadBottomY - this.horizonY);
+    const carSizeMultiplier = this.carSizeMultipliers[car.carType ?? 0];
+    const scale = (0.2 + t * 0.8) * carSizeMultiplier;
     
-    // Collision distance - increased for larger sprites
-    const distance = Math.abs(car.y - this.vanY);
-    return distance < 45;
+    // Base hitbox sizes per car type
+    const baseHitboxSizes = [
+      { w: 16, h: 22 },  // sedan
+      { w: 18, h: 28 },  // SUV
+      { w: 10, h: 14 },  // compact
+      { w: 17, h: 26 },  // pickup
+    ];
+    const baseSize = baseHitboxSizes[car.carType ?? 0];
+    const carHitboxW = baseSize.w * scale;
+    const carHitboxH = baseSize.h * scale;
+    
+    // Van hitbox (fixed size at bottom of screen)
+    const vanX = this.getLaneX(this.currentLane);
+    const vanHitboxW = 30;
+    const vanHitboxH = 40;
+    
+    // Check rectangle overlap
+    const carLeft = carX - carHitboxW / 2;
+    const carRight = carX + carHitboxW / 2;
+    const carTop = carY - carHitboxH / 2;
+    const carBottom = carY + carHitboxH / 2;
+    
+    const vanLeft = vanX - vanHitboxW / 2;
+    const vanRight = vanX + vanHitboxW / 2;
+    const vanTop = this.vanY - vanHitboxH / 2;
+    const vanBottom = this.vanY + vanHitboxH / 2;
+    
+    // Rectangle intersection check
+    return !(carRight < vanLeft || carLeft > vanRight || carBottom < vanTop || carTop > vanBottom);
   }
   
   private hitCar() {
     // Don't add rage if we're in the delayed loss state or already lost
     if (this.rageCheckDelayed || this.gamePhase === 'lost') return;
     
-    // Increase rage when hitting car
-    this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.hitCar);
+    // Increase rage when hitting car - instant crash
+    this.rageLevel = 100;
     // Use target lane position (not mid-animation position)
     this.showRagePopup(this.RAGE_CONFIG.hitCar, this.getLaneX(this.currentLane), this.vanY - 20);
     
     // Flash effect
     this.cameras.main.flash(200, 255, 0, 0, false);
     
-    // Immediate rage check
-    this.checkRageLimit();
+    // Direct crash (not rage quit)
+    this.loseByRage('crash');
   }
   
   private rageCheckDelayed = false; // Delay rage check to show dialogue first
   
   private checkRageLimit() {
     if (this.rageLevel >= 100 && this.gamePhase !== 'lost' && !this.rageCheckDelayed) {
-      this.loseByRage();
+      this.loseByRage('rage');
     }
   }
   
+  // Starbucks popup position (used for all Starbucks-related rage popups)
+  private readonly STARBUCKS_POPUP_X = 240;
+  private readonly STARBUCKS_POPUP_Y = 50;
+  
   private showRagePopup(amount: number, x: number, y: number) {
-    const text = this.add.text(x, y, `+${amount}`, {
+    // Auto-size based on amount: 100=huge, 80=large, 50=medium, others=normal
+    let fontSize: string;
+    let startScale: number;
+    let endScale: number;
+    let floatUp = false;
+    
+    if (amount >= 100) {
+      fontSize = '22px';
+      startScale = 1.1;
+      endScale = 1.6;
+      floatUp = true;
+    } else if (amount >= 80) {
+      fontSize = '18px';
+      startScale = 0.9;
+      endScale = 1.4;
+      floatUp = true;
+    } else if (amount >= 50) {
+      fontSize = '16px';
+      startScale = 0.8;
+      endScale = 1.2;
+      floatUp = true;
+    } else {
+      fontSize = '12px';
+      startScale = 0.8;
+      endScale = 1.2;
+      floatUp = false;
+    }
+    
+    // For large popups, start from below and float up
+    const startY = floatUp ? y + 40 : y;
+    
+    const text = this.add.text(x, startY, `+${amount}`, {
       fontFamily: "monospace",
-      fontSize: "14px",
+      fontSize: fontSize,
       color: "#ff3333",
       fontStyle: "bold",
       stroke: "#000000",
-      strokeThickness: 2
-    }).setOrigin(0.5).setDepth(250).setScale(0.8); // Depth 250 to appear above dialogue (200)
+      strokeThickness: 3
+    }).setOrigin(0.5).setDepth(250).setScale(startScale); // Depth 250 to appear above dialogue (200)
     
-    // Pop in scale effect
+    // Pop in scale effect (and float up for large)
     this.tweens.add({
       targets: text,
-      scale: 1.2,
+      scale: endScale,
+      y: y,  // Float up to target position
       duration: 500,
       ease: 'Back.easeOut',
       onComplete: () => {
@@ -1441,7 +1523,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         this.tweens.add({
           targets: text,
           y: y - 30,
-          scale: 1,
+          scale: startScale,
           alpha: 0,
           duration: 2500,
           ease: 'Power1',
@@ -1910,12 +1992,6 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private triggerOnRamp() {
-    // Skip this merge if flag is set (coming back from Starbucks)
-    if (this.skipNextMerge) {
-      this.skipNextMerge = false;
-      return;
-    }
-    
     // Create visual ramp
     this.createRampGraphics('on');
     
@@ -2246,9 +2322,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Clean up the exit ramp
     this.cleanupActiveRamps();
     
-    // Rage increase for missing (show popup on right side, above dialogue with depth 250)
+    // Rage increase for missing (show popup from Ceci's dialogue area - larger and centered)
     this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.missedStarbucks1);
-    this.showRagePopup(this.RAGE_CONFIG.missedStarbucks1, this.getLaneX(2) + 40, this.vanY - 60);
+    this.showRagePopup(this.RAGE_CONFIG.missedStarbucks1, this.STARBUCKS_POPUP_X, this.STARBUCKS_POPUP_Y);
     
     this.showSpeechBubble("Ceci", "Missed it... whatever, wrong one", 3000);
     
@@ -2278,9 +2354,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Clean up the exit ramp
     this.cleanupActiveRamps();
     
-    // Big rage increase for missing the right Starbucks (show popup on right side, above dialogue)
+    // Big rage increase for missing the right Starbucks (show popup from Ceci's dialogue area)
     this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.missedStarbucks2);
-    this.showRagePopup(this.RAGE_CONFIG.missedStarbucks2, this.getLaneX(2) + 40, this.vanY - 60);
+    this.showRagePopup(this.RAGE_CONFIG.missedStarbucks2, this.STARBUCKS_POPUP_X, this.STARBUCKS_POPUP_Y);
     
     this.showSpeechBubble("Ceci", "WHAT?! My coffee!!", 3000);
     
@@ -2369,9 +2445,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
           // Wrong Starbucks dialogue
           this.showSpeechBubble("Ceci", "Wrong one! Mine's next!", 3000);
         
-          // Increase rage (popup from ramp area - right side of road)
+          // Increase rage (popup from Ceci's dialogue area)
           this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.wrongStarbucks);
-          this.showRagePopup(this.RAGE_CONFIG.wrongStarbucks, 280, this.vanY);
+          this.showRagePopup(this.RAGE_CONFIG.wrongStarbucks, this.STARBUCKS_POPUP_X, this.STARBUCKS_POPUP_Y);
           
           // If rage maxed out, slow down and show rage loss
           if (this.rageLevel >= 100) {
@@ -2398,10 +2474,24 @@ export default class SeattleTrafficScene extends Phaser.Scene {
             duration: 800,
             ease: 'Sine.easeOut',
             onComplete: () => {
-              // Resume gameplay - skip next merge to give player breathing room
+              // Resume gameplay - block middle lane briefly to give player clear path
               this.gamePhase = 'toStarbucks2';
               this.roadSpeed = savedSpeed;
-              this.skipNextMerge = true;
+              this.blockMiddleLane = true;
+              
+              // Remove middle lane cars clearly behind the player (with buffer)
+              for (let i = this.trafficCars.length - 1; i >= 0; i--) {
+                const car = this.trafficCars[i];
+                if (car.lane === 1 && car.y > this.vanY + 30) {
+                  car.container.destroy();
+                  this.trafficCars.splice(i, 1);
+                }
+              }
+              
+              // Clear middle lane block after 3 seconds
+              this.time.delayedCall(3000, () => {
+                this.blockMiddleLane = false;
+              });
             }
           });
         });
@@ -2443,11 +2533,25 @@ export default class SeattleTrafficScene extends Phaser.Scene {
             duration: 800,
             ease: 'Sine.easeOut',
             onComplete: () => {
-              // Resume gameplay with heavier traffic - skip next merge
+              // Resume gameplay with heavier traffic - block middle lane briefly
               this.gamePhase = 'toTrailhead';
               this.roadSpeed = savedSpeed;
               this.carSpawnInterval = 1500;
-              this.skipNextMerge = true;
+              this.blockMiddleLane = true;
+              
+              // Remove middle lane cars clearly behind the player (with buffer)
+              for (let i = this.trafficCars.length - 1; i >= 0; i--) {
+                const car = this.trafficCars[i];
+                if (car.lane === 1 && car.y > this.vanY + 30) {
+                  car.container.destroy();
+                  this.trafficCars.splice(i, 1);
+                }
+              }
+              
+              // Clear middle lane block after 3 seconds
+              this.time.delayedCall(3000, () => {
+                this.blockMiddleLane = false;
+              });
             }
           });
         });
@@ -2479,7 +2583,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     });
   }
   
-  private loseByRage() {
+  private loseByRage(reason: 'crash' | 'rage' = 'rage') {
     this.gamePhase = 'lost';
     
     // Stop any lane change in progress
@@ -2524,8 +2628,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     // Cartoon explosion effect from the car (use captured position)
     this.createRageExplosion(explosionX, explosionY);
     
-    // Show "RAGE QUIT" text that pulses (positioned higher to not cover scene)
-    const rageMaxText = this.add.text(160, 35, ">>> RAGE QUIT <<<", {
+    // Show loss text that pulses (positioned higher to not cover scene)
+    const lossMessage = reason === 'crash' ? ">>> CRASH! <<<" : ">>> RAGE QUIT! <<<";
+    const rageMaxText = this.add.text(160, 35, lossMessage, {
       fontFamily: "monospace",
       fontSize: "14px",
       color: "#ff0000",
