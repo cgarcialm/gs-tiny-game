@@ -54,6 +54,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private carSpawnTimer = 0;
   private carSpawnInterval = 2000; // Spawn every 2 seconds
   
+  // Debug hitboxes
+  private debugHitboxGraphics?: Phaser.GameObjects.Graphics;
+  
   // On-ramps and off-ramps (every 5 game minutes = 20 real seconds at 15x)
   private lastRampTime = 7 * 60 + 10; // Start time (5 min before game start so first ramps appear at 7:15)
   private rampInterval = 5; // Every 5 game minutes (20 real seconds at 15x)
@@ -216,7 +219,61 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       this.checkCheckpoints();
       this.checkGameOver();
       this.updateUI();
+      // this.drawDebugHitboxes(); // Debug: uncomment to show hitboxes
     }
+  }
+  
+  private drawDebugHitboxes() {
+    // Create or clear debug graphics
+    if (!this.debugHitboxGraphics) {
+      this.debugHitboxGraphics = this.add.graphics();
+      this.debugHitboxGraphics.setDepth(1000);
+    }
+    this.debugHitboxGraphics.clear();
+    
+    // Van hitbox (at vanY, currentLane position)
+    const vanX = this.getLaneX(this.currentLane);
+    
+    // Draw van hitbox (green rectangle) - just the van itself
+    this.debugHitboxGraphics.lineStyle(2, 0x00ff00, 1);
+    this.debugHitboxGraphics.strokeRect(
+      vanX - 15, 
+      this.vanY - 20, 
+      30, 
+      40
+    );
+    
+    // Draw traffic car hitboxes
+    this.trafficCars.forEach(car => {
+      const carX = car.container.x;
+      const carY = car.y;
+      
+      // Color based on lane match
+      if (car.lane === this.currentLane) {
+        // Same lane - red (can collide)
+        this.debugHitboxGraphics!.lineStyle(2, 0xff0000, 1);
+      } else {
+        // Different lane - yellow (no collision)
+        this.debugHitboxGraphics!.lineStyle(2, 0xffff00, 0.5);
+      }
+      
+      // Draw car hitbox
+      this.debugHitboxGraphics!.strokeRect(
+        carX - 15,
+        carY - 20,
+        30,
+        40
+      );
+      
+      // Draw Y value text
+      const yText = this.add.text(carX + 20, carY, `Y:${Math.round(carY)}`, {
+        fontSize: '8px',
+        color: '#ffffff'
+      }).setDepth(1001);
+      
+      // Auto-destroy text after a frame
+      this.time.delayedCall(16, () => yText.destroy());
+    });
   }
   
   private createRoad() {
