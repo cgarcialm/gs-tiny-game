@@ -2262,11 +2262,16 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       alpha: 1,
       duration: 500,
       onComplete: () => {
-        // Wait then fade entire scene
+        // Wait then transition to next scene
         this.time.delayedCall(2500, () => {
-          this.cameras.main.fadeOut(1000, 0, 0, 0);
-          this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.arriveAtTrailhead();
+          // Fade out victory sign
+          this.tweens.add({
+            targets: [overlay, title, subtitle, timeText],
+            alpha: 0,
+            duration: 500,
+            onComplete: () => {
+              this.arriveAtTrailhead();
+            }
           });
         });
       }
@@ -2573,14 +2578,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private winGame() {
-    // Victory!
-    this.showSpeechBubble("Ceci", "We made it! Hiking time!", 2500);
-    
-    // Transition to next level after delay
-    this.time.delayedCall(3000, () => {
-      this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
-      fadeToScene(this, SCENES.GAME, 1000);
-    });
+    // Victory! Transition to next level
+    this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
+    fadeToScene(this, SCENES.GAME, 1000);
   }
   
   private loseByRage(reason: 'crash' | 'rage' = 'rage') {
