@@ -766,14 +766,14 @@ export default class GameScene extends Phaser.Scene {
     // Create image element
     const img = document.createElement('img');
     img.src = 'hinge-screenshot.png';
-    img.style.maxWidth = '550px';
-    img.style.maxHeight = '550px';
+    img.style.maxWidth = '55%';
+    img.style.maxHeight = '90%';
     img.style.border = '3px solid #ff66ff';
     img.style.borderRadius = '8px';
     img.style.boxShadow = '0 0 20px rgba(255, 102, 255, 0.5)';
     img.style.imageRendering = 'auto';
     img.style.display = 'block';
-    img.style.marginLeft = '500px'; // Even more offset to the right
+    img.style.marginLeft = '70%'; // Offset to the right
     
     this.photoOverlay.appendChild(img);
     document.body.appendChild(this.photoOverlay);
@@ -793,14 +793,14 @@ export default class GameScene extends Phaser.Scene {
     // Create image element
     const img = document.createElement('img');
     img.src = 'ice-hockey-chat.png';
-    img.style.maxWidth = '550px';
-    img.style.maxHeight = '550px';
+    img.style.maxWidth = '55%';
+    img.style.maxHeight = '90%';
     img.style.border = '3px solid #ff66ff';
     img.style.borderRadius = '8px';
     img.style.boxShadow = '0 0 20px rgba(255, 102, 255, 0.5)';
     img.style.imageRendering = 'auto';
     img.style.display = 'block';
-    img.style.marginLeft = '650px'; // Same offset as first image
+    img.style.marginLeft = '55%'; // Offset to the right
     
     this.hockeyOverlay.appendChild(img);
     document.body.appendChild(this.hockeyOverlay);
