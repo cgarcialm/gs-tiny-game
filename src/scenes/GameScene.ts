@@ -900,7 +900,7 @@ export default class GameScene extends Phaser.Scene {
       ease: "Sine.easeInOut"
     });
     
-    // Grayson moves to van and waits (face left, looking impatient)
+    // Grayson moves to back of van and waits (face left, looking impatient)
     const walkTimer = this.time.addEvent({
       delay: 150,
       repeat: 8,
@@ -909,7 +909,7 @@ export default class GameScene extends Phaser.Scene {
     
     this.tweens.add({
       targets: this.player,
-      x: 190,
+      x: 165,
       duration: 1200,
       ease: "Linear",
       onComplete: () => {
@@ -940,18 +940,18 @@ export default class GameScene extends Phaser.Scene {
     this.seattleEbo = createEboshiSprite(this, -60, 100);
     this.seattleEbo.setScale(-1, 1); // Face right
     
-    // Ceci runs in
+    // Ceci runs in (stops more to the left)
     this.tweens.add({
       targets: this.seattleCeci,
-      x: 160,
+      x: 100,
       duration: 1500,
       ease: "Linear"
     });
     
-    // Ebo follows behind
+    // Ebo follows behind (stops more to the left)
     this.tweens.add({
       targets: this.seattleEbo,
-      x: 130,
+      x: 70,
       duration: 1800,
       ease: "Linear",
       onComplete: () => {
