@@ -147,6 +147,13 @@ export class CheatConsole {
   private executeCommand(command: string): void {
     const trimmedCommand = command.trim().toLowerCase();
     
+    // "klapaucius!" - skip current minigame
+    if (trimmedCommand === 'klapaucius!') {
+      console.log('Cheat activated: Skipping current minigame!');
+      this.skipCurrentMinigame();
+      return;
+    }
+    
     // Parse "klapaucius X" command
     const klapauciusMatch = trimmedCommand.match(/^klapaucius\s+(\d+)$/);
     
@@ -160,7 +167,8 @@ export class CheatConsole {
         console.log('Invalid level. Use: klapaucius 0-5');
       }
     } else if (trimmedCommand === 'klapaucius') {
-      console.log('Usage: klapaucius <0-5>');
+      console.log('Usage: klapaucius <0-5> or klapaucius!');
+      console.log('  klapaucius! - Skip current minigame');
       console.log(`  ${VOID_LEVELS.EBOSHI_ENCOUNTER}: Eboshi encounter (first void visit)`);
       console.log(`  ${VOID_LEVELS.AFTER_NORTHGATE}: Ceci returns with memory`);
       console.log(`  ${VOID_LEVELS.AFTER_ICE_HOCKEY}: Seattle Traffic intro`);
@@ -169,6 +177,55 @@ export class CheatConsole {
       console.log(`  ${VOID_LEVELS.COMPLETE}: 3D void transition & camping scene`);
     } else if (trimmedCommand !== '') {
       console.log('Unknown cheat code');
+    }
+  }
+  
+  private skipCurrentMinigame(): void {
+    const sceneName = this.scene.sys.settings.key;
+    const gameState = new GameStateManager(this.scene.registry, true);
+    console.log('Current scene:', sceneName);
+    
+    switch (sceneName) {
+      case SCENES.NORTHGATE:
+        // Skip to after Northgate
+        gameState.setCompletedLevels(VOID_LEVELS.AFTER_NORTHGATE, true);
+        this.scene.scene.start(SCENES.GAME);
+        break;
+        
+      case SCENES.ICE_HOCKEY:
+        // Skip to after Ice Hockey
+        gameState.setCompletedLevels(VOID_LEVELS.AFTER_ICE_HOCKEY, true);
+        this.scene.scene.start(SCENES.GAME);
+        break;
+        
+      case SCENES.SEATTLE_TRAFFIC:
+        // Skip to after Seattle Traffic
+        gameState.setCompletedLevels(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC, true);
+        this.scene.scene.start(SCENES.GAME);
+        break;
+        
+      case SCENES.FARMERS_MARKET:
+        // Skip to after Farmers Market
+        gameState.setCompletedLevels(VOID_LEVELS.AFTER_FARMERS_MARKET, true);
+        this.scene.scene.start(SCENES.GAME);
+        break;
+        
+      case SCENES.GAME:
+        // In GameScene, advance to next level
+        const currentLevel = gameState.getCompletedLevels();
+        if (currentLevel >= VOID_LEVELS.AFTER_FARMERS_MARKET) {
+          // At card game or beyond - go to Void3D
+          gameState.stopMusic();
+          gameState.setCompletedLevels(VOID_LEVELS.AFTER_FARMERS_MARKET, true);
+          this.scene.scene.start(SCENES.VOID_3D);
+        } else if (currentLevel < VOID_LEVELS.COMPLETE) {
+          gameState.setCompletedLevels(currentLevel + 1, true);
+          this.scene.scene.restart();
+        }
+        break;
+        
+      default:
+        console.log('No minigame to skip in this scene');
     }
   }
 
