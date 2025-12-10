@@ -440,7 +440,7 @@ export default class TitleScene extends Phaser.Scene {
     this.gameState.setCurrentMusic(music);
     
     // Create pixel version at Grayson's position (now using static import)
-    this.pixelGrayson = createGraysonSprite(this, this.grayson.x, this.grayson.y);
+    this.pixelGrayson = createGraysonSprite(this, this.grayson.x + 15, this.grayson.y + 10);
     this.pixelGrayson.setAlpha(0);
     this.pixelGrayson.setScale(0.5);
     
