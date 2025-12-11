@@ -1174,7 +1174,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       "LEFT/RIGHT - Change lanes",
       "(Left=fast, Right=slow)",
       "",
-      "Manage RAGE: stop for Ceci's coffee,",
+      "Control RAGE: ",
+      "Pick up Ceci's Starbucks order,",
       "find empty lanes, don't crash!",
       "",
       "Press ENTER to start"
