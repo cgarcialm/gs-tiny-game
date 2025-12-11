@@ -1158,14 +1158,15 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private startIntroSequence() {
-    // Create instruction overlay
-    const overlay = this.add.rectangle(160, 100, 300, 150, 0x000000, 0.9)
+    // Background overlay with border
+    const overlay = this.add.rectangle(160, 95, 280, 150, 0x1a1a2e, 0.95)
+      .setStrokeStyle(2, 0xf472b6)
       .setDepth(300);
     
-    const title = this.add.text(160, 45, "SEATTLE TRAFFIC", {
+    const title = this.add.text(160, 35, "★ SEATTLE TRAFFIC ★", {
       fontFamily: "monospace",
       fontSize: "14px",
-      color: "#00ffff"
+      color: "#f472b6"
     }).setOrigin(0.5).setDepth(301);
     
     const instructions = [
@@ -1176,18 +1177,31 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       "",
       "Control RAGE: ",
       "Pick up Ceci's Starbucks order,",
-      "find empty lanes, don't crash!",
-      "",
-      "Press ENTER to start"
+      "find empty lanes, don't crash!"
     ].join("\n");
     
-    const text = this.add.text(160, 110, instructions, {
+    const text = this.add.text(160, 100, instructions, {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#ffffff",
       align: "center",
       lineSpacing: 1
     }).setOrigin(0.5).setDepth(301);
+    
+    const pressEnter = this.add.text(160, 155, "[ PRESS ENTER ]", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffff00"
+    }).setOrigin(0.5).setDepth(301);
+    
+    // Pulse animation for Press ENTER
+    this.tweens.add({
+      targets: pressEnter,
+      alpha: 0.5,
+      duration: 600,
+      yoyo: true,
+      repeat: -1
+    });
     
     // Wait for ENTER to start
     const waitForStart = () => {
@@ -1196,6 +1210,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         overlay.destroy();
         title.destroy();
         text.destroy();
+        pressEnter.destroy();
         this.gamePhase = 'toStarbucks1';
       }
     };

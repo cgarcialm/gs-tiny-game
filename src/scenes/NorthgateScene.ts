@@ -107,27 +107,38 @@ export default class NorthgateScene extends Phaser.Scene {
   private introActive = true;
   
   private showIntroOverlay() {
-    const overlay = this.add.rectangle(160, 90, 200, 80, 0x000000, 0.9)
+    // Background overlay with border
+    const overlay = this.add.rectangle(160, 90, 240, 100, 0x1a1a2e, 0.95)
+      .setStrokeStyle(2, 0xf472b6)
       .setDepth(300);
     
-    const title = this.add.text(160, 60, "NORTHGATE STATION", {
+    const title = this.add.text(160, 55, "★ NORTHGATE STATION ★", {
       fontFamily: "monospace",
       fontSize: "12px",
-      color: "#00ffff"
+      color: "#f472b6"
     }).setOrigin(0.5).setDepth(301);
     
-    const instructions = this.add.text(160, 85, "Find Ceci in the station", {
+    const instructions = this.add.text(160, 80, "Find Ceci in the station", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#ffffff",
       align: "center"
     }).setOrigin(0.5).setDepth(301);
     
-    const pressEnter = this.add.text(160, 110, "Press ENTER", {
+    const pressEnter = this.add.text(160, 110, "[ PRESS ENTER ]", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#ffff00"
     }).setOrigin(0.5).setDepth(301);
+    
+    // Pulse animation for Press ENTER
+    this.tweens.add({
+      targets: pressEnter,
+      alpha: 0.5,
+      duration: 600,
+      yoyo: true,
+      repeat: -1
+    });
     
     // Wait for ENTER to start
     const waitForStart = () => {

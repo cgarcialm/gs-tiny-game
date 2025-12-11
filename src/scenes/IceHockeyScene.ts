@@ -172,27 +172,38 @@ export default class IceHockeyScene extends Phaser.Scene {
   private introActive = true;
   
   private showIntroOverlay() {
-    const overlay = this.add.rectangle(160, 90, 200, 80, 0x000000, 0.9)
+    // Background overlay with border
+    const overlay = this.add.rectangle(160, 90, 240, 100, 0x1a1a2e, 0.95)
+      .setStrokeStyle(2, 0xf472b6)
       .setDepth(300);
     
-    const title = this.add.text(160, 60, "ICE HOCKEY", {
+    const title = this.add.text(160, 55, "★ ICE HOCKEY ★", {
       fontFamily: "monospace",
       fontSize: "12px",
-      color: "#00ffff"
+      color: "#f472b6"
     }).setOrigin(0.5).setDepth(301);
     
-    const instructions = this.add.text(160, 85, "Wrong place, wrong time\nDodge pucks, shoot back!", {
+    const instructions = this.add.text(160, 82, "Wrong place, wrong time\nDodge pucks, shoot back!", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#ffffff",
       align: "center"
     }).setOrigin(0.5).setDepth(301);
     
-    const pressEnter = this.add.text(160, 115, "Press ENTER", {
+    const pressEnter = this.add.text(160, 115, "[ PRESS ENTER ]", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#ffff00"
     }).setOrigin(0.5).setDepth(301);
+    
+    // Pulse animation for Press ENTER
+    this.tweens.add({
+      targets: pressEnter,
+      alpha: 0.5,
+      duration: 600,
+      yoyo: true,
+      repeat: -1
+    });
     
     // Wait for ENTER to start
     const waitForStart = () => {

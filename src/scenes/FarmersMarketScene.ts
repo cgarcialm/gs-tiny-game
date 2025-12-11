@@ -1459,46 +1459,53 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.tutorialOverlay = this.add.container(160, 90);
     this.tutorialOverlay.setDepth(1000);
     
-    // Semi-transparent background covering whole screen
-    const background = this.add.rectangle(0, 0, 320, 180, 0x000000, 0.7);
-    this.tutorialOverlay.add(background);
-    
-    // Tutorial box
-    const boxWidth = 260;
-    const boxHeight = 140;
-    const box = this.add.rectangle(0, 0, boxWidth, boxHeight, 0x1e293b, 1);
-    box.setStrokeStyle(4, 0x7c3aed);
-    this.tutorialOverlay.add(box);
+    // Background overlay with border
+    const overlay = this.add.rectangle(0, 0, 260, 140, 0x1a1a2e, 0.95);
+    overlay.setStrokeStyle(2, 0xf472b6);
+    this.tutorialOverlay.add(overlay);
     
     // Title
-    const title = this.add.text(0, -55, "HOW TO WIN", {
+    const title = this.add.text(0, -55, "★ FARMERS MARKET ★", {
       fontFamily: "monospace",
-      fontSize: "16px",
-      color: "#fbbf24",
-      fontStyle: "bold",
+      fontSize: "12px",
+      color: "#f472b6",
       align: "center"
     }).setOrigin(0.5);
     this.tutorialOverlay.add(title);
     
-    // Instructions (more compact)
+    // Instructions (keeping existing text)
     const instructions = [
-      `• Eat 3 PIE SLICES + ${this.dotsNeeded} dots (50%)`,
+      `Eat 3 PIE SLICES + ${this.dotsNeeded} dots (50%)`,
       "",
       "Smush wins with 3 pies OR 50%+1 dots",
       "Grab FRUITS for speed boost",
-      "Avoid SHOPPERS in aisles",
-      "",
-      "Press ENTER to start!"
+      "Avoid SHOPPERS in aisles"
     ].join("\n");
     
-    const text = this.add.text(0, 13, instructions, {
+    const text = this.add.text(0, 5, instructions, {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "9px",
       color: "#ffffff",
       align: "center",
       lineSpacing: 3
     }).setOrigin(0.5);
     this.tutorialOverlay.add(text);
+    
+    const pressEnter = this.add.text(0, 55, "[ PRESS ENTER ]", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffff00"
+    }).setOrigin(0.5);
+    this.tutorialOverlay.add(pressEnter);
+    
+    // Pulse animation for Press ENTER
+    this.tweens.add({
+      targets: pressEnter,
+      alpha: 0.5,
+      duration: 600,
+      yoyo: true,
+      repeat: -1
+    });
   }
   
   private hideTutorialOverlay() {
