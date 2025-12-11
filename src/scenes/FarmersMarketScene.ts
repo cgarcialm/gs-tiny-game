@@ -62,7 +62,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private fruits: Phaser.GameObjects.Graphics[] = []; // Power-up fruits
   private fruitSpawnTimer = 0;
-  private fruitSpawnInterval = 4000; // Spawn fruit every 4 seconds (more frequent!)
+  private fruitSpawnInterval = 10000; // Spawn fruit every 7 seconds
   private firstFruitSpawned = false; // Track if we spawned the first fruit immediately
   private validDotPositions: {x: number, y: number}[] = []; // Track corridor positions
   
@@ -75,7 +75,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private baseSpeed = 100;
   private speed = 100; // Can be boosted by fruits
-  private smushSpeed = 160; // Much faster than Grayson to reach targets quickly!
+  private smushSpeed = 170; // Much faster than Grayson to reach targets quickly!
   
   constructor() {
     super("FarmersMarket");
@@ -1379,10 +1379,10 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
   
   private spawnShopper() {
-    // Predefined walking lanes in clear corridors (verified safe paths - adjusted for new layout)
+    // Predefined walking lanes spanning full maze width (wall to wall)
     const lanes = [
-      { y: 65, xStart: 80, xEnd: 240 },  // Between pink/blue and peach/mint
-      { y: 165, xStart: 80, xEnd: 240 }, // Bottom corridor
+      { y: 65, xStart: 12, xEnd: 308 },  // Between pink/blue and peach/mint (full width)
+      { y: 165, xStart: 12, xEnd: 308 }, // Bottom corridor (full width)
     ];
     
     const lane = lanes[Math.floor(Math.random() * lanes.length)];
