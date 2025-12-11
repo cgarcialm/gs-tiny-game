@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createSmushSprite, createCeciSprite, createCardPieceSprite, spawnCardPieceSparkles, createVanSideSprite } from "../utils/sprites";
+import { createGraysonSprite, updateGraysonWalk, createEboshiSprite, createEboshiWithSweaterSprite, createSmushSprite, createCeciSprite, createCardPieceSprite, spawnCardPieceSparkles, createVanSideSprite } from "../utils/sprites";
 import { createCrowdPersonSprite, getRandomCrowdColors } from "../utils/sprites/CrowdPersonSprite";
 import { getHorizontalAxis, getVerticalAxis, shouldCloseDialogue, HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
@@ -945,26 +945,15 @@ export default class GameScene extends Phaser.Scene {
   private seattleDialogueIndex = 0;
   
   private ceciAndEboArrive() {
-    // Create Ceci and Ebo on left side
+    // Create only Ceci first - Ebo arrives later
     this.seattleCeci = createCeciSprite(this, -30, 95);
     this.seattleCeci.setScale(-1, 1); // Face right
     
-    this.seattleEbo = createEboshiSprite(this, -60, 100);
-    this.seattleEbo.setScale(-1, 1); // Face right
-    
-    // Ceci runs in (stops more to the left)
+    // Ceci runs in alone
     this.tweens.add({
       targets: this.seattleCeci,
       x: 100,
       duration: 1500,
-      ease: "Linear"
-    });
-    
-    // Ebo follows behind (stops more to the left)
-    this.tweens.add({
-      targets: this.seattleEbo,
-      x: 70,
-      duration: 1800,
       ease: "Linear",
       onComplete: () => {
         // Start dialogue sequence
@@ -973,6 +962,20 @@ export default class GameScene extends Phaser.Scene {
           this.showSeattleDialogue();
         });
       }
+    });
+  }
+  
+  private eboArrives() {
+    // Create Ebo and have her run in (wearing sweater!)
+    this.seattleEbo = createEboshiWithSweaterSprite(this, -60, 100);
+    this.seattleEbo.setScale(-1, 1); // Face right
+    
+    // Ebo runs in to join Ceci
+    this.tweens.add({
+      targets: this.seattleEbo,
+      x: 70,
+      duration: 1200,
+      ease: "Linear"
     });
   }
   
@@ -992,8 +995,9 @@ export default class GameScene extends Phaser.Scene {
       };
       this.events.on('update', checkAdvance);
     } else if (this.seattleDialogueIndex === 1) {
-      // Ceci: Ebo needed her sweater.
+      // Ceci: Ebo needed her sweater. - Ebo runs in wearing her sweater!
       this.dialogueManager.show("Ceci: Ebo needed her sweater.");
+      this.eboArrives(); // Ebo appears when mentioned!
       const checkAdvance = () => {
         if (generation !== this.sceneGeneration) { this.events.off('update', checkAdvance); return; }
         if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {

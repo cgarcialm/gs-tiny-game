@@ -3,6 +3,7 @@ export { createGraysonSprite, updateGraysonWalk } from "./GraysonSprite";
 export { createGraysonTopDownSprite, rotateTopDownSprite } from "./GraysonTopDownSprite";
 export { createHockeyPlayerSprite } from "./HockeyPlayerSprite";
 export { createEboshiSprite } from "./EboshiSprite";
+export { createEboshiWithSweaterSprite } from "./EboshiSweaterSprite";
 export { createSmushSprite } from "./SmushSprite";
 export { createCeciSprite } from "./CeciSprite";
 export { createRandomGuySprite } from "./RandomGuySprite";
