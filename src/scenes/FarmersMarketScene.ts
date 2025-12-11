@@ -62,7 +62,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private fruits: Phaser.GameObjects.Graphics[] = []; // Power-up fruits
   private fruitSpawnTimer = 0;
-  private fruitSpawnInterval = 10000; // Spawn fruit every 10 seconds
+  private fruitSpawnInterval = 4000; // Spawn fruit every 4 seconds (more frequent!)
+  private firstFruitSpawned = false; // Track if we spawned the first fruit immediately
   private validDotPositions: {x: number, y: number}[] = []; // Track corridor positions
   
   // Shoppers that block aisles
@@ -74,7 +75,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private baseSpeed = 100;
   private speed = 100; // Can be boosted by fruits
-  private smushSpeed = 140; // Much faster than Grayson to reach targets quickly!
+  private smushSpeed = 160; // Much faster than Grayson to reach targets quickly!
   
   constructor() {
     super("FarmersMarket");
@@ -106,6 +107,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.smushPiesEaten = 0;
     this.totalPiesSpawned = 0;
     this.fruitSpawnTimer = 0;
+    this.firstFruitSpawned = false;
     this.smushTargetChangeTimer = 0;
     this.smushCurrentTarget = null;
     this.smushRecentTargets = [];
@@ -646,6 +648,12 @@ export default class FarmersMarketScene extends Phaser.Scene {
       
       // Check pie collection for both (Smush can still eat even after Grayson wins)
       this.checkPieCollection();
+      
+      // Spawn first fruit immediately, then on timer
+      if (!this.firstFruitSpawned) {
+        this.firstFruitSpawned = true;
+        this.spawnFruit();
+      }
       
       // Fruit spawning timer
       this.fruitSpawnTimer += this.game.loop.delta;
@@ -1216,19 +1224,33 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
   
   private spawnFruit() {
-    // Random fruit type
+    // Random fruit type - BRIGHT saturated colors to stand out!
     const fruitTypes = [
-      { name: 'plum', color: 0x8b4789 },    // Purple
-      { name: 'peach', color: 0xffcba4 },   // Peachy orange
-      { name: 'apple', color: 0xff0000 },   // Red
-      { name: 'banana', color: 0xffeb3b }   // Yellow
+      { name: 'plum', color: 0xff00ff },    // Bright magenta
+      { name: 'peach', color: 0xff8800 },   // Bright orange
+      { name: 'apple', color: 0xff0044 },   // Bright red-pink
+      { name: 'banana', color: 0xffff00 }   // Bright yellow
     ];
     
     const fruitType = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
     
-    // Pick random valid corridor position (from dot grid)
+    // Pick valid corridor position NEAR the player (within 60px, but not too close)
     if (this.validDotPositions.length === 0) return; // No valid positions
-    const randomPos = this.validDotPositions[Math.floor(Math.random() * this.validDotPositions.length)];
+    
+    const playerX = this.playerPhysics.x;
+    const playerY = this.playerPhysics.y;
+    const minDist = 25; // Not too close (give player a chance to see it)
+    const maxDist = 60; // Close enough to be reachable
+    
+    // Filter positions near player
+    const nearbyPositions = this.validDotPositions.filter(pos => {
+      const dist = Math.sqrt((pos.x - playerX) ** 2 + (pos.y - playerY) ** 2);
+      return dist >= minDist && dist <= maxDist;
+    });
+    
+    // Use nearby position if available, otherwise fallback to random
+    const positionPool = nearbyPositions.length > 0 ? nearbyPositions : this.validDotPositions;
+    const randomPos = positionPool[Math.floor(Math.random() * positionPool.length)];
     const x = randomPos.x;
     const y = randomPos.y;
     
