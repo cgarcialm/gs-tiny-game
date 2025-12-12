@@ -2506,10 +2506,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
               this.roadSpeed = savedSpeed;
               this.blockMiddleLane = true;
               
-              // Remove middle lane cars clearly behind the player (with buffer)
+              // Remove middle lane cars that are OFF SCREEN (not visible)
               for (let i = this.trafficCars.length - 1; i >= 0; i--) {
                 const car = this.trafficCars[i];
-                if (car.lane === 1 && car.y > this.vanY + 30) {
+                if (car.lane === 1 && car.y > this.roadBottomY) {
                   car.container.destroy();
                   this.trafficCars.splice(i, 1);
                 }
@@ -2566,10 +2566,10 @@ export default class SeattleTrafficScene extends Phaser.Scene {
               this.carSpawnInterval = 1500;
               this.blockMiddleLane = true;
               
-              // Remove middle lane cars clearly behind the player (with buffer)
+              // Remove middle lane cars that are OFF SCREEN (not visible)
               for (let i = this.trafficCars.length - 1; i >= 0; i--) {
                 const car = this.trafficCars[i];
-                if (car.lane === 1 && car.y > this.vanY + 30) {
+                if (car.lane === 1 && car.y > this.roadBottomY) {
                   car.container.destroy();
                   this.trafficCars.splice(i, 1);
                 }
