@@ -1345,9 +1345,15 @@ export default class SeattleTrafficScene extends Phaser.Scene {
       lane = 0; // Force to left lane only
     }
     
-    // Cars match their lane speed (with small variation)
+    // Cars match their lane speed (with variation)
     const baseLaneSpeed = this.laneSpeeds[lane];
-    const speed = baseLaneSpeed + (Math.random() * 20 - 10); // ±10 variation
+    let speed: number;
+    if (lane === this.currentLane) {
+      // Same lane as player - always slightly slower so they approach and are visible
+      speed = baseLaneSpeed - (10 + Math.random() * 20); // 10-30 slower
+    } else {
+      speed = baseLaneSpeed + (Math.random() * 20 - 10); // ±10 variation
+    }
     
     // Create car container
     const container = this.add.container(0, 0);
