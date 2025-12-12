@@ -31,7 +31,7 @@ export const DEBUG_START_SCENE: SceneName = SCENES.GAME;
  * NOTE: This only applies when there's NO registry value (fresh start).
  * Registry values from completed levels always take priority.
  */
-export const DEBUG_START_LEVEL = 2;
+export const DEBUG_START_LEVEL = 3;
 
 /**
  * Show debug grid and axes in 3D camping scene

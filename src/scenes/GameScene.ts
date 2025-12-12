@@ -1350,7 +1350,7 @@ export default class GameScene extends Phaser.Scene {
         
         // Show dialogue as he starts moving
         this.time.delayedCall(300, () => {
-          this.showDialog("Grayson: Oh boy... I need to find her!");
+          this.showDialog("Grayson: OH BOY... I need to find her!");
         });
         
         // Walk to the left while looking around
@@ -2267,13 +2267,13 @@ export default class GameScene extends Phaser.Scene {
         spawnCardPieceSparkles(this, 160, 70);
         
         // Memory projection appears from card bottom (strawberry icon)
-        this.time.delayedCall(800, () => {
+        this.time.delayedCall(500, () => {
           this.showMemoryProjection(160, 74); // Start from card's bottom edge
           
           // Combined dialogue when projection appears
-          this.time.delayedCall(600, () => {
+          this.time.delayedCall(500, () => {
             this.isDialogueAutoOnly = true; // Auto-dismiss, no ENTER
-            this.dialogueManager.show("Grayson: And the memory I just got...\nIt's from the farmers market!");
+            this.dialogueManager.show("Grayson: Campbell's farmers market! Best strawberry rhubarb pies in town!");
             
             // Auto-dismiss after reading time
             this.time.delayedCall(3000, () => {
@@ -2282,7 +2282,7 @@ export default class GameScene extends Phaser.Scene {
                 this.isDialogueAutoOnly = false;
               }
               // Trigger meows after dialogue closes
-              this.time.delayedCall(300, () => {
+              this.time.delayedCall(200, () => {
                 this.triggerSmushMeowsAndFinalDialogue();
               });
             });
@@ -2295,23 +2295,23 @@ export default class GameScene extends Phaser.Scene {
   }
   
   private triggerSmushMeowsAndFinalDialogue() {
-    // Smush meows 3 times
+    // Smush meows 3 times (faster)
     this.spawnMeowText(this.cat.x, this.cat.y - 15);
-    this.time.delayedCall(400, () => {
+    this.time.delayedCall(300, () => {
       this.spawnMeowText(this.cat.x, this.cat.y - 15);
     });
-    this.time.delayedCall(800, () => {
+    this.time.delayedCall(600, () => {
       this.spawnMeowText(this.cat.x, this.cat.y - 15);
     });
     
     // After meows, Grayson responds
-    this.time.delayedCall(1500, () => {
+    this.time.delayedCall(1000, () => {
       this.dialogueManager.show("Grayson: I'll get some pie and you'll get some goodies.");
       
-        // Transition to farmers market level
-        this.time.delayedCall(4000, () => {
+        // Transition to farmers market level (faster)
+        this.time.delayedCall(3000, () => {
           this.dialogueManager.hide();
-          fadeToScene(this, SCENES.FARMERS_MARKET, 1000);
+          fadeToScene(this, SCENES.FARMERS_MARKET, 800);
         });
     });
   }
