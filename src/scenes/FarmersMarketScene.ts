@@ -66,6 +66,15 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private firstFruitSpawned = false; // Track if we spawned the first fruit immediately
   private validDotPositions: {x: number, y: number}[] = []; // Track corridor positions
   
+  // Wine glasses - hazard that reverses controls
+  private wineGlasses: Phaser.GameObjects.Graphics[] = [];
+  private wineSpawnTimer = 0;
+  private wineSpawnInterval = 2000; // Spawn wine every 2 seconds (very frequent!)
+  private firstWineSpawned = false;
+  private controlsReversed = false;
+  private drunkTimer = 0;
+  private drunkDuration = 5000; // 5 seconds of reversed controls
+  
   // Shoppers that block aisles
   private shoppers: { sprite: Phaser.GameObjects.Container, physics: Phaser.Physics.Arcade.Sprite, targetX: number, targetY: number, returning: boolean }[] = [];
   private shopperSpawnTimer = 0;
@@ -116,6 +125,11 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.smushBlockedFrames = 0;
     this.pies = [];
     this.fruits = [];
+    this.wineGlasses = [];
+    this.wineSpawnTimer = 0;
+    this.firstWineSpawned = false;
+    this.controlsReversed = false;
+    this.drunkTimer = 0;
     this.validDotPositions = [];
     this.shoppers = [];
     this.shopperSpawnTimer = 0;
@@ -665,6 +679,33 @@ export default class FarmersMarketScene extends Phaser.Scene {
       // Check fruit collection
       this.checkFruitCollection();
       
+      // Spawn first wine immediately
+      if (!this.firstWineSpawned) {
+        this.firstWineSpawned = true;
+        this.spawnWineGlass();
+      }
+      
+      // Wine glass spawning
+      this.wineSpawnTimer += this.game.loop.delta;
+      if (this.wineSpawnTimer >= this.wineSpawnInterval) {
+        this.wineSpawnTimer = 0;
+        this.spawnWineGlass();
+      }
+      
+      // Check wine glass collision
+      this.checkWineCollection();
+      
+      // Update drunk timer
+      if (this.controlsReversed) {
+        this.drunkTimer += this.game.loop.delta;
+        if (this.drunkTimer >= this.drunkDuration) {
+          this.controlsReversed = false;
+          this.drunkTimer = 0;
+          // Visual feedback - restore normal appearance
+          this.player.setData('drunk', false);
+        }
+      }
+      
       // Check card piece collection
       if (this.cardPiece) {
         this.checkCardCollection();
@@ -745,10 +786,16 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
 
   private handlePlayerMovement() {
-    const vx = this.controls.left.isDown ? -1 :
-               this.controls.right.isDown ? 1 : 0;
-    const vy = this.controls.up.isDown ? -1 :
-               this.controls.down.isDown ? 1 : 0;
+    let vx = this.controls.left.isDown ? -1 :
+             this.controls.right.isDown ? 1 : 0;
+    let vy = this.controls.up.isDown ? -1 :
+             this.controls.down.isDown ? 1 : 0;
+    
+    // Reverse controls if drunk!
+    if (this.controlsReversed) {
+      vx = -vx;
+      vy = -vy;
+    }
     
     // Normalize diagonal movement
     const moving = vx !== 0 || vy !== 0;
@@ -1301,7 +1348,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
         if (index > -1) this.fruits.splice(index, 1);
         
         // Speed boost
-        this.speed = 150; // Much faster!
+        this.speed = 180; // Much faster!
         
         // Store glow values for pulsing
         const glowData = { size: 8, opacity: 0.8 };
@@ -1328,6 +1375,118 @@ export default class FarmersMarketScene extends Phaser.Scene {
           this.speed = this.baseSpeed;
           this.player.setData('glowSize', 8); // Back to default
           this.player.setData('glowOpacity', 0.6); // Back to normal opacity
+        });
+      }
+    });
+  }
+  
+  private spawnWineGlass() {
+    // Spawn wine glass at random valid position (near player but not too close)
+    if (this.validDotPositions.length === 0) return;
+    
+    const playerX = this.playerPhysics.x;
+    const playerY = this.playerPhysics.y;
+    const minDist = 10; // Very close!
+    const maxDist = 35; // Tight range - in your face!
+    
+    // Filter positions in range
+    const nearbyPositions = this.validDotPositions.filter(pos => {
+      const dist = Math.sqrt((pos.x - playerX) ** 2 + (pos.y - playerY) ** 2);
+      return dist >= minDist && dist <= maxDist;
+    });
+    
+    const positionPool = nearbyPositions.length > 0 ? nearbyPositions : this.validDotPositions;
+    const randomPos = positionPool[Math.floor(Math.random() * positionPool.length)];
+    
+    // Create wine glass graphic
+    const wine = this.add.graphics();
+    
+    // Draw wine glass - simple goblet shape
+    const wineColor = 0x722f37; // Dark red wine color
+    const glassColor = 0xcccccc; // Light gray for glass
+    
+    // Glass stem
+    wine.fillStyle(glassColor, 1);
+    wine.fillRect(-1, 2, 2, 4); // Thin stem
+    
+    // Glass base
+    wine.fillRect(-3, 6, 6, 1); // Base
+    
+    // Glass bowl
+    wine.fillStyle(glassColor, 0.6);
+    wine.fillRect(-4, -3, 8, 5); // Bowl outline
+    
+    // Wine inside
+    wine.fillStyle(wineColor, 1);
+    wine.fillRect(-3, -2, 6, 4); // Wine fill
+    
+    wine.setPosition(randomPos.x, randomPos.y);
+    wine.setDepth(6);
+    wine.setData('isWine', true);
+    
+    // Gentle wobble animation
+    this.tweens.add({
+      targets: wine,
+      angle: 5,
+      duration: 400,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut"
+    });
+    
+    this.wineGlasses.push(wine);
+    
+    // Auto-despawn after 15 seconds
+    this.time.delayedCall(10000, () => {
+      if (wine.active) {
+        wine.destroy();
+        const index = this.wineGlasses.indexOf(wine);
+        if (index > -1) this.wineGlasses.splice(index, 1);
+      }
+    });
+  }
+  
+  private checkWineCollection() {
+    this.wineGlasses.forEach(wine => {
+      if (checkProximity(this.playerPhysics, wine, 10)) {
+        // Collect wine - get drunk!
+        wine.destroy();
+        const index = this.wineGlasses.indexOf(wine);
+        if (index > -1) this.wineGlasses.splice(index, 1);
+        
+        // Activate drunk effect
+        this.controlsReversed = true;
+        this.drunkTimer = 0;
+        this.player.setData('drunk', true);
+        
+        // Visual feedback - tint player
+        const graphics = this.player.getAt(0) as Phaser.GameObjects.Graphics;
+        if (graphics) {
+          // Flash effect
+          this.tweens.add({
+            targets: this.player,
+            alpha: 0.6,
+            duration: 200,
+            yoyo: true,
+            repeat: 3
+          });
+        }
+        
+        // Show "DRUNK!" text
+        const drunkText = this.add.text(this.playerPhysics.x, this.playerPhysics.y - 15, "🍷 DRUNK!", {
+          fontFamily: "monospace",
+          fontSize: "10px",
+          color: "#ff6b6b",
+          fontStyle: "bold"
+        }).setOrigin(0.5).setDepth(100);
+        
+        // Float up and fade
+        this.tweens.add({
+          targets: drunkText,
+          y: drunkText.y - 20,
+          alpha: 0,
+          duration: 1000,
+          onComplete: () => drunkText.destroy()
         });
       }
     });
@@ -1473,13 +1632,13 @@ export default class FarmersMarketScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.tutorialOverlay.add(title);
     
-    // Instructions (keeping existing text)
+    // Instructions
     const instructions = [
       `Eat 3 PIE SLICES + ${this.dotsNeeded} dots (50%)`,
       "",
       "Smush wins with 3 pies OR 50%+1 dots",
       "Grab FRUITS for speed boost",
-      "Avoid SHOPPERS in aisles"
+      "Avoid WINE samples or get tipsy"
     ].join("\n");
     
     const text = this.add.text(0, 5, instructions, {
