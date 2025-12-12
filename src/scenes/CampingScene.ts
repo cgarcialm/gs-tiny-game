@@ -75,7 +75,7 @@ export default class CampingScene extends Phaser.Scene {
     "Dog: Eboshi",
     "Game Design: C. Garcia Lopez",
     "Game Tester: Eduardo Sousa",
-    "Visual Effects: Cecilia G. L. de M.",
+    "Seattle Traffic Expert: Neil Harris.",
     "Art & Animation: Garcia, Cecilia",
     "Story: C. Garcia Lopez de M.",
     "Developer: C. Garcia",
