@@ -2269,14 +2269,14 @@ export default class GameScene extends Phaser.Scene {
             this.isDialogueAutoOnly = true; // Auto-dismiss, no ENTER
             this.dialogueManager.show("Grayson: And the memory I just got...\nIt's from the farmers market!");
             
-            // Auto-dismiss after longer time for full message
-            this.time.delayedCall(5000, () => {
+            // Auto-dismiss after reading time
+            this.time.delayedCall(3000, () => {
               if (this.dialogueManager.isVisible()) {
                 this.dialogueManager.hide();
                 this.isDialogueAutoOnly = false;
               }
               // Trigger meows after dialogue closes
-              this.time.delayedCall(500, () => {
+              this.time.delayedCall(300, () => {
                 this.triggerSmushMeowsAndFinalDialogue();
               });
             });

@@ -1200,8 +1200,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
       this.cardPiece.destroy();
       this.cardPiece = null;
       
-      // Transition back to GameScene
-      this.time.delayedCall(1500, () => {
+      // Transition back to GameScene (faster)
+      this.time.delayedCall(200, () => {
         this.gameState.completeLevel(VOID_LEVELS.AFTER_FARMERS_MARKET);
         fadeToScene(this, SCENES.GAME, 1000);
       });
