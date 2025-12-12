@@ -2470,7 +2470,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
         // Wait at Starbucks
         this.time.delayedCall(1500, () => {
           // Wrong Starbucks dialogue
-          this.showSpeechBubble("Ceci", "Wrong one! Mine's next!", 3000);
+          this.showSpeechBubble("Ceci", "Oops, wrong one! Mine's next!", 3000);
         
           // Increase rage (popup from Ceci's dialogue area)
           this.rageLevel = Math.min(100, this.rageLevel + this.RAGE_CONFIG.wrongStarbucks);
