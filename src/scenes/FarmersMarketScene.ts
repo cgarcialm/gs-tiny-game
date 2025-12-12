@@ -1497,8 +1497,16 @@ export default class FarmersMarketScene extends Phaser.Scene {
     if (this.totalPiesSpawned >= this.maxPiesToSpawn) return;
     if (this.validDotPositions.length === 0) return;
     
-    // Find positions that don't have existing ACTIVE pies
+    const playerX = this.playerPhysics?.x ?? 160;
+    const playerY = this.playerPhysics?.y ?? 90;
+    const minDistFromPlayer = 60; // Pies must spawn at least 60px away from Grayson
+    
+    // Find positions that don't have existing ACTIVE pies AND are far enough from player
     const availablePositions = this.validDotPositions.filter(vPos => {
+      // Check distance from player
+      const distFromPlayer = Math.sqrt((vPos.x - playerX) ** 2 + (vPos.y - playerY) ** 2);
+      if (distFromPlayer < minDistFromPlayer) return false;
+      
       // Check if there's already an active pie at this position
       const hasPie = this.pies.some(p => 
         p.active && // Only check active (not destroyed) pies
