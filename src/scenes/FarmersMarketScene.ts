@@ -75,7 +75,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private baseSpeed = 100;
   private speed = 100; // Can be boosted by fruits
-  private smushSpeed = 170; // Much faster than Grayson to reach targets quickly!
+  private smushSpeed = 200; // Much faster than Grayson to reach targets quickly!
   
   constructor() {
     super("FarmersMarket");
@@ -156,9 +156,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.smush.setData('glowOpacity', 0.6); // Default opacity
     animateSmushChomp(this.smush, this); // Chomping animation
     
-    // Physics body for Smush (very small for easier navigation)
+    // Physics body for Smush (tiny for easier navigation through maze)
     this.smushPhysics = this.physics.add.sprite(160, -30, '');
-    this.smushPhysics.setSize(6, 6); // Small hitbox (auto-centered)
+    this.smushPhysics.setSize(4, 4); // Tiny hitbox for better wall navigation
     this.smushPhysics.setAlpha(0);
     this.smushPhysics.setCollideWorldBounds(false); // Allow off-screen initially
     this.smushPhysics.setGravityY(0); // Explicitly disable gravity
@@ -803,14 +803,14 @@ export default class FarmersMarketScene extends Phaser.Scene {
                            this.smushPhysics.y > 35 && this.smushPhysics.y < 165;
       
       // Only exit wander mode if: time is up AND escaped trapped area
-      if (this.smushWanderTimer > 3000 && !stillTrapped) {
+      if (this.smushWanderTimer > 1500 && !stillTrapped) {
         this.smushWanderMode = false;
         this.smushWanderTimer = 0;
         this.smushRecentTargets = []; // Clear history, fresh start
         console.log(`[Smush] Wander complete - escaped to free area`);
-      } else if (this.smushWanderTimer > 3000 && stillTrapped) {
-        // Still stuck after 3s - extend wander time
-        this.smushWanderTimer = 2500; // Keep wandering, almost done
+      } else if (this.smushWanderTimer > 1500 && stillTrapped) {
+        // Still stuck after 1.5s - extend wander time
+        this.smushWanderTimer = 1200; // Keep wandering, almost done
         console.log(`[Smush] Still trapped - extending wander time`);
       }
       // Don't return - let moveSmushToTarget handle the wandering movement
@@ -826,8 +826,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     if (!this.smushCurrentTarget || 
         this.smushCurrentTarget.getData('collected') ||
         !this.smushCurrentTarget.active ||
-        this.smushTargetChangeTimer > 3000 || // Retarget every 3s normally
-        this.smushBlockedFrames > 5) { // Force retarget if blocked for 10 frames (~0.16s) - fast!
+        this.smushTargetChangeTimer > 1500 || // Retarget every 1.5s (faster reactions)
+        this.smushBlockedFrames > 3) { // Force retarget if blocked for 3 frames (very fast!)
       
       this.smushTargetChangeTimer = 0;
       this.smushBlockedFrames = 0; // Reset blocked counter when picking new target
@@ -901,9 +901,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
       // Prefer dots on same horizontal corridor (similar Y value)
       const yDiff = Math.abs(this.smushPhysics.y - target.y);
       
-      // Score = distance + moderate penalty for different Y levels
-      // Prefer horizontal but still allow vertical movement
-      const score = dist + (yDiff * 1.5); // 1.5x penalty for vertical distance
+      // Score = distance + small penalty for different Y levels
+      // Mostly chase closest, slight preference for horizontal
+      const score = dist + (yDiff * 0.8); // 0.8x penalty - prioritize closest target
       
       if (score < bestScore) {
         bestScore = score;
