@@ -1386,8 +1386,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     const playerX = this.playerPhysics.x;
     const playerY = this.playerPhysics.y;
-    const minDist = 10; // Very close!
-    const maxDist = 35; // Tight range - in your face!
+    const minDist = 15; // Give player some breathing room
+    const maxDist = 35; // Spawn at a reasonable distance
     
     // Filter positions in range
     const nearbyPositions = this.validDotPositions.filter(pos => {
