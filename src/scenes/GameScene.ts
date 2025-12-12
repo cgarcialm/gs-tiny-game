@@ -996,18 +996,24 @@ export default class GameScene extends Phaser.Scene {
       this.events.on('update', checkAdvance);
     } else if (this.seattleDialogueIndex === 1) {
       // Ceci: Ebo needed her sweater. - Ebo runs in wearing her sweater!
+      this.isDialogueAutoOnly = true; // Block ENTER during Ebo's entrance
       this.dialogueManager.show("Ceci: Ebo needed her sweater.");
       this.eboArrives(); // Ebo appears when mentioned!
-      const checkAdvance = () => {
-        if (generation !== this.sceneGeneration) { this.events.off('update', checkAdvance); return; }
-        if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
-          this.events.off('update', checkAdvance);
-          this.dialogueManager.hide();
-          // Ceci gets in the van
-          this.ceciGetsInVan();
-        }
-      };
-      this.events.on('update', checkAdvance);
+      
+      // Allow dialogue dismiss after Ebo finishes her entrance (1200ms)
+      this.time.delayedCall(1200, () => {
+        this.isDialogueAutoOnly = false; // Allow ENTER now
+        const checkAdvance = () => {
+          if (generation !== this.sceneGeneration) { this.events.off('update', checkAdvance); return; }
+          if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+            this.events.off('update', checkAdvance);
+            this.dialogueManager.hide();
+            // Ceci gets in the van
+            this.ceciGetsInVan();
+          }
+        };
+        this.events.on('update', checkAdvance);
+      });
     } else if (this.seattleDialogueIndex === 2) {
       // Grayson: The hike is gonna be PACKED
       this.dialogueManager.show("Grayson: The hike is gonna be PACKED");
