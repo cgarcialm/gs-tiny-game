@@ -69,7 +69,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   // Wine glasses - hazard that reverses controls
   private wineGlasses: Phaser.GameObjects.Graphics[] = [];
   private wineSpawnTimer = 0;
-  private wineSpawnInterval = 2000; // Spawn wine every 2 seconds (very frequent!)
+  private wineSpawnInterval = 5000; // Spawn wine every 2 seconds (very frequent!)
   private firstWineSpawned = false;
   private controlsReversed = false;
   private drunkTimer = 0;
