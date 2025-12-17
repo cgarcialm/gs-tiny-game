@@ -97,6 +97,7 @@ export default class CampingScene extends Phaser.Scene {
   
   // Easter egg mountain climbing
   private easterEggMountain?: { x: number; z: number; visibleRadius: number; peakY: number };
+  private climbableMountains: Array<{ x: number; z: number; visibleRadius: number; peakY: number }> = [];
   private isOnMountain = false;
   private peakImageShowing: 'grayson' | 'eboshi' | null = null;
   private peakImageDiv?: HTMLDivElement;
@@ -1549,6 +1550,15 @@ export default class CampingScene extends Phaser.Scene {
     mountain3.position.set(0, 0, 40);
     this.threeScene.add(mountain3);
     
+    // Store mountain3 as climbable (no easter egg)
+    // Visible radius at ground level is 17.5 (half of base radius 35), peak at 15
+    this.climbableMountains.push({
+      x: 0,
+      z: 40,
+      visibleRadius: 17.5,
+      peakY: 15
+    });
+    
     // Layer 2 - Middle distance (larger, further back)
     const mountain4 = new THREE.Mesh(
       new THREE.ConeGeometry(40, 35, 32),
@@ -2023,50 +2033,68 @@ export default class CampingScene extends Phaser.Scene {
       // Keep player in camping area bounds
       // Allow more positive z (toward mountains/behind camp)
       // Limit positive x (water area)
-      // But allow extended bounds near easter egg mountain
+      // But allow extended bounds near climbable mountains
       let minX = -15, maxX = 15, minZ = -3, maxZ = 20;
       
-      // Easter egg mountain climbing logic
-      if (this.easterEggMountain) {
-        const mt = this.easterEggMountain;
+      // Check all climbable mountains (including easter egg)
+      const allMountains = this.easterEggMountain 
+        ? [this.easterEggMountain, ...this.climbableMountains]
+        : this.climbableMountains;
+      
+      let onAnyMountain = false;
+      let currentMountainY = 0;
+      let onEasterEggPeak = false;
+      
+      for (const mt of allMountains) {
         const distToMountainCenter = Math.sqrt(
           (this.player.position.x - mt.x) ** 2 + 
           (this.player.position.z - mt.z) ** 2
         );
         
-        // Extend bounds to allow walking toward the mountain
+        // Extend bounds to allow walking toward any climbable mountain
         if (this.player.position.z > 15 || distToMountainCenter < mt.visibleRadius + 5) {
-          maxZ = mt.z + 5; // Allow walking past normal bounds toward mountain
-          minX = -25; // Allow walking left toward mountain
+          maxZ = Math.max(maxZ, mt.z + 5);
+          minX = Math.min(minX, mt.x - mt.visibleRadius - 5);
         }
         
-        // Check if on the mountain cone (use visible radius at ground level)
+        // Check if on this mountain cone
         if (distToMountainCenter < mt.visibleRadius) {
-          this.isOnMountain = true;
+          onAnyMountain = true;
           
           // Calculate height on cone: linear from 0 at edge to peakY at center
-          const t = 1 - (distToMountainCenter / mt.visibleRadius); // 0 at edge, 1 at center
+          const t = 1 - (distToMountainCenter / mt.visibleRadius);
           const groundY = t * mt.peakY;
           
-          // Only set Y if not jumping
-          if (!this.isJumping) {
-            this.player.position.y = groundY;
-          }
+          // Use highest Y if overlapping mountains
+          currentMountainY = Math.max(currentMountainY, groundY);
           
-          // Check if at the peak (within 1.5 units of center)
-          if (distToMountainCenter < 1.5) {
-            this.checkPeakView();
-          } else {
-            this.hidePeakImage();
+          // Check if at easter egg peak (within 1.5 units of center)
+          if (mt === this.easterEggMountain && distToMountainCenter < 1.5) {
+            onEasterEggPeak = true;
           }
+        }
+      }
+      
+      // Apply mountain climbing
+      if (onAnyMountain) {
+        this.isOnMountain = true;
+        if (!this.isJumping) {
+          this.player.position.y = currentMountainY;
+        }
+        
+        // Easter egg peak check
+        if (onEasterEggPeak) {
+          this.checkPeakView();
         } else {
-          // Walking off the mountain
-          if (this.isOnMountain && !this.isJumping) {
-            this.player.position.y = 0; // Back to ground level
-          }
-          this.isOnMountain = false;
           this.hidePeakImage();
         }
+      } else {
+        // Walking off mountains
+        if (this.isOnMountain && !this.isJumping) {
+          this.player.position.y = 0;
+        }
+        this.isOnMountain = false;
+        this.hidePeakImage();
       }
       
       this.player.position.x = Math.max(minX, Math.min(maxX, this.player.position.x));
@@ -2307,23 +2335,28 @@ export default class CampingScene extends Phaser.Scene {
         this.ceciRightArm.rotation.z = 0;
       }
       
-      // Ceci also climbs the easter egg mountain
-      if (this.easterEggMountain) {
-        const mt = this.easterEggMountain;
+      // Ceci also climbs all climbable mountains
+      const allMountainsForCeci = this.easterEggMountain 
+        ? [this.easterEggMountain, ...this.climbableMountains]
+        : this.climbableMountains;
+      
+      let ceciOnMountain = false;
+      let ceciMountainY = 0;
+      
+      for (const mt of allMountainsForCeci) {
         const ceciDistToMountain = Math.sqrt(
           (this.ceci.position.x - mt.x) ** 2 + 
           (this.ceci.position.z - mt.z) ** 2
         );
         
         if (ceciDistToMountain < mt.visibleRadius) {
-          // On the mountain - set Y based on distance from center
+          ceciOnMountain = true;
           const t = 1 - (ceciDistToMountain / mt.visibleRadius);
-          this.ceci.position.y = t * mt.peakY;
-        } else {
-          // Off the mountain - ground level
-          this.ceci.position.y = 0;
+          ceciMountainY = Math.max(ceciMountainY, t * mt.peakY);
         }
       }
+      
+      this.ceci.position.y = ceciOnMountain ? ceciMountainY : 0;
     }
     
     // Update camera to follow player
