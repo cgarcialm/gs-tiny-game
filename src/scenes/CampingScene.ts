@@ -2306,6 +2306,24 @@ export default class CampingScene extends Phaser.Scene {
         this.ceciLeftArm.rotation.z = 0;
         this.ceciRightArm.rotation.z = 0;
       }
+      
+      // Ceci also climbs the easter egg mountain
+      if (this.easterEggMountain) {
+        const mt = this.easterEggMountain;
+        const ceciDistToMountain = Math.sqrt(
+          (this.ceci.position.x - mt.x) ** 2 + 
+          (this.ceci.position.z - mt.z) ** 2
+        );
+        
+        if (ceciDistToMountain < mt.visibleRadius) {
+          // On the mountain - set Y based on distance from center
+          const t = 1 - (ceciDistToMountain / mt.visibleRadius);
+          this.ceci.position.y = t * mt.peakY;
+        } else {
+          // Off the mountain - ground level
+          this.ceci.position.y = 0;
+        }
+      }
     }
     
     // Update camera to follow player
