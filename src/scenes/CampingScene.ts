@@ -2453,13 +2453,12 @@ export default class CampingScene extends Phaser.Scene {
     // - Negative Z (front) = horizon with no mountains
     
     // Looking toward lake/Mt. Rainier (positive X, toward city/water)
-    // Camera view angle ~PI/2 (90 degrees) ± 60 degrees
-    const facingRainier = normalized > Math.PI / 6 && normalized < (5 * Math.PI / 6);
+    // 60° to 120° range
+    const facingRainier = normalized > (Math.PI / 3) && normalized < (2 * Math.PI / 3);
     
-    // Looking toward horizon with no mountains (negative Z, toward front)
-    // Camera view angle ~PI (180 degrees) or ~0, but we want "right" from Rainier view
-    // So facing generally negative Z = around PI (150-210 degrees range)
-    const facingHorizon = normalized > (5 * Math.PI / 6) && normalized < (7 * Math.PI / 6);
+    // Looking toward horizon with no mountains
+    // 130° to 190° range
+    const facingHorizon = normalized > (13 * Math.PI / 18) && normalized < (19 * Math.PI / 18);
     
     if (facingRainier && this.peakImageShowing !== 'eboshi') {
       this.showPeakImage('eboshi');
