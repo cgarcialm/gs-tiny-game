@@ -947,20 +947,21 @@ export default class CampingScene extends Phaser.Scene {
       waterCircles.push(waterMesh);
     });
     
-    // Add large rectangular water to cover x=20 onwards - extended Z to fill background
-    const farWaterGeo = new THREE.PlaneGeometry(70, 150, 32, 32); // Same X width, extended Z depth
+    // Water on RIGHT side (X+) extending far behind camp (Z+)
+    // Keep X position on the right (X=50+), extend Z massively
+    const farWaterGeo = new THREE.PlaneGeometry(70, 500, 32, 32); // 70 wide (right side only), 400 deep
     const farWaterMesh = new THREE.Mesh(farWaterGeo, waterMaterial);
     farWaterMesh.rotation.x = -Math.PI / 2;
-    farWaterMesh.position.set(50, 0.1, 55); // Same X, extended Z
+    farWaterMesh.position.set(50, 0.1, 150); // X=50 (right side), Z=150 (covers Z: -50 to 350)
     this.threeScene.add(farWaterMesh);
     farWaterMesh.userData.originalPositions = farWaterMesh.geometry.attributes.position.array.slice();
     waterCircles.push(farWaterMesh);
     
     // Basin under far water - matches extended water
-    const farBasinGeo = new THREE.PlaneGeometry(70, 150);
+    const farBasinGeo = new THREE.PlaneGeometry(70, 400);
     const farBasinMesh = new THREE.Mesh(farBasinGeo, basinMaterial);
     farBasinMesh.rotation.x = -Math.PI / 2;
-    farBasinMesh.position.set(50, 0.01, 55);
+    farBasinMesh.position.set(50, 0.01, 150);
     this.threeScene.add(farBasinMesh);
     
     // Add another rectangle at z=-50 from x=10 onwards
@@ -1102,6 +1103,9 @@ export default class CampingScene extends Phaser.Scene {
     
     // Add shoreline rocks along the water edge
     this.createShorelineRocks();
+    
+    // Add directional fog walls on left and back (not blocking city/Mt. Rainier)
+    this.createDirectionalFog();
     
     // Add grass patches around camping area
     this.loadGrass();
@@ -1390,6 +1394,10 @@ export default class CampingScene extends Phaser.Scene {
     }
   }
   
+  private createDirectionalFog() {
+    // No fog planes needed - using linear fog in setupThreeJS instead
+  }
+  
   private createHammock(x1: number, z1: number, x2: number, z2: number) {
     const hammockGroup = new THREE.Group();
     
@@ -1624,6 +1632,7 @@ export default class CampingScene extends Phaser.Scene {
     );
     mountain9.position.set(-45, 0, 0); // Far LEFT
     this.threeScene.add(mountain9);
+    this.climbableMountains.push({ x: -45, z: 0, visibleRadius: 21, peakY: 18 });
     
     const mountain10 = new THREE.Mesh(
       new THREE.ConeGeometry(38, 33, 32),
@@ -1631,6 +1640,7 @@ export default class CampingScene extends Phaser.Scene {
     );
     mountain10.position.set(-50, 0, 40); // Far LEFT-BACK
     this.threeScene.add(mountain10);
+    this.climbableMountains.push({ x: -50, z: 40, visibleRadius: 19, peakY: 16.5 });
     
     const mountain11 = new THREE.Mesh(
       new THREE.ConeGeometry(44, 37, 32),
@@ -1638,6 +1648,48 @@ export default class CampingScene extends Phaser.Scene {
     );
     mountain11.position.set(-55, 0, -40); // Very far LEFT
     this.threeScene.add(mountain11);
+    this.climbableMountains.push({ x: -55, z: -40, visibleRadius: 22, peakY: 18.5 });
+    
+    // Additional mountains even further LEFT (X=-60 to -90) - all climbable
+    const mountainL1 = new THREE.Mesh(
+      new THREE.ConeGeometry(48, 40, 32),
+      farMountainMaterial
+    );
+    mountainL1.position.set(-65, 0, 20); // Far left, near camp Z
+    this.threeScene.add(mountainL1);
+    this.climbableMountains.push({ x: -65, z: 20, visibleRadius: 24, peakY: 20 });
+    
+    const mountainL2 = new THREE.Mesh(
+      new THREE.ConeGeometry(52, 44, 32),
+      farMountainMaterial
+    );
+    mountainL2.position.set(-75, 0, -20); // Very far left
+    this.threeScene.add(mountainL2);
+    this.climbableMountains.push({ x: -75, z: -20, visibleRadius: 26, peakY: 22 });
+    
+    const mountainL3 = new THREE.Mesh(
+      new THREE.ConeGeometry(46, 38, 32),
+      farMountainMaterial
+    );
+    mountainL3.position.set(-70, 0, 50); // Far left, behind camp
+    this.threeScene.add(mountainL3);
+    this.climbableMountains.push({ x: -70, z: 50, visibleRadius: 23, peakY: 19 });
+    
+    const mountainL4 = new THREE.Mesh(
+      new THREE.ConeGeometry(55, 46, 32),
+      farMountainMaterial
+    );
+    mountainL4.position.set(-85, 0, 10); // Furthest left
+    this.threeScene.add(mountainL4);
+    this.climbableMountains.push({ x: -85, z: 10, visibleRadius: 27.5, peakY: 23 });
+    
+    const mountainL5 = new THREE.Mesh(
+      new THREE.ConeGeometry(50, 42, 32),
+      farMountainMaterial
+    );
+    mountainL5.position.set(-80, 0, -50); // Furthest left, front area
+    this.threeScene.add(mountainL5);
+    this.climbableMountains.push({ x: -80, z: -50, visibleRadius: 25, peakY: 21 });
     
     const mountain12 = new THREE.Mesh(
       new THREE.ConeGeometry(36, 31, 32),
@@ -1645,6 +1697,7 @@ export default class CampingScene extends Phaser.Scene {
     );
     mountain12.position.set(-30, 0, -15); // Further LEFT (away from tent)
     this.threeScene.add(mountain12);
+    this.climbableMountains.push({ x: -30, z: -15, visibleRadius: 18, peakY: 15.5 });
   }
   
   private createCampChair(x: number, y: number, z: number) {
@@ -2072,10 +2125,13 @@ export default class CampingScene extends Phaser.Scene {
           (this.player.position.z - mt.z) ** 2
         );
         
-        // Extend bounds to allow walking toward any climbable mountain
-        if (this.player.position.z > 15 || distToMountainCenter < mt.visibleRadius + 5) {
-          maxZ = Math.max(maxZ, mt.z + 5);
-          minX = Math.min(minX, mt.x - mt.visibleRadius - 5);
+        // Only extend bounds when CLOSE to a specific mountain (within radius + 10)
+        // This prevents infinite walking when on a distant mountain
+        if (distToMountainCenter < mt.visibleRadius + 10) {
+          maxZ = Math.max(maxZ, mt.z + mt.visibleRadius);
+          minZ = Math.min(minZ, mt.z - mt.visibleRadius);
+          minX = Math.min(minX, mt.x - mt.visibleRadius);
+          maxX = Math.max(maxX, mt.x + mt.visibleRadius);
         }
         
         // Check if on this mountain cone
@@ -2117,6 +2173,18 @@ export default class CampingScene extends Phaser.Scene {
         this.isOnMountain = false;
         this.hidePeakImage();
       }
+      
+      // Apply absolute hard limits (can't go beyond these even on mountains)
+      const ABSOLUTE_MIN_X = -60;  // Furthest left
+      const ABSOLUTE_MAX_X = 20;   // Water side
+      const ABSOLUTE_MIN_Z = -60;  // Front (city side)
+      const ABSOLUTE_MAX_Z = 40;   // Back (behind mountains)
+      
+      // Clamp dynamic bounds to absolute limits
+      minX = Math.max(minX, ABSOLUTE_MIN_X);
+      maxX = Math.min(maxX, ABSOLUTE_MAX_X);
+      minZ = Math.max(minZ, ABSOLUTE_MIN_Z);
+      maxZ = Math.min(maxZ, ABSOLUTE_MAX_Z);
       
       this.player.position.x = Math.max(minX, Math.min(maxX, this.player.position.x));
       this.player.position.z = Math.max(minZ, Math.min(maxZ, this.player.position.z));
