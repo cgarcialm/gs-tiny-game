@@ -94,6 +94,12 @@ export default class CampingScene extends Phaser.Scene {
   // Intro sequence
   private introActive = true;
   private introText?: HTMLDivElement;
+  
+  // Easter egg mountain climbing
+  private easterEggMountain?: { x: number; z: number; radius: number; height: number; peakY: number };
+  private isOnMountain = false;
+  private peakImageShowing: 'grayson' | 'eboshi' | null = null;
+  private peakImageDiv?: HTMLDivElement;
 
   constructor() {
     super("Camping");
@@ -1526,6 +1532,15 @@ export default class CampingScene extends Phaser.Scene {
     mountain2.position.set(-15, 0, 30);
     this.threeScene.add(mountain2);
     
+    // Store mountain2 reference for easter egg climbing
+    this.easterEggMountain = {
+      x: -15,
+      z: 30,
+      radius: 25,
+      height: 22,
+      peakY: 11 // cone centered at y=0, height 22, so peak at y=11
+    };
+    
     const mountain3 = new THREE.Mesh(
       new THREE.ConeGeometry(35, 30, 32),
       nearMountainMaterial
@@ -2007,8 +2022,54 @@ export default class CampingScene extends Phaser.Scene {
       // Keep player in camping area bounds
       // Allow more positive z (toward mountains/behind camp)
       // Limit positive x (water area)
-      this.player.position.x = Math.max(-15, Math.min(15, this.player.position.x)); // Can't go far into water
-      this.player.position.z = Math.max(-3, Math.min(20, this.player.position.z)); // Can explore behind camp
+      // But allow extended bounds near easter egg mountain
+      let minX = -15, maxX = 15, minZ = -3, maxZ = 20;
+      
+      // Easter egg mountain climbing logic
+      if (this.easterEggMountain) {
+        const mt = this.easterEggMountain;
+        const distToMountainCenter = Math.sqrt(
+          (this.player.position.x - mt.x) ** 2 + 
+          (this.player.position.z - mt.z) ** 2
+        );
+        
+        // Extend bounds to allow walking toward the mountain
+        if (this.player.position.z > 15 || distToMountainCenter < mt.radius) {
+          maxZ = mt.z + 5; // Allow walking past normal bounds toward mountain
+          minX = -25; // Allow walking left toward mountain
+        }
+        
+        // Check if on the mountain cone
+        if (distToMountainCenter < mt.radius) {
+          this.isOnMountain = true;
+          
+          // Calculate height on cone: linear from 0 at edge to peakY at center
+          const t = 1 - (distToMountainCenter / mt.radius); // 0 at edge, 1 at center
+          const groundY = t * mt.peakY;
+          
+          // Only set Y if not jumping
+          if (!this.isJumping) {
+            this.player.position.y = groundY;
+          }
+          
+          // Check if at the peak (within 2 units of center)
+          if (distToMountainCenter < 2) {
+            this.checkPeakView();
+          } else {
+            this.hidePeakImage();
+          }
+        } else {
+          // Walking off the mountain
+          if (this.isOnMountain && !this.isJumping) {
+            this.player.position.y = 0; // Back to ground level
+          }
+          this.isOnMountain = false;
+          this.hidePeakImage();
+        }
+      }
+      
+      this.player.position.x = Math.max(minX, Math.min(maxX, this.player.position.x));
+      this.player.position.z = Math.max(minZ, Math.min(maxZ, this.player.position.z));
       
       // Plant flowers behind Grayson
       if (this.plantingFlowers && this.flowerModel) {
@@ -2375,7 +2436,93 @@ export default class CampingScene extends Phaser.Scene {
     this.camera.lookAt(this.player.position.x, lookAtY, this.player.position.z);
   }
   
+  // Easter egg: Check what direction player is facing at the peak
+  private checkPeakView() {
+    // Player rotation.y is the direction they're facing
+    // 0 = facing +Z, PI/2 = facing +X, PI = facing -Z, -PI/2 = facing -X
+    const facing = this.player.rotation.y;
+    
+    // Normalize to 0-2PI
+    const normalizedFacing = ((facing % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    
+    // Facing toward water/city (positive X direction) = roughly PI/2 (90 degrees)
+    // Range: PI/4 to 3PI/4 (45 to 135 degrees)
+    const facingWater = normalizedFacing > Math.PI / 4 && normalizedFacing < (3 * Math.PI / 4);
+    
+    // Facing toward mountains (negative X direction) = roughly -PI/2 or 3PI/2 (270 degrees)
+    // Range: 5PI/4 to 7PI/4 (225 to 315 degrees)
+    const facingMountains = normalizedFacing > (5 * Math.PI / 4) && normalizedFacing < (7 * Math.PI / 4);
+    
+    if (facingWater && this.peakImageShowing !== 'grayson') {
+      this.showPeakImage('grayson');
+    } else if (facingMountains && this.peakImageShowing !== 'eboshi') {
+      this.showPeakImage('eboshi');
+    } else if (!facingWater && !facingMountains) {
+      this.hidePeakImage();
+    }
+  }
+  
+  private showPeakImage(which: 'grayson' | 'eboshi') {
+    // Remove existing image if any
+    this.hidePeakImage();
+    
+    this.peakImageShowing = which;
+    
+    const gameCanvas = this.game.canvas;
+    const rect = gameCanvas.getBoundingClientRect();
+    
+    // Create image overlay
+    const div = document.createElement('div');
+    div.style.position = 'fixed';
+    div.style.left = rect.left + 'px';
+    div.style.top = rect.top + 'px';
+    div.style.width = rect.width + 'px';
+    div.style.height = rect.height + 'px';
+    div.style.display = 'flex';
+    div.style.justifyContent = 'center';
+    div.style.alignItems = 'center';
+    div.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    div.style.zIndex = '1000';
+    div.style.opacity = '0';
+    div.style.transition = 'opacity 0.5s ease-in-out';
+    div.style.pointerEvents = 'none';
+    
+    const img = document.createElement('img');
+    img.src = which === 'grayson' ? 'grayson_peak.JPG' : 'eboshi_peak.JPG';
+    img.style.maxWidth = '80%';
+    img.style.maxHeight = '80%';
+    img.style.objectFit = 'contain';
+    img.style.borderRadius = '8px';
+    img.style.boxShadow = '0 0 30px rgba(255, 255, 255, 0.3)';
+    
+    div.appendChild(img);
+    document.body.appendChild(div);
+    this.peakImageDiv = div;
+    
+    // Fade in
+    requestAnimationFrame(() => {
+      div.style.opacity = '1';
+    });
+  }
+  
+  private hidePeakImage() {
+    if (this.peakImageDiv) {
+      const div = this.peakImageDiv;
+      div.style.opacity = '0';
+      setTimeout(() => {
+        if (div.parentNode) {
+          document.body.removeChild(div);
+        }
+      }, 500);
+      this.peakImageDiv = undefined;
+    }
+    this.peakImageShowing = null;
+  }
+  
   shutdown() {
+    // Clean up easter egg image
+    this.hidePeakImage();
+    
     // Clean up Three.js resources
     if (this.threeRenderer) {
       if (this.threeRenderer.domElement.parentElement) {
