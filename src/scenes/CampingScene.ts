@@ -947,20 +947,20 @@ export default class CampingScene extends Phaser.Scene {
       waterCircles.push(waterMesh);
     });
     
-    // Add large rectangular water to cover x=20 onwards
-    const farWaterGeo = new THREE.PlaneGeometry(70, 80, 32, 32); // Large coverage
+    // Add large rectangular water to cover x=20 onwards - extended Z to fill background
+    const farWaterGeo = new THREE.PlaneGeometry(70, 150, 32, 32); // Same X width, extended Z depth
     const farWaterMesh = new THREE.Mesh(farWaterGeo, waterMaterial);
     farWaterMesh.rotation.x = -Math.PI / 2;
-    farWaterMesh.position.set(50, 0.1, 20); // Centered at x=50, covers x=20 to x=80
+    farWaterMesh.position.set(50, 0.1, 55); // Same X, extended Z
     this.threeScene.add(farWaterMesh);
     farWaterMesh.userData.originalPositions = farWaterMesh.geometry.attributes.position.array.slice();
     waterCircles.push(farWaterMesh);
     
-    // Basin under far water
-    const farBasinGeo = new THREE.PlaneGeometry(70, 80);
+    // Basin under far water - matches extended water
+    const farBasinGeo = new THREE.PlaneGeometry(70, 150);
     const farBasinMesh = new THREE.Mesh(farBasinGeo, basinMaterial);
     farBasinMesh.rotation.x = -Math.PI / 2;
-    farBasinMesh.position.set(50, 0.01, 20);
+    farBasinMesh.position.set(50, 0.01, 55);
     this.threeScene.add(farBasinMesh);
     
     // Add another rectangle at z=-50 from x=10 onwards
@@ -1235,21 +1235,21 @@ export default class CampingScene extends Phaser.Scene {
       roughness: 0.9
     });
     
-    // Water plane in that area
-    const distantWaterGeo = new THREE.PlaneGeometry(40, 40, 32, 32); // Width 40, depth 25
+    // Water plane in that area - extended Z to fill background
+    const distantWaterGeo = new THREE.PlaneGeometry(40, 100, 32, 32); // Same X width, extended Z depth
     const distantWater = new THREE.Mesh(distantWaterGeo, waterMaterial);
     distantWater.rotation.x = -Math.PI / 2;
-    distantWater.position.set(60, 0.1, -40); // Centered at x=50, z=-37.5
+    distantWater.position.set(60, 0.1, -70); // Same X, extended Z into background
     this.threeScene.add(distantWater);
     distantWater.userData.originalPositions = distantWater.geometry.attributes.position.array.slice();
     
-    // Basin
+    // Basin - matches extended water
     const distantBasin = new THREE.Mesh(
-      new THREE.PlaneGeometry(40, 40),
+      new THREE.PlaneGeometry(40, 100),
       basinMaterial
     );
     distantBasin.rotation.x = -Math.PI / 2;
-    distantBasin.position.set(60, 0.01, -40);
+    distantBasin.position.set(60, 0.01, -70);
     this.threeScene.add(distantBasin);
     
     // Add corner circle to smooth the transition between back water and distant water
@@ -1508,14 +1508,17 @@ export default class CampingScene extends Phaser.Scene {
     // NO mountains on right side (city view must be clear!)
     
     // Darker green for distant mountains
+    // Use DoubleSide so mountains are visible from inside (when camera goes through)
     const nearMountainMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x1a4d2e, // Dark green
-      roughness: 0.9
+      roughness: 0.9,
+      side: THREE.DoubleSide
     });
     
     const farMountainMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x0f3a1f, // Even darker green for depth
-      roughness: 0.9
+      roughness: 0.9,
+      side: THREE.DoubleSide
     });
     
     // Layer 1 - Nearest mountains (LEFT and BEHIND)
@@ -1574,12 +1577,30 @@ export default class CampingScene extends Phaser.Scene {
     mountain5.position.set(-25, 0, 55);
     this.threeScene.add(mountain5);
     
+    // Store mountain5 as climbable (no easter egg)
+    // Visible radius at ground level is 19 (half of base radius 38), peak at 16
+    this.climbableMountains.push({
+      x: -25,
+      z: 55,
+      visibleRadius: 19,
+      peakY: 16
+    });
+    
     const mountain6 = new THREE.Mesh(
       new THREE.ConeGeometry(32, 28, 32),
       farMountainMaterial
     );
     mountain6.position.set(-5, 0, 60);
     this.threeScene.add(mountain6);
+    
+    // Store mountain6 as climbable (no easter egg)
+    // Visible radius at ground level is 16 (half of base radius 32), peak at 14
+    this.climbableMountains.push({
+      x: -5,
+      z: 60,
+      visibleRadius: 16,
+      peakY: 14
+    });
     
     // Layer 3 - Furthest (huge, very far)
     const mountain7 = new THREE.Mesh(
