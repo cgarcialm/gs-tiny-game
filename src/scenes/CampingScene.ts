@@ -101,6 +101,11 @@ export default class CampingScene extends Phaser.Scene {
   private isOnMountain = false;
   private peakImageShowing: 'grayson' | 'eboshi' | null = null;
   private peakImageDiv?: HTMLDivElement;
+  
+  // Water wading
+  private lakeCircles: Array<{ x: number; z: number; radius: number }> = [];
+  private isInWater = false;
+  private lastSplashTime = 0;
 
   constructor() {
     super("Camping");
@@ -528,6 +533,65 @@ export default class CampingScene extends Phaser.Scene {
     }
   }
   
+  private createWaterSplash(x: number, z: number) {
+    // Create water splash particles
+    const splashColors = [0x87CEEB, 0xADD8E6, 0xB0E0E6, 0xE0FFFF, 0xFFFFFF];
+    
+    for (let i = 0; i < 6; i++) {
+      const splashGeo = new THREE.SphereGeometry(0.06, 6, 6);
+      const splashMat = new THREE.MeshBasicMaterial({ 
+        color: splashColors[Math.floor(Math.random() * splashColors.length)],
+        transparent: true,
+        opacity: 0.8
+      });
+      const splash = new THREE.Mesh(splashGeo, splashMat);
+      
+      // Random position around player feet
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 0.2 + Math.random() * 0.3;
+      splash.position.set(
+        x + Math.cos(angle) * radius,
+        0.1,
+        z + Math.sin(angle) * radius
+      );
+      
+      this.threeScene.add(splash);
+      
+      // Animate splash upward and fade
+      const startY = splash.position.y;
+      const targetY = startY + 0.5 + Math.random() * 0.3;
+      const startTime = Date.now();
+      const duration = 400 + Math.random() * 200;
+      
+      const animateSplash = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+        
+        if (progress >= 1) {
+          this.threeScene.remove(splash);
+          splash.geometry.dispose();
+          (splash.material as THREE.Material).dispose();
+          return;
+        }
+        
+        // Arc upward then fall
+        const arcProgress = Math.sin(progress * Math.PI);
+        splash.position.y = startY + (targetY - startY) * arcProgress;
+        
+        // Spread outward
+        splash.position.x += Math.cos(angle) * 0.01;
+        splash.position.z += Math.sin(angle) * 0.01;
+        
+        // Fade out
+        (splash.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - progress);
+        
+        requestAnimationFrame(animateSplash);
+      };
+      
+      animateSplash();
+    }
+  }
+  
   private createCeci() {
     // Create Ceci standing between fire and rocks, watching the city
     this.ceci = new THREE.Group() as any;
@@ -893,7 +957,7 @@ export default class CampingScene extends Phaser.Scene {
     // ==================== EDIT LAKE CIRCLES HERE ====================
     // Each circle: { x: X_POSITION, z: Z_POSITION, radius: SIZE }
     // Lake is formed by overlapping these circles for organic shape
-    const LAKE_CIRCLES = [
+    this.lakeCircles = [
       { x: 10, z: -10, radius: 10 },   // Main body (further right)
       { x: 15, z: -15, radius: 8 },    // Extends right toward city
       { x: 8, z: -6, radius: 6 },       // At edge1 point (8, 2)
@@ -905,6 +969,7 @@ export default class CampingScene extends Phaser.Scene {
       { x: -8, z: -10, radius: 8 },       // Left extension (near mountains)
       { x: -10, z: -20, radius: 10 }       // Left extension (near mountains)
     ];
+    const LAKE_CIRCLES = this.lakeCircles;
     // ================================================================
     
     // Create organic lake from overlapping circles
@@ -1968,7 +2033,21 @@ export default class CampingScene extends Phaser.Scene {
     
     // Player movement (WASD/Arrows) - camera-relative
     if (this.player) {
-      const moveSpeed = 5;
+      // Check if player is in water (inside any lake circle)
+      this.isInWater = false;
+      for (const circle of this.lakeCircles) {
+        const distToCircle = Math.sqrt(
+          (this.player.position.x - circle.x) ** 2 + 
+          (this.player.position.z - circle.z) ** 2
+        );
+        if (distToCircle < circle.radius) {
+          this.isInWater = true;
+          break;
+        }
+      }
+      
+      // Slower movement in water
+      const moveSpeed = this.isInWater ? 2.5 : 5;
       let forward = 0; // Forward/backward
       let right = 0;   // Left/right
       
@@ -2035,6 +2114,15 @@ export default class CampingScene extends Phaser.Scene {
       if (canMove) {
         this.player.position.x = newX;
         this.player.position.z = newZ;
+        
+        // Splash particles when walking in water
+        if (this.isInWater && moveVector.length() > 0) {
+          const now = this.time.now;
+          if (now - this.lastSplashTime > 200) { // Splash every 200ms while moving
+            this.lastSplashTime = now;
+            this.createWaterSplash(this.player.position.x, this.player.position.z);
+          }
+        }
       }
       
       // Rotate player to face movement direction
