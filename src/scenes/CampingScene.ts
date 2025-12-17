@@ -96,7 +96,7 @@ export default class CampingScene extends Phaser.Scene {
   private introText?: HTMLDivElement;
   
   // Easter egg mountain climbing
-  private easterEggMountain?: { x: number; z: number; radius: number; height: number; peakY: number };
+  private easterEggMountain?: { x: number; z: number; visibleRadius: number; peakY: number };
   private isOnMountain = false;
   private peakImageShowing: 'grayson' | 'eboshi' | null = null;
   private peakImageDiv?: HTMLDivElement;
@@ -1533,12 +1533,13 @@ export default class CampingScene extends Phaser.Scene {
     this.threeScene.add(mountain2);
     
     // Store mountain2 reference for easter egg climbing
+    // Cone is centered at Y=0 with height 22, so visible part goes from Y=0 to Y=11
+    // At Y=0 (ground level), the visible radius is 12.5 (half of base radius 25)
     this.easterEggMountain = {
       x: -15,
       z: 30,
-      radius: 25,
-      height: 22,
-      peakY: 11 // cone centered at y=0, height 22, so peak at y=11
+      visibleRadius: 12.5, // Radius at ground level (where climbing starts)
+      peakY: 11 // Top of visible cone
     };
     
     const mountain3 = new THREE.Mesh(
@@ -2034,17 +2035,17 @@ export default class CampingScene extends Phaser.Scene {
         );
         
         // Extend bounds to allow walking toward the mountain
-        if (this.player.position.z > 15 || distToMountainCenter < mt.radius) {
+        if (this.player.position.z > 15 || distToMountainCenter < mt.visibleRadius + 5) {
           maxZ = mt.z + 5; // Allow walking past normal bounds toward mountain
           minX = -25; // Allow walking left toward mountain
         }
         
-        // Check if on the mountain cone
-        if (distToMountainCenter < mt.radius) {
+        // Check if on the mountain cone (use visible radius at ground level)
+        if (distToMountainCenter < mt.visibleRadius) {
           this.isOnMountain = true;
           
           // Calculate height on cone: linear from 0 at edge to peakY at center
-          const t = 1 - (distToMountainCenter / mt.radius); // 0 at edge, 1 at center
+          const t = 1 - (distToMountainCenter / mt.visibleRadius); // 0 at edge, 1 at center
           const groundY = t * mt.peakY;
           
           // Only set Y if not jumping
@@ -2052,8 +2053,8 @@ export default class CampingScene extends Phaser.Scene {
             this.player.position.y = groundY;
           }
           
-          // Check if at the peak (within 2 units of center)
-          if (distToMountainCenter < 2) {
+          // Check if at the peak (within 1.5 units of center)
+          if (distToMountainCenter < 1.5) {
             this.checkPeakView();
           } else {
             this.hidePeakImage();
@@ -2436,28 +2437,35 @@ export default class CampingScene extends Phaser.Scene {
     this.camera.lookAt(this.player.position.x, lookAtY, this.player.position.z);
   }
   
-  // Easter egg: Check what direction player is facing at the peak
+  // Easter egg: Check what direction camera/player is looking at the peak
   private checkPeakView() {
-    // Player rotation.y is the direction they're facing
-    // 0 = facing +Z, PI/2 = facing +X, PI = facing -Z, -PI/2 = facing -X
-    const facing = this.player.rotation.y;
+    // cameraAngleH is where the camera is positioned around the player
+    // The VIEW direction (where player is looking) is opposite: cameraAngleH + PI
+    const viewDirection = this.cameraAngleH + Math.PI;
     
     // Normalize to 0-2PI
-    const normalizedFacing = ((facing % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    const normalized = ((viewDirection % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     
-    // Facing toward water/city (positive X direction) = roughly PI/2 (90 degrees)
-    // Range: PI/4 to 3PI/4 (45 to 135 degrees)
-    const facingWater = normalizedFacing > Math.PI / 4 && normalizedFacing < (3 * Math.PI / 4);
+    // Scene layout:
+    // - Positive X (right) = city/water/Mt. Rainier direction
+    // - Negative X (left) = mountains
+    // - Positive Z (behind camp) = mountains  
+    // - Negative Z (front) = horizon with no mountains
     
-    // Facing toward mountains (negative X direction) = roughly -PI/2 or 3PI/2 (270 degrees)
-    // Range: 5PI/4 to 7PI/4 (225 to 315 degrees)
-    const facingMountains = normalizedFacing > (5 * Math.PI / 4) && normalizedFacing < (7 * Math.PI / 4);
+    // Looking toward lake/Mt. Rainier (positive X, toward city/water)
+    // Camera view angle ~PI/2 (90 degrees) ± 60 degrees
+    const facingRainier = normalized > Math.PI / 6 && normalized < (5 * Math.PI / 6);
     
-    if (facingWater && this.peakImageShowing !== 'grayson') {
-      this.showPeakImage('grayson');
-    } else if (facingMountains && this.peakImageShowing !== 'eboshi') {
+    // Looking toward horizon with no mountains (negative Z, toward front)
+    // Camera view angle ~PI (180 degrees) or ~0, but we want "right" from Rainier view
+    // So facing generally negative Z = around PI (150-210 degrees range)
+    const facingHorizon = normalized > (5 * Math.PI / 6) && normalized < (7 * Math.PI / 6);
+    
+    if (facingRainier && this.peakImageShowing !== 'eboshi') {
       this.showPeakImage('eboshi');
-    } else if (!facingWater && !facingMountains) {
+    } else if (facingHorizon && this.peakImageShowing !== 'grayson') {
+      this.showPeakImage('grayson');
+    } else if (!facingRainier && !facingHorizon) {
       this.hidePeakImage();
     }
   }
