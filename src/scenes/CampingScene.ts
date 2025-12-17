@@ -2547,16 +2547,13 @@ export default class CampingScene extends Phaser.Scene {
     
     this.peakImageShowing = which;
     
-    const gameCanvas = this.game.canvas;
-    const rect = gameCanvas.getBoundingClientRect();
-    
-    // Create image overlay
+    // Create image overlay - use viewport percentages for responsiveness
     const div = document.createElement('div');
     div.style.position = 'fixed';
-    div.style.left = rect.left + 'px';
-    div.style.top = rect.top + 'px';
-    div.style.width = rect.width + 'px';
-    div.style.height = rect.height + 'px';
+    div.style.left = '0';
+    div.style.top = '0';
+    div.style.width = '100vw';
+    div.style.height = '100vh';
     div.style.display = 'flex';
     div.style.justifyContent = 'center';
     div.style.alignItems = 'center';
