@@ -18,7 +18,7 @@ import { SCENES, type SceneName } from "./sceneConstants";
  * "FarmersMarket" = Skip to Farmers Market Pac-Man scene
  * "Camping" = Skip to Camping scene
  */
-export const DEBUG_START_SCENE: SceneName = SCENES.CAMPING;
+export const DEBUG_START_SCENE: SceneName = SCENES.GAME;
 
 /**
  * Set to desired level number to skip ahead in GameScene (only applies if starting in "Game")
@@ -31,7 +31,7 @@ export const DEBUG_START_SCENE: SceneName = SCENES.CAMPING;
  * NOTE: This only applies when there's NO registry value (fresh start).
  * Registry values from completed levels always take priority.
  */
-export const DEBUG_START_LEVEL = 3;
+export const DEBUG_START_LEVEL = 4;
 
 /**
  * Show debug grid and axes in 3D camping scene

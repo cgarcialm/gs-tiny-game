@@ -1778,7 +1778,7 @@ export default class GameScene extends Phaser.Scene {
     // Shuffle positions (faster!)
     const numSwaps = 10;
     this.time.addEvent({
-      delay: 250, // Faster (was 400)
+      delay: 200, // Faster (was 400)
       repeat: numSwaps - 1,
       callback: () => {
         // Swap two random cards
