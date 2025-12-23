@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createGraysonPacManSprite, animateGraysonChomp, createSmushPacManSprite, animateSmushChomp, createPieSliceSprite, createShopperSprite } from "../utils/sprites";
+import { createGraysonPacManSprite, animateGraysonChomp, createSmushPacManSprite, animateSmushChomp, createPieSliceSprite, createShopperSprite, updateShopperWalk } from "../utils/sprites";
 import { createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 import { initializeGameScene } from "../utils/sceneSetup";
 import { fadeToScene } from "../utils/sceneTransitions";
@@ -1588,9 +1588,12 @@ export default class FarmersMarketScene extends Phaser.Scene {
       const distX = Math.abs(shopper.physics.x - shopper.targetX);
       const distY = Math.abs(shopper.physics.y - shopper.targetY);
       
+      let isMoving = false;
+      
       if (!shopper.returning) {
         // Walking toward target
         if (distX > 2 || distY > 2) {
+          isMoving = true;
           // Move in the direction with largest distance
           if (distX > distY) {
             const direction = shopper.targetX > shopper.physics.x ? 1 : -1;
@@ -1611,6 +1614,9 @@ export default class FarmersMarketScene extends Phaser.Scene {
           this.shoppers.splice(index, 1);
         }
       }
+      
+      // Animate walking
+      updateShopperWalk(shopper.sprite, isMoving);
       
       // Sync sprite with physics
       shopper.sprite.x = shopper.physics.x;

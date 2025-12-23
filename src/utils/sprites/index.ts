@@ -14,7 +14,7 @@ export { createCrowdPersonSprite, getRandomCrowdColors } from "./CrowdPersonSpri
 export { createGraysonPacManSprite, animateGraysonChomp } from "./GraysonPacManSprite";
 export { createSmushPacManSprite, animateSmushChomp } from "./SmushPacManSprite";
 export { createPieSliceSprite } from "./PieSliceSprite";
-export { createShopperSprite } from "./ShopperSprite";
+export { createShopperSprite, updateShopperWalk } from "./ShopperSprite";
 export { createVanSprite, createVanSpriteBack, createVanSpriteFromRight } from "./VanSprite";
 export { createVanSideSprite } from "./VanSideSprite";
 export { createTrafficCarSprite, getRandomCarColor } from "./TrafficCarSprite";
