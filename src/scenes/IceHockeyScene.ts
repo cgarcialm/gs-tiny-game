@@ -173,26 +173,27 @@ export default class IceHockeyScene extends Phaser.Scene {
   
   private showIntroOverlay() {
     // Background overlay with border
-    const overlay = this.add.rectangle(160, 90, 240, 100, 0x1a1a2e, 0.95)
+    const overlay = this.add.rectangle(160, 90, 260, 120, 0x1a1a2e, 0.95)
       .setStrokeStyle(2, 0xf472b6)
       .setDepth(300);
     
-    const title = this.add.text(160, 55, "★ ICE HOCKEY ★", {
+    const title = this.add.text(160, 45, "★ ICE HOCKEY ★", {
       fontFamily: "monospace",
-      fontSize: "12px",
+      fontSize: "14px",
       color: "#f472b6"
     }).setOrigin(0.5).setDepth(301);
     
-    const instructions = this.add.text(160, 82, "Wrong place, wrong time\nDodge pucks, shoot back!", {
+    const instructions = this.add.text(160, 85, "Move: WASD  |  Shoot: SPACE\nWrong place, wrong time!\nGrab STICK + SKATES, fight back", {
       fontFamily: "monospace",
-      fontSize: "9px",
+      fontSize: "10px",
       color: "#ffffff",
-      align: "center"
+      align: "center",
+      lineSpacing: 4
     }).setOrigin(0.5).setDepth(301);
     
-    const pressEnter = this.add.text(160, 115, "[ PRESS ENTER ]", {
+    const pressEnter = this.add.text(160, 130, "[ PRESS ENTER ]", {
       fontFamily: "monospace",
-      fontSize: "9px",
+      fontSize: "10px",
       color: "#ffff00"
     }).setOrigin(0.5).setDepth(301);
     
