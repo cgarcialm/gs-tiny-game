@@ -31,10 +31,8 @@ export class DialogueManager {
     });
     this.dialogText.setOrigin(0, 0);
     
-    // Add to container
     this.container.add([this.dialogBox, this.dialogText]);
-    
-    // Hide by default
+    this.container.setScrollFactor(0); // Keep dialogue on screen when camera scrolls (e.g. Ice Hockey)
     this.hide();
   }
 

@@ -17,6 +17,17 @@ import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 import { HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import { HELP_HINT_TEXT_STYLE } from "../config/textStyles";
 
+// World larger than view: player fixed in middle, background scrolls (camera translation)
+// Scroll max must reach (fieldRight - 160) and (fieldBottom - 90). So we need:
+//   -OFFSET_X + WORLD_WIDTH - 320 >= (230 + OFFSET_X) - 160  =>  WORLD_WIDTH >= 390 + 2*OFFSET_X
+//   -OFFSET_Y + WORLD_HEIGHT - 180 >= (168 + OFFSET_Y) - 90  =>  WORLD_HEIGHT >= 258 + 2*OFFSET_Y
+const ICE_HOCKEY_WORLD_OFFSET_X = 380;
+const ICE_HOCKEY_WORLD_OFFSET_Y = 476;
+const ICE_HOCKEY_WORLD_WIDTH = 390 + ICE_HOCKEY_WORLD_OFFSET_X * 2;   // 1150 – extra so scroll right works
+const ICE_HOCKEY_WORLD_HEIGHT = 258 + ICE_HOCKEY_WORLD_OFFSET_Y * 2;  // 1210 – extra so scroll down works
+const ICE_HOCKEY_SCREEN_CENTER_X = 160;
+const ICE_HOCKEY_SCREEN_CENTER_Y = 90;
+
 /**
  * Ice Hockey Game Scene - Everett Silvertips
  * Level 2: Find Ceci at the hockey game
@@ -123,23 +134,22 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Disable gravity for top-down view (no gravity from above!)
     this.physics.world.gravity.y = 0;
     
-    // Create ice hockey rink
     this.createIceRink();
-    
-    // Create Grayson (top-down view) - starts at goal net (bottom)
-    // Position him at center of field horizontally (160), bottom of field vertically
-    this.player = createGraysonTopDownSprite(this, 160, 160);
+    const playerStartX = ICE_HOCKEY_SCREEN_CENTER_X + ICE_HOCKEY_WORLD_OFFSET_X;
+    const playerStartY = 160 + ICE_HOCKEY_WORLD_OFFSET_Y;
+    this.player = createGraysonTopDownSprite(this, playerStartX, playerStartY);
     this.player.setDepth(10);
-    
-    // Create invisible physics body for player
-    this.playerPhysics = this.physics.add.sprite(160, 160, '');
-    this.playerPhysics.setSize(12, 14); // Small hitbox
-    this.playerPhysics.setAlpha(0); // Invisible
-    
-    // Constrain player to playing field (between boards: x:85-235, y:8-172)
-    this.playerPhysics.setCollideWorldBounds(false); // Don't use world bounds
-    // We'll manually constrain in movement code
-    
+    this.playerPhysics = this.physics.add.sprite(playerStartX, playerStartY, '');
+    this.playerPhysics.setSize(12, 14);
+    this.playerPhysics.setAlpha(0);
+    this.playerPhysics.setCollideWorldBounds(false);
+    this.cameras.main.setBounds(
+      -ICE_HOCKEY_WORLD_OFFSET_X,
+      -ICE_HOCKEY_WORLD_OFFSET_Y,
+      ICE_HOCKEY_WORLD_WIDTH,
+      ICE_HOCKEY_WORLD_HEIGHT
+    );
+    this.cameras.main.startFollow(this.playerPhysics, true, 0.08, 0.08);
     // Create visual sidebar UI (RotMG style)
     this.createMinimap();
     this.createVisualSidebar();
@@ -156,10 +166,10 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.promptText.setDepth(50);
     this.promptText.setVisible(false);
     
-    // Help hint (bottom-right corner)
     this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
-      .setDepth(10);
+      .setDepth(10)
+      .setScrollFactor(0);
     
     // Spawn skates and hockey stick on the ice
     this.spawnSkates();
@@ -172,30 +182,27 @@ export default class IceHockeyScene extends Phaser.Scene {
   private introActive = true;
   
   private showIntroOverlay() {
-    // Background overlay with border
     const overlay = this.add.rectangle(160, 90, 260, 120, 0x1a1a2e, 0.95)
       .setStrokeStyle(2, 0xf472b6)
-      .setDepth(300);
-    
+      .setDepth(300)
+      .setScrollFactor(0);
     const title = this.add.text(160, 45, "★ ICE HOCKEY ★", {
       fontFamily: "monospace",
       fontSize: "14px",
       color: "#f472b6"
-    }).setOrigin(0.5).setDepth(301);
-    
+    }).setOrigin(0.5).setDepth(301).setScrollFactor(0);
     const instructions = this.add.text(160, 85, "Move: WASD  |  Shoot: SPACE\nWrong place, wrong time!\nGrab STICK + SKATES, fight back", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffffff",
       align: "center",
       lineSpacing: 4
-    }).setOrigin(0.5).setDepth(301);
-    
+    }).setOrigin(0.5).setDepth(301).setScrollFactor(0);
     const pressEnter = this.add.text(160, 130, "[ PRESS ENTER ]", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffff00"
-    }).setOrigin(0.5).setDepth(301);
+    }).setOrigin(0.5).setDepth(301).setScrollFactor(0);
     
     // Pulse animation for Press ENTER
     this.tweens.add({
@@ -232,22 +239,17 @@ export default class IceHockeyScene extends Phaser.Scene {
     const minimapX = 320 - minimapWidth - 8;
     const minimapY = 10; // Top-right area
     
-    // Minimap background (semi-transparent like RotMG)
     const minimapBg = this.add.rectangle(minimapX, minimapY, minimapWidth, minimapHeight, 0x1a1a1a, 0.9);
-    minimapBg.setOrigin(0, 0).setDepth(100);
+    minimapBg.setOrigin(0, 0).setDepth(100).setScrollFactor(0);
     minimapBg.setStrokeStyle(1, 0x666666, 1);
-    
-    // Ice rink outline (scaled down) - vertical field!
     const rinkGraphics = this.add.graphics();
-    rinkGraphics.lineStyle(1, 0x4a90e2, 0.5); // Blue outline
-    // Field is vertical: ~150px wide, ~164px tall in game
-    const fieldW = 28; // Narrower (horizontal)
-    const fieldH = 48; // Taller (vertical)
+    rinkGraphics.lineStyle(1, 0x4a90e2, 0.5);
+    const fieldW = 28;
+    const fieldH = 48;
     rinkGraphics.strokeRect(minimapX + 20, minimapY + 6, fieldW, fieldH);
-    rinkGraphics.setDepth(101);
-    
-    this.minimapContainer = this.add.container(0, 0);
-    this.minimapContainer.setDepth(102);
+    rinkGraphics.setDepth(101).setScrollFactor(0);
+    this.minimapContainer = this.add.container(minimapX + 20, minimapY + 6);
+    this.minimapContainer.setDepth(102).setScrollFactor(0);
     
     // Player dot (white square)
     this.playerDot = this.add.rectangle(0, 0, 3, 3, 0xffffff, 1);
@@ -255,53 +257,46 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private updateMinimap() {
-    // Scale factor: vertical field (~150 wide, ~164 tall → 28×48 on minimap)
-    const scaleX = 28 / 150;
-    const scaleY = 48 / 164;
+    const fieldLeft = 90 + ICE_HOCKEY_WORLD_OFFSET_X;
+    const fieldTop = 12 + ICE_HOCKEY_WORLD_OFFSET_Y;
+    const fieldWidth = 150;
+    const fieldHeight = 156;
+    const scaleX = 28 / fieldWidth;
+    const scaleY = 48 / fieldHeight;
     const minimapX = 320 - 68 - 8;
     const minimapY = 10;
     const offsetX = minimapX + 20;
     const offsetY = minimapY + 6;
-    
-    // Update player position
-    const mapPlayerX = offsetX + (this.playerPhysics.x - 90) * scaleX;
-    const mapPlayerY = offsetY + (this.playerPhysics.y - 12) * scaleY;
+    const mapPlayerX = (this.playerPhysics.x - fieldLeft) * scaleX;
+    const mapPlayerY = (this.playerPhysics.y - fieldTop) * scaleY;
     this.playerDot.setPosition(mapPlayerX, mapPlayerY);
-    
-    // Clear old enemy dots
     this.enemyDots.forEach(dot => dot.destroy());
     this.enemyDots = [];
-    
-    // Draw enemy dots (red)
     this.enemies.forEach(enemy => {
-      const mapX = offsetX + (enemy.x - 90) * scaleX;
-      const mapY = offsetY + (enemy.y - 12) * scaleY;
+      const mapX = offsetX + (enemy.x - fieldLeft) * scaleX;
+      const mapY = offsetY + (enemy.y - fieldTop) * scaleY;
       const dot = this.add.graphics();
       dot.fillStyle(0xff0000, 1);
       dot.fillCircle(mapX, mapY, 2);
-      dot.setDepth(102);
+      dot.setDepth(102).setScrollFactor(0);
       this.enemyDots.push(dot);
     });
-    
-    // Draw chaser dots (orange)
     this.chasers.forEach(chaser => {
-      const mapX = offsetX + (chaser.x - 90) * scaleX;
-      const mapY = offsetY + (chaser.y - 12) * scaleY;
+      const mapX = offsetX + (chaser.x - fieldLeft) * scaleX;
+      const mapY = offsetY + (chaser.y - fieldTop) * scaleY;
       const dot = this.add.graphics();
       dot.fillStyle(0xff9800, 1);
       dot.fillCircle(mapX, mapY, 2);
-      dot.setDepth(102);
+      dot.setDepth(102).setScrollFactor(0);
       this.enemyDots.push(dot);
     });
-    
-    // Draw memory dot (yellow) if spawned
     if (this.memoryFragmentSpawned && this.memoryFragment) {
-      const mapX = offsetX + (this.memoryFragment.x - 90) * scaleX;
-      const mapY = offsetY + (this.memoryFragment.y - 12) * scaleY;
+      const mapX = offsetX + (this.memoryFragment.x - fieldLeft) * scaleX;
+      const mapY = offsetY + (this.memoryFragment.y - fieldTop) * scaleY;
       const dot = this.add.graphics();
       dot.fillStyle(0xffeb3b, 1);
       dot.fillCircle(mapX, mapY, 2);
-      dot.setDepth(102);
+      dot.setDepth(102).setScrollFactor(0);
       this.enemyDots.push(dot);
     }
   }
@@ -315,7 +310,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     const panelY = 180 - panelHeight - 20; // Moved down for minimap space
     
     const panelBg = this.add.rectangle(panelX, panelY, panelWidth, panelHeight, 0x2a2a2a, 1);
-    panelBg.setOrigin(0, 0).setDepth(100);
+    panelBg.setOrigin(0, 0).setDepth(100).setScrollFactor(0);
     panelBg.setStrokeStyle(1, 0x666666, 1);
     
     // Character portrait at top (mini Grayson sprite - RotMG style)
@@ -329,37 +324,28 @@ export default class IceHockeyScene extends Phaser.Scene {
     portrait.fillRect(portraitX, portraitY + 2, 8, 6);
     portrait.fillStyle(0xffe5cc, 1); // Skin (head)
     portrait.fillRect(portraitX + 1, portraitY, 6, 3);
-    portrait.setDepth(101);
-    
-    // Character name (to the right of portrait)
-    const textX = portraitX + 12; // Right of portrait
-    
+    portrait.setDepth(101).setScrollFactor(0);
+    const textX = portraitX + 12;
     this.add.text(textX, portraitY + 2, "Grayson", {
       fontFamily: "monospace",
       fontSize: "7px",
       color: "#ffffff",
       resolution: 1,
-    }).setOrigin(0, 0).setDepth(101);
-    
-    // Class name (below portrait, left-aligned with portrait)
+    }).setOrigin(0, 0).setDepth(101).setScrollFactor(0);
     this.add.text(portraitX, portraitY + 12, "Goalie", {
       fontFamily: "monospace",
       fontSize: "7px",
       color: "#ffeb3b",
       resolution: 1,
-    }).setOrigin(0, 0).setDepth(101);
-    
-    // HP Label (middle section)
+    }).setOrigin(0, 0).setDepth(101).setScrollFactor(0);
     this.add.text(panelX + 4, panelY + 34, "HP:", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#ffffff",
       resolution: 1,
-    }).setOrigin(0, 0).setDepth(101);
-    
-    // Draw 3 hearts (same line as HP label)
+    }).setOrigin(0, 0).setDepth(101).setScrollFactor(0);
     this.healthDisplay = this.add.container(panelX + 22, panelY + 33);
-    this.healthDisplay.setDepth(101);
+    this.healthDisplay.setDepth(101).setScrollFactor(0);
     this.updateHealthHearts();
     
     // Defeated stat (RotMG style - between HP and inventory)
@@ -368,7 +354,7 @@ export default class IceHockeyScene extends Phaser.Scene {
       fontSize: "7px",
       color: "#ffffff",
       resolution: 1,
-    }).setOrigin(0, 0).setDepth(101);
+    }).setOrigin(0, 0).setDepth(101).setScrollFactor(0);
     
     // Equipment inventory bar (RotMG style - square slots centered)
     const slotSize = 16; // Bigger square slots to fit icons
@@ -395,7 +381,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Fill the 3 actual slots with dark background
     inventoryBar.fillStyle(0x1a1a1a, 1);
     inventoryBar.fillRect(slotsStartX, inventoryBarY, totalSlotsWidth, inventoryBarHeight);
-    inventoryBar.setDepth(100);
+    inventoryBar.setDepth(100).setScrollFactor(0);
     
     // Draw grid lines ONLY between the 3 slots
     inventoryBar.lineStyle(1, 0x444444, 1);
@@ -424,8 +410,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     skatesIcon.fillRect(skateX + 7, skateY + 2, 5, 4); // Boot
     skatesIcon.fillStyle(0xe0e0e0, 1);
     skatesIcon.fillRect(skateX + 6, skateY + 5, 6, 2); // Blade extending forward
-    skatesIcon.setDepth(101);
-    
+    skatesIcon.setDepth(101).setScrollFactor(0);
     // Stick icon in slot 1 (centered in square slot)
     const stickIcon = this.add.graphics();
     const stickSlotX = slotsStartX + slotSize;
@@ -437,8 +422,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Blade at tip
     stickIcon.fillStyle(0xe0e0e0, 1);
     stickIcon.fillRect(stickSlotX + 11, inventoryBarY + 11, 3, 2);
-    stickIcon.setDepth(101);
-    
+    stickIcon.setDepth(101).setScrollFactor(0);
     // Memory/card piece icon in slot 2 (better centered)
     const cardIcon = this.add.graphics();
     const cardSlotX = slotsStartX + slotSize * 2;
@@ -446,11 +430,10 @@ export default class IceHockeyScene extends Phaser.Scene {
     cardIcon.fillRect(cardSlotX + 4, inventoryBarY + 4, 8, 8); // Moved right and down
     cardIcon.fillStyle(0xff0000, 1); // Red heart
     cardIcon.fillCircle(cardSlotX + 8, inventoryBarY + 8, 2); // Centered in card
-    cardIcon.setDepth(101);
-    cardIcon.setAlpha(0.4); // Dim initially
-    
-    // Store for updates - create container first
+    cardIcon.setDepth(101).setScrollFactor(0);
+    cardIcon.setAlpha(0.4);
     this.stickDisplay = this.add.container(0, 0);
+    this.stickDisplay.setScrollFactor(0);
     this.stickDisplay.setData('skatesIcon', skatesIcon);
     this.stickDisplay.setData('stickIcon', stickIcon);
     this.stickDisplay.setData('cardIcon', cardIcon);
@@ -481,10 +464,8 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private spawnSkates() {
-    // Spawn skates near left board (close to border)
-    const skatesX = 100;
-    const skatesY = 120;
-    
+    const skatesX = 100 + ICE_HOCKEY_WORLD_OFFSET_X;
+    const skatesY = 120 + ICE_HOCKEY_WORLD_OFFSET_Y;
     this.skates = this.add.graphics();
     this.skates.setPosition(skatesX, skatesY);
     
@@ -508,10 +489,8 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private spawnHockeyStick() {
-    // Spawn stick near right board (close to border - mirrored from skates)
-    const stickX = 220;
-    const stickY = 120;
-    
+    const stickX = 220 + ICE_HOCKEY_WORLD_OFFSET_X;
+    const stickY = 120 + ICE_HOCKEY_WORLD_OFFSET_Y;
     this.hockeyStick = this.add.graphics();
     this.hockeyStick.setPosition(stickX, stickY);
     
@@ -534,59 +513,38 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private createIceRink() {
-    // Stands area background (darker - behind the boards)
-    const stands = this.add.rectangle(160, 90, 320, 180, 0x37474f, 1);
+    const ox = ICE_HOCKEY_WORLD_OFFSET_X;
+    const oy = ICE_HOCKEY_WORLD_OFFSET_Y;
+    const worldCenterX = ICE_HOCKEY_SCREEN_CENTER_X + ox;
+    const worldCenterY = ICE_HOCKEY_SCREEN_CENTER_Y + oy;
+    const stands = this.add.rectangle(worldCenterX, worldCenterY, ICE_HOCKEY_WORLD_WIDTH, ICE_HOCKEY_WORLD_HEIGHT, 0x37474f, 1);
     stands.setOrigin(0.5);
-    
-    // Playing field dimensions (narrower to leave room for stands)
-    const fieldLeft = 85;
-    const fieldRight = 235;
+    const fieldLeft = 85 + ox;
+    const fieldRight = 235 + ox;
     const fieldWidth = fieldRight - fieldLeft;
     const fieldCenterX = (fieldLeft + fieldRight) / 2;
-    
-    // Ice surface background (white-ish blue) - only the playing field
-    const ice = this.add.rectangle(fieldCenterX, 90, fieldWidth, 180, 0xe3f2fd, 1);
+    const fieldCenterY = 90 + oy;
+    const ice = this.add.rectangle(fieldCenterX, fieldCenterY, fieldWidth, 180, 0xe3f2fd, 1);
     ice.setOrigin(0.5);
-    
-    // Rink boards (darker blue border)
     const boardColor = 0x1565c0;
     const boardThickness = 6;
-    
-    // Top board
-    this.add.rectangle(fieldCenterX, boardThickness / 2, fieldWidth, boardThickness, boardColor);
-    // Bottom board
-    this.add.rectangle(fieldCenterX, 180 - boardThickness / 2, fieldWidth, boardThickness, boardColor);
-    // Left board
-    this.add.rectangle(fieldLeft, 90, boardThickness, 180, boardColor);
-    // Right board
-    this.add.rectangle(fieldRight, 90, boardThickness, 180, boardColor);
-    
-    // Center ice - red line (horizontal, across the width of field)
-    this.add.rectangle(fieldCenterX, 90, fieldWidth, 3, 0xff0000, 1);
-    
-    // Blue lines (zone markers) - horizontal lines dividing zones
-    this.add.rectangle(fieldCenterX, 45, fieldWidth, 3, 0x0d47a1, 1);
-    this.add.rectangle(fieldCenterX, 135, fieldWidth, 3, 0x0d47a1, 1);
-    
-    // Center circle
-    const centerCircle = this.add.circle(fieldCenterX, 90, 20);
+    this.add.rectangle(fieldCenterX, oy + boardThickness / 2, fieldWidth, boardThickness, boardColor);
+    this.add.rectangle(fieldCenterX, oy + 180 - boardThickness / 2, fieldWidth, boardThickness, boardColor);
+    this.add.rectangle(fieldLeft, fieldCenterY, boardThickness, 180, boardColor);
+    this.add.rectangle(fieldRight, fieldCenterY, boardThickness, 180, boardColor);
+    this.add.rectangle(fieldCenterX, fieldCenterY, fieldWidth, 3, 0xff0000, 1);
+    this.add.rectangle(fieldCenterX, oy + 45, fieldWidth, 3, 0x0d47a1, 1);
+    this.add.rectangle(fieldCenterX, oy + 135, fieldWidth, 3, 0x0d47a1, 1);
+    const centerCircle = this.add.circle(fieldCenterX, fieldCenterY, 20);
     centerCircle.setStrokeStyle(2, 0x0d47a1);
     centerCircle.setFillStyle(0xe3f2fd, 0);
-    
-    // Silvertips logo in center ice
-    this.createSilvertipsLogo(fieldCenterX, 90);
-    
-    // Face-off circles (adjusted to be within the narrower field)
-    this.createFaceoffCircle(120, 60);
-    this.createFaceoffCircle(200, 60);
-    this.createFaceoffCircle(120, 120);
-    this.createFaceoffCircle(200, 120);
-    
-    // Goal nets (centered on the field)
-    this.createGoalNet(fieldCenterX, 10);  // Top goal
-    this.createGoalNet(fieldCenterX, 170); // Bottom goal (where Grayson enters)
-    
-    // Add crowd/audience in the stands
+    this.createSilvertipsLogo(fieldCenterX, fieldCenterY);
+    this.createFaceoffCircle(120 + ox, 60 + oy);
+    this.createFaceoffCircle(200 + ox, 60 + oy);
+    this.createFaceoffCircle(120 + ox, 120 + oy);
+    this.createFaceoffCircle(200 + ox, 120 + oy);
+    this.createGoalNet(fieldCenterX, oy + 10);
+    this.createGoalNet(fieldCenterX, oy + 170);
     this.createCrowd();
   }
   
@@ -633,35 +591,34 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private createCrowd() {
-    // Silvertips team colors - fans wearing team gear
-    const crowdColors = [
-      0x2a6942, // Dark green (primary team color)
-      0x00523b, // Darker green
-      0x739d8c, // Light green
-      0xd6882d, // Gold/tan
-      0xc69c6d, // Tan
-      0xffffff, // White (alternate jerseys)
-      0xd3d0c2, // Cream
-      0x1a1a1a, // Black/dark gray
-    ];
-    
-    // Left stands - multiple columns
-    // From x:5 to about x:80 (stopping before the left board at x:85)
-    for (let x = 5; x < 80; x += 8) {
-      for (let y = 5; y <= 175; y += 10) { // Extended to fill top and bottom (one more row)
-        const color = crowdColors[Math.floor(Math.random() * crowdColors.length)];
-        const person = this.add.rectangle(x, y, 6, 8, color, 1);
-        person.setDepth(1);
+    const crowdColors = [0x2a6942, 0x00523b, 0x739d8c, 0xd6882d, 0xc69c6d, 0xffffff, 0xd3d0c2, 0x1a1a1a];
+    const ox = ICE_HOCKEY_WORLD_OFFSET_X;
+    const oy = ICE_HOCKEY_WORLD_OFFSET_Y;
+    const worldW = ICE_HOCKEY_WORLD_WIDTH;
+    const worldH = ICE_HOCKEY_WORLD_HEIGHT;
+    const pick = () => crowdColors[Math.floor(Math.random() * crowdColors.length)];
+    // Left stands – from left edge so scroll-left has content
+    for (let x = 15; x < 80 + ox; x += 8) {
+      for (let y = 8; y < worldH - 8; y += 10) {
+        this.add.rectangle(x, y, 6, 8, pick(), 1).setDepth(1);
       }
     }
-    
-    // Right stands - multiple columns
-    // From x:243 to x:318 (slightly adjusted position)
-    for (let x = 243; x < 318; x += 8) {
-      for (let y = 5; y <= 175; y += 10) { // Extended to fill top and bottom (one more row)
-        const color = crowdColors[Math.floor(Math.random() * crowdColors.length)];
-        const person = this.add.rectangle(x, y, 6, 8, color, 1);
-        person.setDepth(1);
+    // Right stands – to right edge so scroll-right has content
+    for (let x = 243 + ox; x < worldW - 15; x += 8) {
+      for (let y = 8; y < worldH - 8; y += 10) {
+        this.add.rectangle(x, y, 6, 8, pick(), 1).setDepth(1);
+      }
+    }
+    // Upper bleachers – full width
+    for (let x = 15; x < worldW - 15; x += 8) {
+      for (let y = 10; y < oy - 10; y += 10) {
+        this.add.rectangle(x, y, 6, 8, pick(), 1).setDepth(1);
+      }
+    }
+    // Lower bleachers – full width to bottom so scroll-down has content
+    for (let x = 15; x < worldW - 15; x += 8) {
+      for (let y = oy + 190; y < worldH - 10; y += 10) {
+        this.add.rectangle(x, y, 6, 8, pick(), 1).setDepth(1);
       }
     }
   }
@@ -673,8 +630,7 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private createGoalNet(x: number, y: number) {
-    // Goal net - red rectangle
-    const isTop = y < 90;
+    const isTop = y < ICE_HOCKEY_SCREEN_CENTER_Y + ICE_HOCKEY_WORLD_OFFSET_Y;
     const netHeight = 12;
     const netWidth = 30;
     
@@ -706,17 +662,16 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private graysonEntersField() {
-    // Grayson walks from bottom goal up into the field
+    const walkTargetY = 140 + ICE_HOCKEY_WORLD_OFFSET_Y;
     this.tweens.add({
       targets: [this.player, this.playerPhysics],
-      y: 140, // Walk into the field
+      y: walkTargetY,
       duration: 2000,
       ease: "Linear",
       onComplete: () => {
-        // Realization moment
-        this.time.delayedCall(500, () => {
-          this.showRealization();
-        });
+        // Start gameplay right away when character reaches center (no second ENTER)
+        this.startGameplay();
+        this.showRealization(); // Show realization line as non-blocking; player can already move
       }
     });
   }
@@ -724,10 +679,7 @@ export default class IceHockeyScene extends Phaser.Scene {
   private showRealization() {
     if (this.hasShownRealization) return;
     this.hasShownRealization = true;
-    
     this.showDialog("Grayson: Wait... I'm on the ice?!\nEveryone thinks I'm the goalie!");
-    
-    // After showing dialogue, start gameplay when player closes it
   }
   
   private spawnCrowdChatter(message: string, fromLeftSide: boolean = true) {
@@ -768,12 +720,13 @@ export default class IceHockeyScene extends Phaser.Scene {
   
   private spawnEnemies() {
     // Spawn enemy hockey players with different shot and movement patterns
+    const ox = ICE_HOCKEY_WORLD_OFFSET_X;
+    const oy = ICE_HOCKEY_WORLD_OFFSET_Y;
     const enemyData = [
-      { x: 120, y: 60, pattern: 'aimed', movement: 'figure8' },     // Top left - figure-8 pattern
-      { x: 200, y: 60, pattern: 'spread', movement: 'zigzag' },     // Top right - zigzag
-      { x: 160, y: 30, pattern: 'circle', movement: 'circle' },     // Top center - circular
+      { x: 120 + ox, y: 60 + oy, pattern: 'aimed', movement: 'figure8' },
+      { x: 200 + ox, y: 60 + oy, pattern: 'spread', movement: 'zigzag' },
+      { x: 160 + ox, y: 30 + oy, pattern: 'circle', movement: 'circle' },
     ];
-    
     enemyData.forEach((data, index) => {
       // Create proper hockey player sprite (black jersey with red accents)
       const enemy = createHockeyPlayerSprite(this, data.x, data.y, 0x1a1a1a, 0xff0000);
@@ -959,34 +912,25 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   private playerDeath() {
-    this.levelCompleted = true; // Stop all gameplay
+    this.levelCompleted = true;
     this.gameplayStarted = false;
-    
-    console.log('Player died! Health was:', this.health);
-    
-    // Destroy all chasers and their text
+    this.playerPhysics.setVelocity(0, 0);
+    this.player.x = Math.round(this.playerPhysics.x);
+    this.player.y = Math.round(this.playerPhysics.y);
+    this.cameras.main.stopFollow();
+    this.cameras.main.setScroll(
+      this.playerPhysics.x - ICE_HOCKEY_SCREEN_CENTER_X,
+      this.playerPhysics.y - ICE_HOCKEY_SCREEN_CENTER_Y
+    );
     this.chasers.forEach(c => {
       const text = c.getData('tauntText');
       if (text && text.active) text.destroy();
       c.destroy();
     });
     this.chasers = [];
-    
+    this.pucks.forEach(puck => { if (puck.body) puck.setVelocity(0, 0); });
+    this.playerPucks.forEach(puck => { if (puck.body) puck.setVelocity(0, 0); });
     this.showDialog("Grayson: Ow! Maybe I'm not cut out to be a goalie...\nPress ENTER to retry");
-    
-    // On dialogue close (ENTER press), restart the entire scene
-    const waitForRestart = () => {
-      if (this.dialogueManager.isVisible() && Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
-        console.log('ENTER pressed - restarting scene...');
-        // Use scene.start instead of restart to get a completely fresh scene instance
-        // This prevents physics callbacks from the old scene firing during initialization
-        this.scene.start(SCENES.ICE_HOCKEY);
-      } else {
-        this.time.delayedCall(100, waitForRestart);
-      }
-    };
-    
-    this.time.delayedCall(100, waitForRestart);
   }
   
   private showDialog(message: string) {
@@ -1003,12 +947,12 @@ export default class IceHockeyScene extends Phaser.Scene {
   }
   
   update() {
-    // Stop all updates if level is completed (during fade out)
     if (this.levelCompleted) {
+      if (this.dialogueManager.isVisible() && Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+        this.scene.start(SCENES.ICE_HOCKEY);
+      }
       return;
     }
-    
-    // Wait for intro to finish
     if (this.introActive) return;
     
     // Handle menu input (ESC for pause, H for help, M for mute)
@@ -1016,19 +960,16 @@ export default class IceHockeyScene extends Phaser.Scene {
       return;
     }
     
-    // Handle dialogue (but allow gameplay to continue during equipment pickup messages)
+    // Handle dialogue (but allow gameplay to continue during equipment pickup and realization)
     if (this.dialogueManager.isVisible()) {
       if (shouldCloseDialogue(this.controls)) {
         this.hideDialog();
       }
-      // Only block gameplay if NOT during equipment collection
-      // Block for: realization dialogue, memory dialogue
-      // Allow: skates message, stick message
       const isEquipmentMessage = (this.hasStick || this.hasSkates) && !this.memoryFragmentSpawned;
-      if (!isEquipmentMessage) {
-        return; // Block for realization and memory dialogues
+      const isRealizationMessage = this.hasShownRealization && this.gameplayStarted;
+      if (!isEquipmentMessage && !isRealizationMessage) {
+        return; // Block only for memory / other blocking dialogues
       }
-      // Fall through to allow gameplay during equipment messages
     }
     
     // Gameplay movement (after dialogue is closed or during stick message)
@@ -1225,7 +1166,11 @@ export default class IceHockeyScene extends Phaser.Scene {
     console.log('Level complete called!');
     this.levelCompleted = true; // Stop all gameplay updates
     this.gameplayStarted = false;
-    
+    this.playerPhysics.setVelocity(0, 0);
+    this.cameras.main.setScroll(
+      this.playerPhysics.x - ICE_HOCKEY_SCREEN_CENTER_X,
+      this.playerPhysics.y - ICE_HOCKEY_SCREEN_CENTER_Y
+    );
     // Light up the card icon in inventory
     const cardIcon = this.stickDisplay.getData('cardIcon');
     if (cardIcon) {
@@ -1335,10 +1280,10 @@ export default class IceHockeyScene extends Phaser.Scene {
     }
     
     // Constrain to playing field (between boards)
-    const fieldLeft = 90;   // Just inside left board
-    const fieldRight = 230; // Just inside right board
-    const fieldTop = 12;    // Just inside top board
-    const fieldBottom = 168; // Just inside bottom board
+    const fieldLeft = 90 + ICE_HOCKEY_WORLD_OFFSET_X;
+    const fieldRight = 230 + ICE_HOCKEY_WORLD_OFFSET_X;
+    const fieldTop = 12 + ICE_HOCKEY_WORLD_OFFSET_Y;
+    const fieldBottom = 168 + ICE_HOCKEY_WORLD_OFFSET_Y;
     
     this.playerPhysics.x = Phaser.Math.Clamp(this.playerPhysics.x, fieldLeft, fieldRight);
     this.playerPhysics.y = Phaser.Math.Clamp(this.playerPhysics.y, fieldTop, fieldBottom);
@@ -1515,9 +1460,8 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Stop player movement
     this.playerPhysics.setVelocity(0, 0);
     
-    // Spawn at enemy goal net (top) - final destination
-    const fragmentX = 160; // Center horizontally
-    const fragmentY = 15;  // At the top goal net
+    const fragmentX = ICE_HOCKEY_SCREEN_CENTER_X + ICE_HOCKEY_WORLD_OFFSET_X;
+    const fragmentY = 15 + ICE_HOCKEY_WORLD_OFFSET_Y;
     
     console.log('Spawning memory at:', fragmentX, fragmentY);
     console.log('Player currently at:', this.playerPhysics.x, this.playerPhysics.y);
@@ -1554,12 +1498,13 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.spawnCrowdChatter(msg);
     
     // Random spawn from sides with taunting text
+    const ox = ICE_HOCKEY_WORLD_OFFSET_X;
+    const oy = ICE_HOCKEY_WORLD_OFFSET_Y;
     const spawns = [
-      { x: 90, y: 90, text: "You're mine!" },
-      { x: 230, y: 90, text: "Get him!" },
-      { x: 160, y: 15, text: "No escape!" },
+      { x: 90 + ox, y: 90 + oy, text: "You're mine!" },
+      { x: 230 + ox, y: 90 + oy, text: "Get him!" },
+      { x: 160 + ox, y: 15 + oy, text: "No escape!" },
     ];
-    
     const spawn = spawns[Math.floor(Math.random() * spawns.length)];
     
     // Create chaser (black jersey with red accents - same team)
