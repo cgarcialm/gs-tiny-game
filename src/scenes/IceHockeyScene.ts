@@ -85,6 +85,10 @@ export default class IceHockeyScene extends Phaser.Scene {
   private invincibilityDuration = 1500; // 1 second of invincibility
   private blinkInterval = 100; // Blink every 100ms
 
+  // Death sequence: opponents circle and fight cloud
+  private deathCircleActive = false;
+  private deathCircleTime = 0;
+
   constructor() {
     super("IceHockey");
   }
@@ -930,9 +934,138 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.chasers = [];
     this.pucks.forEach(puck => { if (puck.body) puck.setVelocity(0, 0); });
     this.playerPucks.forEach(puck => { if (puck.body) puck.setVelocity(0, 0); });
+
+    const tx = this.playerPhysics.x;
+    const ty = this.playerPhysics.y;
+    const approachDuration = 1000;
+    const orbitRadius = 14; // ring around player so opponents cover him
+    this.enemies.forEach((enemy, index) => {
+      const baseAngle = (index / this.enemies.length) * 2 * Math.PI;
+      const destX = tx + orbitRadius * Math.cos(baseAngle);
+      const destY = ty + orbitRadius * Math.sin(baseAngle);
+      enemy.setData("orbitBaseAngle", baseAngle);
+      this.tweens.add({
+        targets: enemy,
+        x: destX,
+        y: destY,
+        duration: approachDuration,
+        ease: "Linear",
+      });
+    });
+    this.time.delayedCall(approachDuration + 150, () => {
+      this.deathCircleActive = true;
+      this.deathCircleTime = 0;
+      this.showFightCloud();
+    });
+
+    this.tweens.add({
+      targets: this.player,
+      alpha: 0.2,
+      duration: 280,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
     this.showDialog("Grayson: Ow! Maybe I'm not cut out to be a goalie...\nPress ENTER to retry");
   }
-  
+
+  private showFightCloud() {
+    const x = this.playerPhysics.x;
+    const y = this.playerPhysics.y;
+    const g = this.add.graphics();
+    g.setPosition(x, y);
+    g.setDepth(20);
+    // Cloud: overlapping puffs, bigger circles; darker grays
+    const puffs: { x: number; y: number; r: number; gray: number; alpha: number }[] = [
+      { x: -8, y: -6, r: 13, gray: 0x666666, alpha: 0.58 },
+      { x: 6, y: -8, r: 12, gray: 0x666666, alpha: 0.56 },
+      { x: -4, y: 4, r: 12, gray: 0x666666, alpha: 0.56 },
+      { x: 8, y: 2, r: 11, gray: 0x707070, alpha: 0.54 },
+      { x: 0, y: -2, r: 11, gray: 0x787878, alpha: 0.52 },
+      { x: -10, y: 2, r: 11, gray: 0x787878, alpha: 0.52 },
+      { x: 4, y: -4, r: 11, gray: 0x787878, alpha: 0.5 },
+      { x: -6, y: -10, r: 10, gray: 0x808080, alpha: 0.5 },
+      { x: 10, y: -4, r: 10, gray: 0x808080, alpha: 0.5 },
+      { x: 2, y: 8, r: 10, gray: 0x808080, alpha: 0.5 },
+      { x: -2, y: -4, r: 10, gray: 0x888888, alpha: 0.48 },
+      { x: 6, y: 6, r: 10, gray: 0x888888, alpha: 0.48 },
+    ];
+    puffs.forEach((p) => {
+      g.fillStyle(p.gray, p.alpha);
+      g.fillCircle(p.x, p.y, p.r);
+    });
+    g.setScale(0.85);
+    this.tweens.add({
+      targets: g,
+      scale: 1.2,
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    this.spawnFightCloudStars(x, y);
+  }
+
+  private spawnFightCloudStars(cloudX: number, cloudY: number) {
+    const spawnStar = () => {
+      const offsetX = (Math.random() - 0.5) * 28;
+      const offsetY = (Math.random() - 0.5) * 28;
+      const star = this.add.graphics();
+      star.setPosition(cloudX + offsetX, cloudY + offsetY);
+      star.setDepth(21);
+      const R = 6;
+      const r = 2;
+      const cos = Math.cos(Math.PI / 4);
+      const sin = Math.sin(Math.PI / 4);
+      star.fillStyle(0xeeeeee, 0.95);
+      star.beginPath();
+      star.moveTo(R, 0);
+      star.lineTo(r * cos, r * sin);
+      star.lineTo(0, R);
+      star.lineTo(-r * cos, r * sin);
+      star.lineTo(-R, 0);
+      star.lineTo(-r * cos, -r * sin);
+      star.lineTo(0, -R);
+      star.lineTo(r * cos, -r * sin);
+      star.closePath();
+      star.fillPath();
+      star.setScale(0.2);
+      this.tweens.add({
+        targets: star,
+        scale: 1.4,
+        alpha: 0,
+        duration: 420,
+        ease: "Cubic.easeOut",
+        onComplete: () => star.destroy(),
+      });
+    };
+    for (let i = 0; i < 6; i++) {
+      this.time.delayedCall(180 * i, spawnStar);
+    }
+    this.time.delayedCall(1400, () => this.spawnFightCloudStars(cloudX, cloudY));
+  }
+
+  private updateDeathAnimation() {
+    if (!this.deathCircleActive || this.enemies.length === 0) return;
+    const dt = this.game.loop.delta;
+    this.deathCircleTime += dt;
+    const cx = this.playerPhysics.x;
+    const cy = this.playerPhysics.y;
+    const baseRadius = 14;
+    const inOutAmplitude = 6;
+    const orbitSpeed = 0.004;
+    const inOutSpeed = 0.009;
+    this.enemies.forEach((enemy) => {
+      const baseAngle = enemy.getData("orbitBaseAngle") as number;
+      const angle = baseAngle + this.deathCircleTime * orbitSpeed;
+      const inOut = inOutAmplitude * Math.sin(this.deathCircleTime * inOutSpeed);
+      const r = baseRadius + inOut;
+      enemy.x = cx + r * Math.cos(angle);
+      enemy.y = cy + r * Math.sin(angle);
+    });
+  }
+
   private showDialog(message: string) {
     this.dialogueManager.show(message);
   }
@@ -948,6 +1081,7 @@ export default class IceHockeyScene extends Phaser.Scene {
   
   update() {
     if (this.levelCompleted) {
+      this.updateDeathAnimation();
       if (this.dialogueManager.isVisible() && Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
         this.scene.start(SCENES.ICE_HOCKEY);
       }
