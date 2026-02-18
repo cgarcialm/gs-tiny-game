@@ -54,10 +54,31 @@ export class DialogueManager {
   }
 
   /**
+   * Get the dialogue container (e.g. for camera.ignore in multi-camera setups)
+   */
+  getContainer(): Phaser.GameObjects.Container {
+    return this.container;
+  }
+
+  /**
    * Check if dialogue is currently visible
    */
   isVisible(): boolean {
     return this.visible;
+  }
+
+  /**
+   * Set container position (e.g. to pin dialogue to a screen position when camera rotates)
+   */
+  setContainerPosition(x: number, y: number): void {
+    this.container.setPosition(x, y);
+  }
+
+  /**
+   * Set container angle in degrees (e.g. counter-rotate so dialogue stays upright)
+   */
+  setContainerAngle(angle: number): void {
+    this.container.setAngle(angle);
   }
 
   /**
