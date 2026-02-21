@@ -16,7 +16,7 @@ import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 import { HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import { HELP_HINT_TEXT_STYLE } from "../config/textStyles";
-import { recordMiniGameDeath, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
+import { buildMiniGameResult, recordMiniGameDeath, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
 
 // World larger than view: player fixed in middle, background scrolls (camera translation)
 // Scroll max must reach (fieldRight - 160) and (fieldBottom - 90). So we need:
@@ -184,7 +184,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.cameras.main.ignore(this.dialogueManager.getContainer());
     this.uiCamera.ignore(this.worldContainer);
     
-    const helpHintText = this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
+    const helpHintText = this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help | L Leaderboard", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(10)
       .setScrollFactor(0);
@@ -1106,7 +1106,11 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.updateFixedUI();
     
     // Handle menu input (ESC for pause, H for help, M for mute)
-    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, this._cheatConsole, this.gameState)) {
+    const openLeaderboard = () => {
+      this.scene.pause();
+      this.scene.launch(SCENES.LEADERBOARD, { returnScene: this.sys.settings.key });
+    };
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, openLeaderboard, this._cheatConsole, this.gameState)) {
       return;
     }
     
@@ -1249,15 +1253,15 @@ export default class IceHockeyScene extends Phaser.Scene {
       cardIcon.setAlpha(1); // Bright when collected
     }
 
-    void submitMiniGameResult("ice_hockey");
+    const result = buildMiniGameResult("ice_hockey");
+    void submitMiniGameResult("ice_hockey", result);
     
     // Small delay to show the card lighting up
     this.time.delayedCall(500, () => {
       // Complete Ice Hockey level
       this.gameState.completeLevel(VOID_LEVELS.AFTER_ICE_HOCKEY);
       
-      // Go back to GameScene level 2 (shows WIP placeholder)
-      fadeToScene(this, SCENES.GAME, 1000);
+      this.scene.start(SCENES.LEADERBOARD, { miniGame: "ice_hockey", nextScene: SCENES.GAME });
     });
   }
   

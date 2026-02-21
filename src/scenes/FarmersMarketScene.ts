@@ -15,7 +15,7 @@ import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 import { HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import { HELP_HINT_TEXT_STYLE } from "../config/textStyles";
 import { DEBUG_SHOW_SMUSH_AI } from "../config/debug";
-import { recordMiniGameDeath, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
+import { buildMiniGameResult, recordMiniGameDeath, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
 
 /**
  * Farmers Market Scene - Pac-Man Style
@@ -230,7 +230,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     });
     
     // Help hint (bottom-right corner with background)
-    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
+    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help | L Leaderboard", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(100);
   }
@@ -617,7 +617,11 @@ export default class FarmersMarketScene extends Phaser.Scene {
   }
   update() {
     // Handle menu input (ESC for pause, H for help, M for mute)
-    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, undefined, this.gameState)) {
+    const openLeaderboard = () => {
+      this.scene.pause();
+      this.scene.launch(SCENES.LEADERBOARD, { returnScene: this.sys.settings.key });
+    };
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, openLeaderboard, undefined, this.gameState)) {
       return;
     }
     
@@ -1250,12 +1254,13 @@ export default class FarmersMarketScene extends Phaser.Scene {
       this.cardPiece.destroy();
       this.cardPiece = null;
 
-      void submitMiniGameResult("farmers_market");
+      const result = buildMiniGameResult("farmers_market");
+      void submitMiniGameResult("farmers_market", result);
       
       // Transition back to GameScene (faster)
       this.time.delayedCall(200, () => {
         this.gameState.completeLevel(VOID_LEVELS.AFTER_FARMERS_MARKET);
-        fadeToScene(this, SCENES.GAME, 1000);
+        this.scene.start(SCENES.LEADERBOARD, { miniGame: "farmers_market", nextScene: SCENES.GAME });
       });
     }
   }
@@ -1699,5 +1704,3 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.spawnShopper();
   }
 }
-
-

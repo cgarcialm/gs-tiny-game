@@ -22,7 +22,7 @@ const LEADERBOARD_LIMIT_MAX = 50;
 const ALLOWED_MINI_GAMES = new Set(["ice_hockey", "seattle_traffic", "farmers_market", "northgate"]);
 
 function sanitizeOrigins(rawAllowedOrigins: string | undefined): Set<string> {
-  const defaults = ["http://localhost:5173"];
+  const defaults = ["http://localhost:5173", "http://127.0.0.1:5173"];
   const configured = (rawAllowedOrigins ?? "")
     .split(",")
     .map((origin) => origin.trim())
@@ -33,8 +33,9 @@ function sanitizeOrigins(rawAllowedOrigins: string | undefined): Set<string> {
 function buildCorsHeaders(request: Request, env: Env): Record<string, string> {
   const requestOrigin = request.headers.get("Origin");
   const allowedOrigins = sanitizeOrigins(env.ALLOWED_ORIGINS);
+  const allowAny = allowedOrigins.has("*");
   const allowOrigin =
-    requestOrigin && allowedOrigins.has(requestOrigin) ? requestOrigin : "";
+    requestOrigin && (allowAny || allowedOrigins.has(requestOrigin)) ? requestOrigin : "";
 
   const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
@@ -42,7 +43,9 @@ function buildCorsHeaders(request: Request, env: Env): Record<string, string> {
     Vary: "Origin",
   };
 
-  if (allowOrigin) {
+  if (allowAny) {
+    headers["Access-Control-Allow-Origin"] = "*";
+  } else if (allowOrigin) {
     headers["Access-Control-Allow-Origin"] = allowOrigin;
   }
 

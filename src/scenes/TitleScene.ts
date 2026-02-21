@@ -14,6 +14,7 @@ import {
   fetchLeaderboard,
   formatRunDuration,
   formatSeattleArrivalFromDurationMs,
+  getLocalScore,
   getPlayerName,
   setPlayerName
 } from "../services/leaderboard";
@@ -66,8 +67,9 @@ const EBO_Y = 60;   // Above Ceci
 const HINT_TEXT_Y = 164;
 const LEADERBOARD_X = 226;
 const LEADERBOARD_Y = 30;
-const NAME_PROMPT_Y = 145;
-const NAME_VALUE_Y = 156;
+const NAME_GATE_TITLE_Y = 26;
+const NAME_GATE_INPUT_Y = 68;
+const NAME_GATE_SCORES_Y = 112;
 
 // Sizes
 const CARD_WIDTH = 20;
@@ -137,11 +139,13 @@ export default class TitleScene extends Phaser.Scene {
   
   private hintText!: Phaser.GameObjects.Text;
   private leaderboardText!: Phaser.GameObjects.Text;
-  private namePromptText!: Phaser.GameObjects.Text;
+  private nameGateContainer!: Phaser.GameObjects.Container;
   private nameValueText!: Phaser.GameObjects.Text;
   private nameErrorText!: Phaser.GameObjects.Text;
+  private nameScoresText!: Phaser.GameObjects.Text;
   private nameEntryActive = false;
   private nameInput = "";
+  private playerTagText!: Phaser.GameObjects.Text;
   private cardPieces: Phaser.GameObjects.Ellipse[] = [];
   
   // Transformation effects
@@ -232,33 +236,12 @@ export default class TitleScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const savedName = getPlayerName().trim();
-    this.namePromptText = this.add.text(SCREEN_CENTER_X, NAME_PROMPT_Y, savedName ? "PLAYER" : "ENTER NAME", {
-      fontFamily: "monospace",
-      fontSize: "9px",
-      color: "#ffeab6",
-      resolution: TEXT_RESOLUTION,
-    }).setOrigin(0.5);
-
-    this.nameValueText = this.add.text(SCREEN_CENTER_X, NAME_VALUE_Y, savedName, {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#ffffff",
-      resolution: TEXT_RESOLUTION,
-    }).setOrigin(0.5);
-
-    this.nameErrorText = this.add.text(SCREEN_CENTER_X, NAME_VALUE_Y + 10, "", {
+    this.playerTagText = this.add.text(8, 10, savedName ? `PLAYER: ${savedName}` : "", {
       fontFamily: "monospace",
       fontSize: "8px",
-      color: "#ffaaaa",
+      color: "#ffeab6",
       resolution: TEXT_RESOLUTION,
-    }).setOrigin(0.5);
-
-    if (!savedName) {
-      this.nameEntryActive = true;
-      this.nameInput = "";
-      this.refreshNameEntryText();
-      this.input.keyboard?.on("keydown", this.handleNameInput, this);
-    }
+    }).setOrigin(0, 0).setAlpha(savedName ? 1 : 0);
 
     this.leaderboardText = this.add.text(LEADERBOARD_X, LEADERBOARD_Y, "", {
       fontFamily: "monospace",
@@ -269,11 +252,13 @@ export default class TitleScene extends Phaser.Scene {
     }).setOrigin(0, 0);
 
     if (LEADERBOARD_ENABLED) {
-      this.leaderboardText.setText("Global Leaderboard\nLoading...");
+      this.leaderboardText.setText("Latest Scores\nLoading...");
       void this.loadLeaderboard();
     } else {
-      this.leaderboardText.setText("Global Leaderboard\nDisabled");
+      this.leaderboardText.setText("Latest Scores\nDisabled");
     }
+
+    this.activateNameGate(savedName);
     
     // Note: No help hint in TitleScene - this is before the game starts
     // Help hint will appear after Eboshi interaction in GameScene
@@ -288,9 +273,13 @@ export default class TitleScene extends Phaser.Scene {
 
     // Handle menu input (ESC for pause, H for help, M for mute)
     // In title scene, "exit to title" means restart the scene
+    const openLeaderboard = () => {
+      this.scene.pause();
+      this.scene.launch(SCENES.LEADERBOARD, { returnScene: this.sys.settings.key });
+    };
     if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, () => {
       this.scene.restart();
-    }, this._cheatConsole, this.gameState)) {
+    }, openLeaderboard, this._cheatConsole, this.gameState)) {
       return; // Menus are active, don't process game input
     }
 
@@ -630,6 +619,97 @@ export default class TitleScene extends Phaser.Scene {
     this.nameValueText.setText(display);
   }
 
+  private activateNameGate(initialName: string) {
+    this.nameEntryActive = true;
+    this.nameInput = initialName;
+    this.hintText.setVisible(false);
+    this.leaderboardText.setVisible(false);
+
+    const overlay = this.add.rectangle(160, 90, 320, 180, 0x000000, 0.88);
+    overlay.setDepth(500);
+
+    const panel = this.add.rectangle(160, 90, 304, 168, 0x0b0b10, 0.98)
+      .setStrokeStyle(2, 0x00d4ff)
+      .setDepth(501);
+
+    const title = this.add.text(160, NAME_GATE_TITLE_Y, "ENTER PLAYER NAME", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#00d4ff",
+      fontStyle: "bold",
+      align: "center",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5).setDepth(502);
+
+    const subtitle = this.add.text(160, NAME_GATE_TITLE_Y + 14, "3-16 chars • letters, numbers, space, _ -", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#9ee6ff",
+      align: "center",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5).setDepth(502);
+
+    this.nameValueText = this.add.text(160, NAME_GATE_INPUT_Y, "_", {
+      fontFamily: "monospace",
+      fontSize: "14px",
+      color: "#ffffff",
+      align: "center",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5).setDepth(502);
+
+    this.nameErrorText = this.add.text(160, NAME_GATE_INPUT_Y + 16, "", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffaaaa",
+      align: "center",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5).setDepth(502);
+
+    this.nameScoresText = this.add.text(160, NAME_GATE_SCORES_Y, this.buildLocalScoreSummary(), {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffeab6",
+      align: "center",
+      lineSpacing: 2,
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5).setDepth(502);
+
+    const footer = this.add.text(160, 168, "Press ENTER to continue", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#888888",
+      align: "center",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5).setDepth(502);
+
+    this.nameGateContainer = this.add.container(0, 0, [overlay, panel, title, subtitle, this.nameValueText, this.nameErrorText, this.nameScoresText, footer]);
+    this.nameGateContainer.setDepth(500);
+
+    this.refreshNameEntryText();
+    this.input.keyboard?.on("keydown", this.handleNameInput, this);
+  }
+
+  private buildLocalScoreSummary(): string {
+    const rows = [
+      this.formatLocalScoreRow("ICE", "ice_hockey"),
+      this.formatLocalScoreRow("SEA", "seattle_traffic"),
+      this.formatLocalScoreRow("FARM", "farmers_market"),
+      this.formatLocalScoreRow("NG", "northgate"),
+    ];
+    return ["BEST SCORES (LOCAL)", ...rows].join("\n");
+  }
+
+  private formatLocalScoreRow(label: string, key: "ice_hockey" | "seattle_traffic" | "farmers_market" | "northgate"): string {
+    const best = getLocalScore(key, "best");
+    if (!best || best.duration_ms === undefined) return `${label}: -`;
+    const timeLabel =
+      key === "seattle_traffic"
+        ? formatSeattleArrivalFromDurationMs(best.duration_ms)
+        : formatRunDuration(best.duration_ms);
+    const deaths = best.deaths ?? 0;
+    return `${label}: ${timeLabel} D${deaths}`;
+  }
+
   private isAllowedNameChar(char: string): boolean {
     return /^[a-zA-Z0-9 _-]$/.test(char);
   }
@@ -657,9 +737,12 @@ export default class TitleScene extends Phaser.Scene {
       setPlayerName(cleaned);
       this.nameEntryActive = false;
       this.nameInput = cleaned;
-      this.namePromptText.setText("PLAYER");
+      this.playerTagText.setText(`PLAYER: ${cleaned}`).setAlpha(1);
       this.nameValueText.setText(cleaned);
       this.input.keyboard?.off("keydown", this.handleNameInput, this);
+      this.nameGateContainer.destroy();
+      this.hintText.setVisible(true);
+      this.leaderboardText.setVisible(true);
       return;
     }
 
@@ -673,13 +756,13 @@ export default class TitleScene extends Phaser.Scene {
   private formatMiniGameTag(miniGame: string): string {
     switch (miniGame) {
       case "ice_hockey":
-        return "ICE";
+        return "ICE HOCKEY";
       case "seattle_traffic":
-        return "SEA";
+        return "SEATTLE TRAFFIC";
       case "farmers_market":
-        return "FARM";
+        return "FARMERS MARKET";
       case "northgate":
-        return "NG";
+        return "NORTHGATE";
       default:
         return "UNK";
     }
@@ -691,7 +774,7 @@ export default class TitleScene extends Phaser.Scene {
       const youName = getPlayerName().trim() || "(set name)";
 
       if (entries.length === 0) {
-        this.leaderboardText.setText(`Global Leaderboard\nNo entries yet\nYou: ${youName}`);
+        this.leaderboardText.setText(`Latest Scores\nNo entries yet\nYou: ${youName}`);
         return;
       }
 
@@ -706,9 +789,9 @@ export default class TitleScene extends Phaser.Scene {
         return `${index + 1}. ${nameTag} ${gameTag} ${score} D${deaths}`;
       });
 
-      this.leaderboardText.setText(`Global Leaderboard\n${rows.join("\n")}\nYou: ${youName}`);
+      this.leaderboardText.setText(`Latest Scores\n${rows.join("\n")}\nYou: ${youName}`);
     } catch {
-      this.leaderboardText.setText("Global Leaderboard\nUnavailable");
+      this.leaderboardText.setText("Latest Scores\nUnavailable");
     }
   }
 }

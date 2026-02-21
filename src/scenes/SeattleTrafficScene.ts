@@ -11,7 +11,7 @@ import { createTrafficCarSprite, getRandomCarColor } from "../utils/sprites/Traf
 import type { GameControls } from "../utils/controls";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
-import { recordMiniGameDeath, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
+import { buildMiniGameResult, recordMiniGameDeath, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
 
 /**
  * Seattle Traffic Scene - Top-Down Lane Runner
@@ -186,7 +186,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.createUI();
     
     // Help hint (bottom-right corner)
-    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
+    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help | L Leaderboard", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(10);
     
@@ -196,7 +196,11 @@ export default class SeattleTrafficScene extends Phaser.Scene {
 
   update() {
     // Handle menu input (ESC for pause, H for help, M for mute)
-    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, undefined, this.gameState)) {
+    const openLeaderboard = () => {
+      this.scene.pause();
+      this.scene.launch(SCENES.LEADERBOARD, { returnScene: this.sys.settings.key });
+    };
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, openLeaderboard, undefined, this.gameState)) {
       return;
     }
     
@@ -2605,13 +2609,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   private winGame() {
     const startMinutes = 7 * 60 + 15;
     const elapsedMinutes = Math.max(0, Math.floor(this.currentTime - startMinutes));
-    void submitMiniGameResult("seattle_traffic", {
+    const result = buildMiniGameResult("seattle_traffic", {
       duration_ms: elapsedMinutes * 60 * 1000,
     });
+    void submitMiniGameResult("seattle_traffic", result);
 
     // Victory! Transition to next level
     this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
-    fadeToScene(this, SCENES.GAME, 1000);
+    this.scene.start(SCENES.LEADERBOARD, { miniGame: "seattle_traffic", nextScene: SCENES.GAME });
   }
   
   private loseByRage(reason: 'crash' | 'rage' = 'rage') {

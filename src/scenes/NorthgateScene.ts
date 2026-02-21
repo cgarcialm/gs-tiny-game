@@ -13,7 +13,7 @@ import { createDizzyStars } from "../utils/visualEffects";
 import { checkProximity } from "../utils/collectionHelpers";
 import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
-import { recordMiniGameDeath, resetMiniGameTimer, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
+import { buildMiniGameResult, recordMiniGameDeath, resetMiniGameTimer, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
 
 export default class NorthgateScene extends Phaser.Scene {
   private gameState!: GameStateManager;
@@ -477,7 +477,7 @@ export default class NorthgateScene extends Phaser.Scene {
       .setOrigin(0.5).setVisible(false);
     
     // Help hint (bottom-right corner) - always visible in later levels
-    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
+    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help | L Leaderboard", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(10);
     
@@ -494,7 +494,11 @@ export default class NorthgateScene extends Phaser.Scene {
     const dt = this.game.loop.delta / 1000;
     
     // Handle menu input (ESC for pause, H for help, M for mute)
-    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, this._cheatConsole, this.gameState)) {
+    const openLeaderboard = () => {
+      this.scene.pause();
+      this.scene.launch(SCENES.LEADERBOARD, { returnScene: this.sys.settings.key });
+    };
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, openLeaderboard, this._cheatConsole, this.gameState)) {
       return; // Menus are active, don't process game input
     }
     
@@ -618,11 +622,12 @@ export default class NorthgateScene extends Phaser.Scene {
         this.isDrugged = true; // Freeze player
         this.player.setVelocity(0, 0); // Stop movement
 
-        void submitMiniGameResult("northgate");
+        const result = buildMiniGameResult("northgate");
+        void submitMiniGameResult("northgate", result);
 
         // Complete Northgate level and transition back to void
         this.gameState.completeLevel(VOID_LEVELS.AFTER_NORTHGATE);
-        fadeToScene(this, SCENES.GAME, 1000);
+        this.scene.start(SCENES.LEADERBOARD, { miniGame: "northgate", nextScene: SCENES.GAME });
       }
     }
   }

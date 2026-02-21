@@ -210,7 +210,7 @@ export default class GameScene extends Phaser.Scene {
   
   // Help hint (bottom-right corner) - shown after first Eboshi interaction in level 0
   this.helpHintText = this.add
-    .text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
+    .text(HELP_HINT_X, HELP_HINT_Y, "H for Help | L Leaderboard", HELP_HINT_TEXT_STYLE)
     .setOrigin(1, 1)
     .setDepth(10);
     
@@ -532,7 +532,11 @@ export default class GameScene extends Phaser.Scene {
     const dt = this.game.loop.delta / 1000;
 
     // Handle menu input (ESC for pause, H for help, M for mute)
-    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, this._cheatConsole, this.gameState)) {
+    const openLeaderboard = () => {
+      this.scene.pause();
+      this.scene.launch(SCENES.LEADERBOARD, { returnScene: this.sys.settings.key });
+    };
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, openLeaderboard, this._cheatConsole, this.gameState)) {
       return; // Menus are active, don't process game input
     }
 

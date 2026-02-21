@@ -15,6 +15,7 @@ export const SCENES = {
   BOOT: 'Boot',
   TITLE: 'Title',
   GAME: 'Game', // Main void scene (level hub)
+  LEADERBOARD: 'Leaderboard',
   NORTHGATE: 'Northgate',
   ICE_HOCKEY: 'IceHockey',
   SEATTLE_TRAFFIC: 'SeattleTraffic',
@@ -90,4 +91,3 @@ export function getMemoryCountForLevel(completedLevel: number): number {
   if (completedLevel === 3) return MEMORY_COUNT.CECI; // Seattle Traffic has no memory
   return MEMORY_COUNT.SMUSH; // Level 4+ has all 3
 }
-

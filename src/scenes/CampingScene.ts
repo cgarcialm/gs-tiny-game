@@ -1984,7 +1984,11 @@ export default class CampingScene extends Phaser.Scene {
     }
     
     // Handle menu input (ESC for pause, H for help, M for mute)
-    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, undefined, this.gameState)) {
+    const openLeaderboard = () => {
+      this.scene.pause();
+      this.scene.launch(SCENES.LEADERBOARD, { returnScene: this.sys.settings.key });
+    };
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, openLeaderboard, undefined, this.gameState)) {
       return;
     }
     
@@ -2764,4 +2768,3 @@ export default class CampingScene extends Phaser.Scene {
     }
   }
 }
-

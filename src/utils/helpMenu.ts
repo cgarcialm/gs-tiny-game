@@ -58,6 +58,7 @@ export class HelpMenu {
       "E - Interact",
       "ENTER - Dialogue",
       "ESC - Pause",
+      "L - Leaderboard",
       "M - Mute",
       "",
     ].join("\n");
@@ -122,4 +123,3 @@ export class HelpMenu {
     this.container.destroy();
   }
 }
-

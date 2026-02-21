@@ -71,6 +71,7 @@ export function handleMenuInput(
   helpMenu: HelpMenu,
   pauseMenu: PauseMenu,
   onExitToTitle?: () => void,
+  onOpenLeaderboard?: () => void,
   cheatConsole?: CheatConsole,
   gameState?: GameStateManager
 ): boolean {
@@ -115,6 +116,20 @@ export function handleMenuInput(
   if (Phaser.Input.Keyboard.JustDown(controls.help)) {
     helpMenu.toggle();
   }
+
+  // Handle leaderboard screen (L key)
+  if (Phaser.Input.Keyboard.JustDown(controls.leaderboard)) {
+    if (helpMenu.isVisible()) {
+      helpMenu.hide();
+    }
+    if (pauseMenu.isVisible()) {
+      pauseMenu.hide();
+    }
+    if (onOpenLeaderboard) {
+      onOpenLeaderboard();
+      return true;
+    }
+  }
   
   // If help menu is open, block game input
   if (helpMenu.isVisible()) {
@@ -123,4 +138,3 @@ export function handleMenuInput(
   
   return false; // Menus closed, allow game input
 }
-

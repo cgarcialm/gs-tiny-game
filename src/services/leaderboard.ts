@@ -21,15 +21,25 @@ const STORAGE_KEYS = {
 } as const;
 
 const MINI_GAME_PREFIX = "leaderboard.mini_game";
+const SCORE_PREFIX = "leaderboard.score";
 const MINI_GAME_KEYS = {
   startMs: "start_ms",
   deaths: "deaths",
+} as const;
+
+const SCORE_KINDS = {
+  best: "best",
+  last: "last",
 } as const;
 
 const SEATTLE_START_TIME_MINUTES = 7 * 60 + 15;
 
 function miniGameStorageKey(miniGame: MiniGameKey, key: keyof typeof MINI_GAME_KEYS): string {
   return `${MINI_GAME_PREFIX}.${miniGame}.${MINI_GAME_KEYS[key]}`;
+}
+
+function scoreStorageKey(miniGame: MiniGameKey, kind: keyof typeof SCORE_KINDS): string {
+  return `${SCORE_PREFIX}.${miniGame}.${SCORE_KINDS[kind]}`;
 }
 
 function requestTimeoutMs<T>(promise: Promise<T>, timeoutMs = 5000): Promise<T> {
@@ -49,6 +59,17 @@ function requestTimeoutMs<T>(promise: Promise<T>, timeoutMs = 5000): Promise<T> 
       }
     );
   });
+}
+
+function getFallbackBaseUrl(baseUrl: string): string | null {
+  if (!baseUrl.includes("localhost") && !baseUrl.includes("127.0.0.1")) return null;
+  if (baseUrl.includes("localhost")) {
+    return baseUrl.replace("localhost", "127.0.0.1");
+  }
+  if (baseUrl.includes("127.0.0.1")) {
+    return baseUrl.replace("127.0.0.1", "localhost");
+  }
+  return null;
 }
 
 function generateClientId(): string {
@@ -75,15 +96,26 @@ export function setPlayerName(name: string): void {
   localStorage.setItem(STORAGE_KEYS.playerName, name);
 }
 
-export async function fetchLeaderboard(limit = 10): Promise<LeaderboardEntry[]> {
+export async function fetchLeaderboard(limit = 10, miniGame?: MiniGameKey): Promise<LeaderboardEntry[]> {
   if (!LEADERBOARD_ENABLED) return [];
   const clampedLimit = Math.max(1, Math.min(20, Math.floor(limit)));
+  const query = miniGame ? `&mini_game=${miniGame}` : "";
+  const endpoint = `/leaderboard?limit=${clampedLimit}${query}`;
   const response = await requestTimeoutMs(
-    fetch(`${API_BASE_URL}/leaderboard?limit=${clampedLimit}`, {
+    fetch(`${API_BASE_URL}${endpoint}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     })
-  );
+  ).catch(async (error) => {
+    const fallback = getFallbackBaseUrl(API_BASE_URL);
+    if (!fallback) throw error;
+    return requestTimeoutMs(
+      fetch(`${fallback}${endpoint}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+  });
 
   if (!response.ok) {
     throw new Error(`Leaderboard fetch failed (${response.status})`);
@@ -164,34 +196,83 @@ function clearMiniGameSession(miniGame: MiniGameKey): void {
   localStorage.removeItem(miniGameStorageKey(miniGame, "deaths"));
 }
 
-export async function submitMiniGameResult(
+export function buildMiniGameResult(
   miniGame: MiniGameKey,
   extra: { duration_ms?: number; deaths?: number } = {}
+): { duration_ms?: number; deaths?: number } {
+  const session = readMiniGameSession(miniGame);
+  const now = Date.now();
+  const computedDuration = session.startMs ? Math.max(1, Math.floor(now - session.startMs)) : undefined;
+  return {
+    duration_ms: extra.duration_ms ?? computedDuration,
+    deaths: extra.deaths ?? session.deaths,
+  };
+}
+
+function writeScore(kind: keyof typeof SCORE_KINDS, miniGame: MiniGameKey, result: { duration_ms?: number; deaths?: number }) {
+  localStorage.setItem(scoreStorageKey(miniGame, kind), JSON.stringify(result));
+}
+
+export function getLocalScore(
+  miniGame: MiniGameKey,
+  kind: keyof typeof SCORE_KINDS
+): { duration_ms?: number; deaths?: number } | null {
+  const raw = localStorage.getItem(scoreStorageKey(miniGame, kind));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { duration_ms?: number; deaths?: number };
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function updateLocalScores(miniGame: MiniGameKey, result: { duration_ms?: number; deaths?: number }) {
+  writeScore("last", miniGame, result);
+  const best = getLocalScore(miniGame, "best");
+  if (!best || (result.duration_ms !== undefined && (best.duration_ms === undefined || result.duration_ms < best.duration_ms))) {
+    writeScore("best", miniGame, result);
+  }
+}
+
+export async function submitMiniGameResult(
+  miniGame: MiniGameKey,
+  result: { duration_ms?: number; deaths?: number }
 ): Promise<boolean> {
   if (!LEADERBOARD_ENABLED) return false;
   const playerName = getPlayerName().trim();
   if (!playerName) return false;
 
-  const session = readMiniGameSession(miniGame);
-  const now = Date.now();
-  const computedDuration = session.startMs ? Math.max(1, Math.floor(now - session.startMs)) : undefined;
-
   const payload: LeaderboardSubmissionPayload = {
     client_id: getClientId(),
     player_name: playerName,
     mini_game: miniGame,
-    duration_ms: extra.duration_ms ?? computedDuration,
-    deaths: extra.deaths ?? session.deaths,
+    duration_ms: result.duration_ms,
+    deaths: result.deaths,
   };
 
   try {
+    if (result.duration_ms !== undefined) {
+      updateLocalScores(miniGame, result);
+    }
+    const endpoint = "/submit";
     const response = await requestTimeoutMs(
-      fetch(`${API_BASE_URL}/submit`, {
+      fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
-    );
+    ).catch(async (error) => {
+      const fallback = getFallbackBaseUrl(API_BASE_URL);
+      if (!fallback) throw error;
+      return requestTimeoutMs(
+        fetch(`${fallback}${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+      );
+    });
     clearMiniGameSession(miniGame);
     return response.ok;
   } catch {
