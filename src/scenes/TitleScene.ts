@@ -665,7 +665,7 @@ export default class TitleScene extends Phaser.Scene {
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5).setDepth(502);
 
-    this.nameScoresText = this.add.text(160, NAME_GATE_SCORES_Y, this.buildLocalScoreSummary(), {
+    this.nameScoresText = this.add.text(160, NAME_GATE_SCORES_Y, "BEST SCORES\nLoading...", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#ffeab6",
@@ -687,27 +687,52 @@ export default class TitleScene extends Phaser.Scene {
 
     this.refreshNameEntryText();
     this.input.keyboard?.on("keydown", this.handleNameInput, this);
+    void this.loadNameGateScores();
   }
 
   private buildLocalScoreSummary(): string {
     const rows = [
-      this.formatLocalScoreRow("ICE", "ice_hockey"),
-      this.formatLocalScoreRow("SEA", "seattle_traffic"),
-      this.formatLocalScoreRow("FARM", "farmers_market"),
-      this.formatLocalScoreRow("NG", "northgate"),
+      this.formatLocalScoreRow("ICE HOCKEY", null, "ice_hockey"),
+      this.formatLocalScoreRow("SEATTLE TRAFFIC", null, "seattle_traffic"),
+      this.formatLocalScoreRow("FARMERS MARKET", null, "farmers_market"),
+      this.formatLocalScoreRow("NORTHGATE", null, "northgate"),
     ];
-    return ["BEST SCORES (LOCAL)", ...rows].join("\n");
+    return ["BEST SCORES", ...rows].join("\n");
   }
 
-  private formatLocalScoreRow(label: string, key: "ice_hockey" | "seattle_traffic" | "farmers_market" | "northgate"): string {
-    const best = getLocalScore(key, "best");
-    if (!best || best.duration_ms === undefined) return `${label}: -`;
+  private async loadNameGateScores() {
+    try {
+      const results = await Promise.allSettled([
+        fetchLeaderboard(1, "ice_hockey"),
+        fetchLeaderboard(1, "seattle_traffic"),
+        fetchLeaderboard(1, "farmers_market"),
+        fetchLeaderboard(1, "northgate"),
+      ]);
+      const ice = results[0].status === "fulfilled" ? results[0].value : [];
+      const sea = results[1].status === "fulfilled" ? results[1].value : [];
+      const farm = results[2].status === "fulfilled" ? results[2].value : [];
+      const ng = results[3].status === "fulfilled" ? results[3].value : [];
+      const rows = [
+        this.formatLocalScoreRow("ICE HOCKEY", ice[0], "ice_hockey"),
+        this.formatLocalScoreRow("SEATTLE TRAFFIC", sea[0], "seattle_traffic"),
+        this.formatLocalScoreRow("FARMERS MARKET", farm[0], "farmers_market"),
+        this.formatLocalScoreRow("NORTHGATE", ng[0], "northgate"),
+      ];
+      this.nameScoresText.setText(["BEST SCORES", ...rows].join("\n"));
+    } catch {
+      this.nameScoresText.setText("BEST SCORES\nUnavailable");
+    }
+  }
+
+  private formatLocalScoreRow(label: string, result: { duration_ms?: number; deaths?: number; player_name?: string } | null, key: "ice_hockey" | "seattle_traffic" | "farmers_market" | "northgate"): string {
+    if (!result || result.duration_ms === undefined) return `${label}: -`;
     const timeLabel =
       key === "seattle_traffic"
-        ? formatSeattleArrivalFromDurationMs(best.duration_ms)
-        : formatRunDuration(best.duration_ms);
-    const deaths = best.deaths ?? 0;
-    return `${label}: ${timeLabel} D${deaths}`;
+        ? formatSeattleArrivalFromDurationMs(result.duration_ms)
+        : formatRunDuration(result.duration_ms);
+    const nameTag = typeof result.player_name === "string" ? result.player_name.slice(0, 10) : "Anon";
+    const deaths = result.deaths ?? 0;
+    return `${label}: ${nameTag} ${timeLabel} D${deaths}`;
   }
 
   private isAllowedNameChar(char: string): boolean {
