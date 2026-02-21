@@ -13,6 +13,7 @@ import { createDizzyStars } from "../utils/visualEffects";
 import { checkProximity } from "../utils/collectionHelpers";
 import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
+import { recordMiniGameDeath, resetMiniGameTimer, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
 
 export default class NorthgateScene extends Phaser.Scene {
   private gameState!: GameStateManager;
@@ -68,6 +69,8 @@ export default class NorthgateScene extends Phaser.Scene {
     this.gameState = setup.gameState;
     // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
     this._cheatConsole = setup.cheatConsole;
+
+    startMiniGameSession("northgate");
     
     // Background - metro station aesthetic
     this.createStationBackground();
@@ -614,7 +617,9 @@ export default class NorthgateScene extends Phaser.Scene {
         // Level complete! Transition back to void
         this.isDrugged = true; // Freeze player
         this.player.setVelocity(0, 0); // Stop movement
-        
+
+        void submitMiniGameResult("northgate");
+
         // Complete Northgate level and transition back to void
         this.gameState.completeLevel(VOID_LEVELS.AFTER_NORTHGATE);
         fadeToScene(this, SCENES.GAME, 1000);
@@ -878,6 +883,7 @@ export default class NorthgateScene extends Phaser.Scene {
   private hitByTrain() {
     // Player hit by train - dramatic knockout
     this.isDrugged = true; // Prevent movement during animation
+    recordMiniGameDeath("northgate");
     
     // Disable collisions so Grayson can fly off screen cleanly
     this.player.setCollideWorldBounds(false);
@@ -914,6 +920,7 @@ export default class NorthgateScene extends Phaser.Scene {
         this.player.setVelocity(0, 0);
         this.playerSprite.setAngle(0);
         this.isDrugged = false;
+        resetMiniGameTimer("northgate");
         
         // Fade back in
         fadeIn(this, 600);
@@ -986,4 +993,3 @@ export default class NorthgateScene extends Phaser.Scene {
     this.dialogueManager.hide();
   }
 }
-

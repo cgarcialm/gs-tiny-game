@@ -11,6 +11,7 @@ import { createTrafficCarSprite, getRandomCarColor } from "../utils/sprites/Traf
 import type { GameControls } from "../utils/controls";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
+import { recordMiniGameDeath, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
 
 /**
  * Seattle Traffic Scene - Top-Down Lane Runner
@@ -151,6 +152,8 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.laneMarkers = [];
     this.roadOffset = 0;
     this.roadSpeed = this.laneSpeeds[this.currentLane]; // Set initial speed based on lane
+
+    startMiniGameSession("seattle_traffic");
     
     // Reset exit flags
     this.finalExitSpawned = false;
@@ -2600,6 +2603,12 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
   private winGame() {
+    const startMinutes = 7 * 60 + 15;
+    const elapsedMinutes = Math.max(0, Math.floor(this.currentTime - startMinutes));
+    void submitMiniGameResult("seattle_traffic", {
+      duration_ms: elapsedMinutes * 60 * 1000,
+    });
+
     // Victory! Transition to next level
     this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
     fadeToScene(this, SCENES.GAME, 1000);
@@ -2607,6 +2616,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private loseByRage(reason: 'crash' | 'rage' = 'rage') {
     this.gamePhase = 'lost';
+    recordMiniGameDeath("seattle_traffic");
     
     // Stop any lane change in progress
     this.tweens.killTweensOf(this.van);
@@ -2836,6 +2846,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private loseByTime() {
     this.gamePhase = 'lost';
+    recordMiniGameDeath("seattle_traffic");
     
     this.showSpeechBubble("Grayson", "Too late... trail's packed", 0, true);
     
@@ -3088,4 +3099,3 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   }
   
 }
-

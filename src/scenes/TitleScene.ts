@@ -10,6 +10,14 @@ import { fadeToScene } from "../utils/sceneTransitions";
 import { createGraysonSprite } from "../utils/sprites";
 import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES } from "../config/sceneConstants";
+import {
+  fetchLeaderboard,
+  formatRunDuration,
+  formatSeattleArrivalFromDurationMs,
+  getPlayerName,
+  setPlayerName
+} from "../services/leaderboard";
+import { LEADERBOARD_ENABLED } from "../config/leaderboard";
 
 const PLAYER_ASCII = String.raw`
    _---
@@ -56,6 +64,10 @@ const CARD_HEART_Y = CARD_Y - 2;
 const SMUSH_Y = 60; // Above player
 const EBO_Y = 60;   // Above Ceci
 const HINT_TEXT_Y = 164;
+const LEADERBOARD_X = 226;
+const LEADERBOARD_Y = 30;
+const NAME_PROMPT_Y = 145;
+const NAME_VALUE_Y = 156;
 
 // Sizes
 const CARD_WIDTH = 20;
@@ -124,6 +136,12 @@ export default class TitleScene extends Phaser.Scene {
   private sceneState: SceneState = "approaching";
   
   private hintText!: Phaser.GameObjects.Text;
+  private leaderboardText!: Phaser.GameObjects.Text;
+  private namePromptText!: Phaser.GameObjects.Text;
+  private nameValueText!: Phaser.GameObjects.Text;
+  private nameErrorText!: Phaser.GameObjects.Text;
+  private nameEntryActive = false;
+  private nameInput = "";
   private cardPieces: Phaser.GameObjects.Ellipse[] = [];
   
   // Transformation effects
@@ -212,6 +230,50 @@ export default class TitleScene extends Phaser.Scene {
       color: TITLE_COLOR,
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5);
+
+    const savedName = getPlayerName().trim();
+    this.namePromptText = this.add.text(SCREEN_CENTER_X, NAME_PROMPT_Y, savedName ? "PLAYER" : "ENTER NAME", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffeab6",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5);
+
+    this.nameValueText = this.add.text(SCREEN_CENTER_X, NAME_VALUE_Y, savedName, {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5);
+
+    this.nameErrorText = this.add.text(SCREEN_CENTER_X, NAME_VALUE_Y + 10, "", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffaaaa",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5);
+
+    if (!savedName) {
+      this.nameEntryActive = true;
+      this.nameInput = "";
+      this.refreshNameEntryText();
+      this.input.keyboard?.on("keydown", this.handleNameInput, this);
+    }
+
+    this.leaderboardText = this.add.text(LEADERBOARD_X, LEADERBOARD_Y, "", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#9ee6ff",
+      lineSpacing: 2,
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0, 0);
+
+    if (LEADERBOARD_ENABLED) {
+      this.leaderboardText.setText("Global Leaderboard\nLoading...");
+      void this.loadLeaderboard();
+    } else {
+      this.leaderboardText.setText("Global Leaderboard\nDisabled");
+    }
     
     // Note: No help hint in TitleScene - this is before the game starts
     // Help hint will appear after Eboshi interaction in GameScene
@@ -219,6 +281,10 @@ export default class TitleScene extends Phaser.Scene {
 
   update() {
     const dt = this.game.loop.delta / 1000;
+
+    if (this.nameEntryActive) {
+      return;
+    }
 
     // Handle menu input (ESC for pause, H for help, M for mute)
     // In title scene, "exit to title" means restart the scene
@@ -557,5 +623,92 @@ export default class TitleScene extends Phaser.Scene {
     this.time.delayedCall(2000, () => {
       fadeToScene(this, SCENES.GAME, 1000);
     });
+  }
+
+  private refreshNameEntryText() {
+    const display = this.nameInput.length > 0 ? this.nameInput : "_";
+    this.nameValueText.setText(display);
+  }
+
+  private isAllowedNameChar(char: string): boolean {
+    return /^[a-zA-Z0-9 _-]$/.test(char);
+  }
+
+  private sanitizePlayerName(name: string): string {
+    return name.trim().replace(/\s+/g, " ");
+  }
+
+  private handleNameInput(event: KeyboardEvent) {
+    if (!this.nameEntryActive) return;
+    this.nameErrorText.setText("");
+
+    if (event.key === "Backspace") {
+      this.nameInput = this.nameInput.slice(0, -1);
+      this.refreshNameEntryText();
+      return;
+    }
+
+    if (event.key === "Enter") {
+      const cleaned = this.sanitizePlayerName(this.nameInput);
+      if (cleaned.length < 3 || cleaned.length > 16) {
+        this.nameErrorText.setText("Name must be 3-16 chars");
+        return;
+      }
+      setPlayerName(cleaned);
+      this.nameEntryActive = false;
+      this.nameInput = cleaned;
+      this.namePromptText.setText("PLAYER");
+      this.nameValueText.setText(cleaned);
+      this.input.keyboard?.off("keydown", this.handleNameInput, this);
+      return;
+    }
+
+    if (event.key.length === 1 && this.isAllowedNameChar(event.key)) {
+      if (this.nameInput.length >= 16) return;
+      this.nameInput += event.key;
+      this.refreshNameEntryText();
+    }
+  }
+
+  private formatMiniGameTag(miniGame: string): string {
+    switch (miniGame) {
+      case "ice_hockey":
+        return "ICE";
+      case "seattle_traffic":
+        return "SEA";
+      case "farmers_market":
+        return "FARM";
+      case "northgate":
+        return "NG";
+      default:
+        return "UNK";
+    }
+  }
+
+  private async loadLeaderboard() {
+    try {
+      const entries = await fetchLeaderboard(5);
+      const youName = getPlayerName().trim() || "(set name)";
+
+      if (entries.length === 0) {
+        this.leaderboardText.setText(`Global Leaderboard\nNo entries yet\nYou: ${youName}`);
+        return;
+      }
+
+      const rows = entries.map((entry, index) => {
+        const nameTag = entry.player_name.slice(0, 10);
+        const gameTag = this.formatMiniGameTag(entry.mini_game);
+        const deaths = entry.deaths ?? 0;
+        const score =
+          entry.mini_game === "seattle_traffic"
+            ? `ETA ${formatSeattleArrivalFromDurationMs(entry.duration_ms ?? 0)}`
+            : `T ${formatRunDuration(entry.duration_ms ?? 0)}`;
+        return `${index + 1}. ${nameTag} ${gameTag} ${score} D${deaths}`;
+      });
+
+      this.leaderboardText.setText(`Global Leaderboard\n${rows.join("\n")}\nYou: ${youName}`);
+    } catch {
+      this.leaderboardText.setText("Global Leaderboard\nUnavailable");
+    }
   }
 }

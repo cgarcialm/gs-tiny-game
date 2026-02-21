@@ -15,6 +15,7 @@ import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 import { HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import { HELP_HINT_TEXT_STYLE } from "../config/textStyles";
 import { DEBUG_SHOW_SMUSH_AI } from "../config/debug";
+import { recordMiniGameDeath, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
 
 /**
  * Farmers Market Scene - Pac-Man Style
@@ -101,6 +102,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Clear any previous dialogue
     this.dialogueManager.hide();
+
+    startMiniGameSession("farmers_market");
     
     // Reset all game state
     this.entranceComplete = false;
@@ -1246,6 +1249,8 @@ export default class FarmersMarketScene extends Phaser.Scene {
       // Collected the card!
       this.cardPiece.destroy();
       this.cardPiece = null;
+
+      void submitMiniGameResult("farmers_market");
       
       // Transition back to GameScene (faster)
       this.time.delayedCall(200, () => {
@@ -1257,6 +1262,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
   
   private smushWins() {
     this.smushWon = true; // Freeze everything
+    recordMiniGameDeath("farmers_market");
     
     // Determine why she won
     let reason = "";
@@ -1693,7 +1699,5 @@ export default class FarmersMarketScene extends Phaser.Scene {
     this.spawnShopper();
   }
 }
-
-
 
 

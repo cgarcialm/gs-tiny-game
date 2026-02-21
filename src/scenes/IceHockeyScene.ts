@@ -16,6 +16,7 @@ import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 import { HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import { HELP_HINT_TEXT_STYLE } from "../config/textStyles";
+import { recordMiniGameDeath, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
 
 // World larger than view: player fixed in middle, background scrolls (camera translation)
 // Scroll max must reach (fieldRight - 160) and (fieldBottom - 90). So we need:
@@ -145,6 +146,8 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.time.delayedCall(500, () => {
       this.isInvincible = false;
     });
+
+    startMiniGameSession("ice_hockey");
     
     console.log('Health after reset:', this.health);
     
@@ -906,6 +909,7 @@ export default class IceHockeyScene extends Phaser.Scene {
   private playerDeath() {
     this.levelCompleted = true;
     this.gameplayStarted = false;
+    recordMiniGameDeath("ice_hockey");
     this.playerPhysics.setVelocity(0, 0);
     this.player.x = Math.round(this.playerPhysics.x);
     this.player.y = Math.round(this.playerPhysics.y);
@@ -1244,6 +1248,8 @@ export default class IceHockeyScene extends Phaser.Scene {
     if (cardIcon) {
       cardIcon.setAlpha(1); // Bright when collected
     }
+
+    void submitMiniGameResult("ice_hockey");
     
     // Small delay to show the card lighting up
     this.time.delayedCall(500, () => {
@@ -1698,5 +1704,3 @@ export default class IceHockeyScene extends Phaser.Scene {
     });
   }
 }
-
-
