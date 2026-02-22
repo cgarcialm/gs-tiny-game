@@ -262,7 +262,7 @@ export default class LeaderboardScene extends Phaser.Scene {
       } else {
         this.tabCache.set(cacheKey, useEntries);
         const top = useEntries[0];
-        const topLine = this.formatEntryRow(top, 0).replace(/^1\.\s*/, "");
+        const topLine = this.formatEntryRow(top, 0).replace(/^1\s*/, "");
         this.localText.setText(`BEST ${topLine}`);
         const rows = useEntries.slice(1).map((entry, idx) => this.formatEntryRow(entry, idx + 1));
         this.scoresText.setText(rows.join("\n"));

@@ -13,6 +13,7 @@ import LeaderboardScene from "./scenes/LeaderboardScene";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
+  resolution: Math.min(2, window.devicePixelRatio || 1),
   width: 320,
   height: 180,
   backgroundColor: "#0a0f14",

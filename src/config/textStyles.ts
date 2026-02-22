@@ -11,7 +11,7 @@ export const DIALOGUE_TEXT_STYLE = {
   fontSize: "10px",
   color: "#dff1ff",
   wordWrap: { width: 280 },
-  resolution: 2,
+  resolution: 3,
 } as const;
 
 /**
@@ -23,7 +23,7 @@ export const PROMPT_TEXT_STYLE = {
   color: "#cfe8ff",
   backgroundColor: "rgba(0,0,0,0.35)",
   padding: { left: 4, right: 4, top: 2, bottom: 2 },
-  resolution: 2,
+  resolution: 3,
 } as const;
 
 /**
@@ -35,7 +35,7 @@ export const HELP_HINT_TEXT_STYLE = {
   color: "#cfe8ff",
   backgroundColor: "rgba(0,0,0,0.4)",
   padding: { left: 3, right: 3, top: 2, bottom: 2 },
-  resolution: 1,
+  resolution: 2,
 } as const;
 
 /**
@@ -47,7 +47,7 @@ export const COUNTER_TEXT_STYLE = {
   color: "#ffeb3b",
   backgroundColor: "rgba(0,0,0,0.5)",
   padding: { left: 4, right: 4, top: 2, bottom: 2 },
-  resolution: 1,
+  resolution: 2,
 } as const;
 
 /**
@@ -58,7 +58,7 @@ export const FLOATING_MESSAGE_STYLE = {
   fontSize: "10px",
   color: "#ffeb3b",
   fontStyle: "bold",
-  resolution: 2,
+  resolution: 3,
 } as const;
 
 /**
@@ -68,7 +68,7 @@ export const TITLE_TEXT_STYLE = {
   fontFamily: "monospace",
   fontSize: "12px",
   color: "#cfe8ff",
-  resolution: 1,
+  resolution: 2,
 } as const;
 
 /**
@@ -79,7 +79,7 @@ export const STATION_SIGN_STYLE = {
   fontSize: "10px",
   color: "#00d4ff",
   fontStyle: "bold",
-  resolution: 1,
+  resolution: 2,
 } as const;
 
 /**
@@ -91,7 +91,7 @@ export const SMALL_LABEL_STYLE = {
   color: "#00ff00",
   backgroundColor: "rgba(0,0,0,0.6)",
   padding: { left: 3, right: 3, top: 2, bottom: 2 },
-  resolution: 1,
+  resolution: 2,
 } as const;
 
 /**
@@ -104,6 +104,5 @@ export const THOUGHT_BUBBLE_STYLE = {
   align: "center",
   backgroundColor: "rgba(0,0,0,0.7)",
   padding: { left: 4, right: 4, top: 3, bottom: 3 },
-  resolution: 1,
+  resolution: 2,
 } as const;
-
