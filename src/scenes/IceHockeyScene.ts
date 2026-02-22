@@ -752,7 +752,9 @@ export default class IceHockeyScene extends Phaser.Scene {
       
       // Store enemy data
       const shootInterval = (2000 + Math.random() * 1000) / speedMultiplier; // Faster waves shoot sooner
-      enemy.setData('shootTimer', Math.random() * shootInterval);
+      const initialShootDelay = 3000;
+      const shootTimer = Math.max(0, shootInterval - initialShootDelay);
+      enemy.setData('shootTimer', shootTimer);
       enemy.setData('shootInterval', shootInterval); // Shoot every ~2-3 seconds (scaled)
       enemy.setData('patrolAngle', index * 120); // For circular movement
       enemy.setData('startX', data.x);
