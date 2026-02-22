@@ -741,12 +741,28 @@ export default class IceHockeyScene extends Phaser.Scene {
     const ox = ICE_HOCKEY_WORLD_OFFSET_X;
     const oy = ICE_HOCKEY_WORLD_OFFSET_Y;
     const entryX = 245 + ox;
-    const enemyData = [
-      { x: 120 + ox, y: 60 + oy, pattern: 'aimed', movement: 'figure8' },
-      { x: 200 + ox, y: 60 + oy, pattern: 'spread', movement: 'zigzag' },
-      { x: 160 + ox, y: 30 + oy, pattern: 'circle', movement: 'circle' },
+    const positions = [
+      { x: 120 + ox, y: 60 + oy },
+      { x: 200 + ox, y: 60 + oy },
+      { x: 160 + ox, y: 30 + oy },
     ];
-    enemyData.forEach((data, index) => {
+    const patterns = ["aimed", "spread", "circle"];
+    const movements = ["figure8", "zigzag", "circle"];
+    const shuffledPatterns = patterns
+      .map((item) => ({ item, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ item }) => item);
+    const shuffledMovements = movements
+      .map((item) => ({ item, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ item }) => item);
+    positions.forEach((pos, index) => {
+      const data = {
+        x: pos.x,
+        y: pos.y,
+        pattern: shuffledPatterns[index],
+        movement: shuffledMovements[index],
+      };
       // Create proper hockey player sprite (black jersey with red accents)
       const startX = speedMultiplier > 1 ? entryX : data.x;
       const enemy = createHockeyPlayerSprite(this, startX, data.y, 0x1a1a1a, 0xff0000);
