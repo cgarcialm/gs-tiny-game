@@ -322,4 +322,5 @@ export default class LeaderboardScene extends Phaser.Scene {
     }
     this.scene.start(SCENES.TITLE);
   }
+
 }

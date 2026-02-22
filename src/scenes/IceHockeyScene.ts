@@ -1270,7 +1270,7 @@ export default class IceHockeyScene extends Phaser.Scene {
   
   private checkMemoryCollection() {
     if (!this.memoryFragment) return;
-    if (!checkProximity(this.playerPhysics, this.memoryFragment, 35)) return;
+    if (!checkProximity(this.playerPhysics, this.memoryFragment, 9)) return;
     this.memoryFragment.destroy();
     this.memoryFragment = undefined;
     this.levelComplete();
@@ -1606,7 +1606,7 @@ export default class IceHockeyScene extends Phaser.Scene {
       spawnCardPieceSparkles(this, fragmentX, fragmentY);
     });
     
-    this.showDialog("All opponents defeated! Press ENTER, then skate to the goal and touch the memory!");
+    this.showDialog("All opponents defeated! Skate to the goal and touch the memory!");
   }
   
   private updateChaseSpawnTimer() {
