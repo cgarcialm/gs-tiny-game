@@ -16,6 +16,7 @@ import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
 import { HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import { HELP_HINT_TEXT_STYLE } from "../config/textStyles";
 import { buildMiniGameResult, recordMiniGameDeath, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
+import { DEBUG_SHOW_ICE_HOCKEY_PICKUP_HITBOXES } from "../config/debug";
 
 // World larger than view: player fixed in middle, background scrolls (camera translation)
 // Scroll max must reach (fieldRight - 160) and (fieldBottom - 90). So we need:
@@ -71,8 +72,10 @@ export default class IceHockeyScene extends Phaser.Scene {
   private memoryFragment?: Phaser.GameObjects.Graphics;
   private memoryFragmentSpawned = false;
   private hockeyStick?: Phaser.GameObjects.Graphics;
+  private hockeyStickHitbox?: Phaser.GameObjects.Graphics;
   private hasStick = false;
   private skates?: Phaser.GameObjects.Graphics;
+  private skatesHitbox?: Phaser.GameObjects.Graphics;
   private hasSkates = false;
   private chaseEnemyTimer = 0;
   private chaseEnemyInterval = 8000; // Spawn chaser every 8 seconds
@@ -465,6 +468,16 @@ export default class IceHockeyScene extends Phaser.Scene {
     
     this.skates.setDepth(6);
     this.worldContainer.add(this.skates);
+
+    this.skatesHitbox?.destroy();
+    if (DEBUG_SHOW_ICE_HOCKEY_PICKUP_HITBOXES) {
+      this.skatesHitbox = this.add.graphics();
+      this.skatesHitbox.setPosition(skatesX, skatesY);
+      this.skatesHitbox.lineStyle(1, 0xffc107, 0.9);
+      this.skatesHitbox.strokeCircle(0, 0, 9);
+      this.skatesHitbox.setDepth(5);
+      this.worldContainer.add(this.skatesHitbox);
+    }
   }
   
   private spawnHockeyStick() {
@@ -490,6 +503,16 @@ export default class IceHockeyScene extends Phaser.Scene {
     
     this.hockeyStick.setDepth(6);
     this.worldContainer.add(this.hockeyStick);
+
+    this.hockeyStickHitbox?.destroy();
+    if (DEBUG_SHOW_ICE_HOCKEY_PICKUP_HITBOXES) {
+      this.hockeyStickHitbox = this.add.graphics();
+      this.hockeyStickHitbox.setPosition(stickX, stickY);
+      this.hockeyStickHitbox.lineStyle(1, 0xffc107, 0.9);
+      this.hockeyStickHitbox.strokeCircle(0, 0, 15);
+      this.hockeyStickHitbox.setDepth(5);
+      this.worldContainer.add(this.hockeyStickHitbox);
+    }
   }
   
   private createIceRink() {
@@ -1144,10 +1167,16 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Check for equipment collection (allow during equipment messages)
     if (!this.hasSkates && this.skates) {
       this.checkSkatesCollection();
+      if (this.skatesHitbox) {
+        this.skatesHitbox.setPosition(this.skates.x, this.skates.y);
+      }
     }
     
     if (!this.hasStick && this.hockeyStick) {
       this.checkStickCollection();
+      if (this.hockeyStickHitbox) {
+        this.hockeyStickHitbox.setPosition(this.hockeyStick.x, this.hockeyStick.y);
+      }
     }
     
     // Always check for memory collection (even after enemies defeated)
@@ -1158,11 +1187,13 @@ export default class IceHockeyScene extends Phaser.Scene {
   
   private checkSkatesCollection() {
     if (!this.skates) return;
-    const isNear = checkProximity(this.playerPhysics, this.skates, 35);
+    const isNear = checkProximity(this.playerPhysics, this.skates, 9);
     if (!isNear) return;
     this.hasSkates = true;
     this.skates.destroy();
     this.skates = undefined;
+    this.skatesHitbox?.destroy();
+    this.skatesHitbox = undefined;
     this.speed = this.skateSpeed;
     this.updateEquipmentDisplay();
     this.showDialog("Ice skates equipped! You move faster now!");
@@ -1178,6 +1209,8 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.hasStick = true;
     this.hockeyStick.destroy();
     this.hockeyStick = undefined;
+    this.hockeyStickHitbox?.destroy();
+    this.hockeyStickHitbox = undefined;
     this.addStickToPlayer();
     this.updateEquipmentDisplay();
     this.showDialog("Hockey stick acquired! Press SPACE to shoot pucks!");

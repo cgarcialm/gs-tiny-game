@@ -18,7 +18,7 @@ import { SCENES, type SceneName } from "./sceneConstants";
  * "FarmersMarket" = Skip to Farmers Market Pac-Man scene
  * "Camping" = Skip to Camping scene
  */
-export const DEBUG_START_SCENE: SceneName = SCENES.ICE_HOCKEY;
+export const DEBUG_START_SCENE: SceneName = SCENES.TITLE;
 
 /**
  * Set to desired level number to skip ahead in GameScene (only applies if starting in "Game")
@@ -46,3 +46,10 @@ export const DEBUG_SHOW_GRID = false;
  * false = Clean gameplay (no visual debugging)
  */
 export const DEBUG_SHOW_SMUSH_AI = false;
+
+/**
+ * Show pickup hitbox rings in Ice Hockey scene
+ * true = show skate/stick pickup radii
+ * false = hide debug hitbox rings
+ */
+export const DEBUG_SHOW_ICE_HOCKEY_PICKUP_HITBOXES = false;
