@@ -217,12 +217,16 @@ async function handleLeaderboard(request: Request, env: Env, corsHeaders: Record
   const url = new URL(request.url);
   const requestedLimit = Number(url.searchParams.get("limit"));
   const requestedMiniGame = url.searchParams.get("mini_game");
+  const requestedSort = url.searchParams.get("sort");
   const safeLimit = Number.isFinite(requestedLimit)
     ? Math.min(LEADERBOARD_LIMIT_MAX, Math.max(LEADERBOARD_LIMIT_MIN, Math.floor(requestedLimit)))
     : 10;
 
   if (requestedMiniGame && ALLOWED_MINI_GAMES.has(requestedMiniGame)) {
-    const orderBy = "duration_ms ASC, deaths ASC, created_at ASC";
+    const orderBy =
+      requestedSort === "latest"
+        ? "created_at DESC"
+        : "duration_ms ASC, deaths ASC, created_at ASC";
     const rows = await env.DB.prepare(
       `SELECT
         id,

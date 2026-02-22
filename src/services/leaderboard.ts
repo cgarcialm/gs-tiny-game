@@ -101,11 +101,16 @@ export function setPlayerName(name: string): void {
   localStorage.setItem(STORAGE_KEYS.playerName, name);
 }
 
-export async function fetchLeaderboard(limit = 10, miniGame?: MiniGameKey): Promise<LeaderboardEntry[]> {
+export async function fetchLeaderboard(
+  limit = 10,
+  miniGame?: MiniGameKey,
+  options?: { sort?: "best" | "latest" }
+): Promise<LeaderboardEntry[]> {
   if (!LEADERBOARD_ENABLED) return [];
   const clampedLimit = Math.max(1, Math.min(20, Math.floor(limit)));
   const query = miniGame ? `&mini_game=${miniGame}` : "";
-  const endpoint = `/leaderboard?limit=${clampedLimit}${query}`;
+  const sortQuery = options?.sort === "latest" ? "&sort=latest" : "";
+  const endpoint = `/leaderboard?limit=${clampedLimit}${query}${sortQuery}`;
   const response = await requestTimeoutMs(
     fetch(`${API_BASE_URL}${endpoint}`, {
       method: "GET",

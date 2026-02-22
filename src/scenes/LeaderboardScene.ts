@@ -346,7 +346,9 @@ export default class LeaderboardScene extends Phaser.Scene {
         this.scoresText.setText(rows.join("\n"));
       }
 
-      const latest = useEntries.slice(0, 3);
+      const latestEntries = await fetchLeaderboard(3, miniGame, { sort: "latest" });
+      if (requestId !== this.loadRequestId) return;
+      const latest = latestEntries.length > 0 ? latestEntries : useEntries.slice(0, 3);
       if (latest.length === 0) {
         this.globalScoresText.setText("No scores.");
       } else {
