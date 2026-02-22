@@ -729,8 +729,8 @@ export default class IceHockeyScene extends Phaser.Scene {
       this.spawnCrowdChatter("Grab the\nstick!");
     });
     
-    // Spawn enemy hockey players
-    this.spawnEnemies();
+    // Spawn enemy hockey players after a short delay
+    this.time.delayedCall(600, () => this.spawnEnemies());
   }
   
   private spawnEnemies() {
