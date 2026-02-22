@@ -79,7 +79,7 @@ export default class IceHockeyScene extends Phaser.Scene {
   private skatesHitbox?: Phaser.GameObjects.Graphics;
   private hasSkates = false;
   private chaseEnemyTimer = 0;
-  private chaseEnemyInterval = 8000; // Spawn chaser every 8 seconds
+  private chaseEnemyInterval = 3000; // Spawn chaser every 3 seconds
   private chasers: Phaser.GameObjects.Container[] = [];
   
   // World container: everything the main (rotating) camera draws. UI is on a separate camera so it never rotates.
@@ -143,6 +143,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.chaseEnemyTimer = 0;
     this.chasers = [];
     this.enemiesDefeated = 0;
+    this.totalEnemies = 3;
     this.enemyWave = 0;
     
     // Start with brief invincibility to prevent race conditions during scene initialization
@@ -732,7 +733,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     });
     
     // Spawn enemy hockey players after a short delay
-    this.time.delayedCall(1200, () => this.spawnEnemies(1));
+    this.time.delayedCall(600, () => this.spawnEnemies(1));
   }
   
   private spawnEnemies(speedMultiplier: number) {
@@ -750,8 +751,9 @@ export default class IceHockeyScene extends Phaser.Scene {
       enemy.setDepth(5);
       
       // Store enemy data
-      enemy.setData('shootTimer', 0);
-      enemy.setData('shootInterval', 2000 + Math.random() * 1000); // Shoot every 2-3 seconds
+      const shootInterval = (2000 + Math.random() * 1000) / speedMultiplier; // Faster waves shoot sooner
+      enemy.setData('shootTimer', Math.random() * shootInterval);
+      enemy.setData('shootInterval', shootInterval); // Shoot every ~2-3 seconds (scaled)
       enemy.setData('patrolAngle', index * 120); // For circular movement
       enemy.setData('startX', data.x);
       enemy.setData('startY', data.y);
@@ -1549,7 +1551,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     if (this.enemies.length === 0) {
       if (this.enemyWave === 0) {
         this.enemyWave = 1;
-        this.enemiesDefeated = 0;
+        this.totalEnemies = 6;
         this.scoreDisplay.setText(`KIL  ${this.enemiesDefeated}/${this.totalEnemies}`);
         this.spawnCrowdChatter("Second\nwave!");
         this.time.delayedCall(900, () => this.spawnEnemies(1.35));
