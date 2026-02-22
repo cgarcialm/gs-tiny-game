@@ -16,6 +16,7 @@ const MINI_GAMES: LeaderboardTab[] = [
   { key: "ice_hockey", label: "ICE HOCKEY" },
   { key: "seattle_traffic", label: "SEATTLE TRAFFIC" },
   { key: "farmers_market", label: "FARMERS MARKET" },
+  { key: "full_run", label: "FULL RUN" },
 ];
 
 interface LeaderboardSceneData {
@@ -39,7 +40,6 @@ export default class LeaderboardScene extends Phaser.Scene {
   private allValueText!: Phaser.GameObjects.Text;
   private allBestCache: { labels: string; values: string; updatedAt: number } | null = null;
   private tabCache = new Map<string, LeaderboardEntry[]>();
-  private latestCache: LeaderboardEntry[] | null = null;
   private retryCount = 0;
 
   constructor() {
@@ -134,7 +134,7 @@ export default class LeaderboardScene extends Phaser.Scene {
       resolution: 3,
     });
 
-    this.add.text(160, 165, "LEFT/RIGHT to switch • ENTER/ESC to continue", {
+    this.add.text(160, 165, "LEFT/RIGHT to switch • L/ENTER to continue", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#888888",
@@ -144,7 +144,7 @@ export default class LeaderboardScene extends Phaser.Scene {
 
     this.input.keyboard?.on("keydown-LEFT", () => this.shiftTab(-1));
     this.input.keyboard?.on("keydown-RIGHT", () => this.shiftTab(1));
-    this.input.keyboard?.on("keydown-ESC", () => this.exit());
+    this.input.keyboard?.on("keydown-L", () => this.exit());
     this.input.keyboard?.on("keydown-ENTER", () => this.exit());
 
     this.renderTabHeader();
@@ -164,21 +164,25 @@ export default class LeaderboardScene extends Phaser.Scene {
     const labels = MINI_GAMES.map((game) => game.label);
     const line1 = `${labels[0] ?? ""}`;
     const line2 = `${labels[1] ?? ""} | ${labels[2] ?? ""} | ${labels[3] ?? ""} | ${labels[4] ?? ""}`;
-    this.tabsText.setText(`${line1}\n${line2}`);
+    const line3 = `${labels[5] ?? ""}`;
+    this.tabsText.setText(`${line1}\n${line2}\n${line3}`);
 
     const selectedLine1 = this.selectedIndex === 0 ? line1 : " ".repeat(line1.length);
-    const segments = [
-      labels[1] ?? "",
-      labels[2] ?? "",
-      labels[3] ?? "",
-      labels[4] ?? "",
-    ];
-    const selectedSegments = segments.map((seg, idx) => {
-      const tabIndex = idx + 1;
-      return this.selectedIndex === tabIndex ? seg : " ".repeat(seg.length);
-    });
-    const selectedLine2 = `${selectedSegments[0]} | ${selectedSegments[1]} | ${selectedSegments[2]} | ${selectedSegments[3]}`;
-    this.selectedTabText.setText(`${selectedLine1}\n${selectedLine2}`);
+    const segmentsLine2 = [labels[1] ?? "", labels[2] ?? "", labels[3] ?? "", labels[4] ?? ""];
+    const segmentsLine3 = [labels[5] ?? ""];
+    const selectedLine2 = segmentsLine2
+      .map((seg, idx) => {
+        const tabIndex = idx + 1;
+        return this.selectedIndex === tabIndex ? seg : " ".repeat(seg.length);
+      })
+      .join(" | ");
+    const selectedLine3 = segmentsLine3
+      .map((seg, idx) => {
+        const tabIndex = idx + 5;
+        return this.selectedIndex === tabIndex ? seg : " ".repeat(seg.length);
+      })
+      .join("");
+    this.selectedTabText.setText(`${selectedLine1}\n${selectedLine2}\n${selectedLine3}`);
     const isAll = MINI_GAMES[this.selectedIndex]?.key === "all";
     if (isAll) {
       this.localText.setText("BEST BY GAME");
@@ -215,17 +219,20 @@ export default class LeaderboardScene extends Phaser.Scene {
           fetchLeaderboard(1, "seattle_traffic"),
           fetchLeaderboard(1, "farmers_market"),
           fetchLeaderboard(1, "northgate"),
+          fetchLeaderboard(1, "full_run"),
         ]);
         if (requestId !== this.loadRequestId) return;
         const ice = results[0].status === "fulfilled" ? results[0].value[0] : undefined;
         const sea = results[1].status === "fulfilled" ? results[1].value[0] : undefined;
         const farm = results[2].status === "fulfilled" ? results[2].value[0] : undefined;
         const ng = results[3].status === "fulfilled" ? results[3].value[0] : undefined;
+        const full = results[4].status === "fulfilled" ? results[4].value[0] : undefined;
         const rows = [
           this.formatTopRowParts("ICE HOCKEY", ice),
           this.formatTopRowParts("SEATTLE TRAFFIC", sea),
           this.formatTopRowParts("FARMERS MARKET", farm),
           this.formatTopRowParts("NORTHGATE", ng),
+          this.formatTopRowParts("FULL RUN", full),
         ];
         const labels = rows.map((row) => row.label).join("\n");
         const values = rows.map((row) => row.value).join("\n");
@@ -272,7 +279,6 @@ export default class LeaderboardScene extends Phaser.Scene {
       if (latest.length === 0) {
         this.globalScoresText.setText("No scores.");
       } else {
-        this.latestCache = latest;
         const rows = latest.map((entry, idx) => this.formatEntryRow(entry, idx));
         this.globalScoresText.setText(rows.join("\n"));
       }
