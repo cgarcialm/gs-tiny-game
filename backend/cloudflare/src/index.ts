@@ -3,6 +3,7 @@ interface Env {
   ALLOWED_ORIGINS?: string;
   RATE_LIMIT_WINDOW_SECONDS?: string;
   RATE_LIMIT_MAX_REQUESTS?: string;
+  RATE_LIMIT_MAX_REQUESTS_READ?: string;
 }
 
 interface SubmitPayload {
@@ -74,14 +75,22 @@ function parseWindowSeconds(env: Env): number {
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 60;
 }
 
-function parseMaxRequests(env: Env): number {
-  const parsed = Number(env.RATE_LIMIT_MAX_REQUESTS);
+function parseMaxRequests(env: Env, routeKey: string): number {
+  const raw =
+    routeKey === "leaderboard"
+      ? env.RATE_LIMIT_MAX_REQUESTS_READ ?? env.RATE_LIMIT_MAX_REQUESTS
+      : env.RATE_LIMIT_MAX_REQUESTS;
+  const parsed = Number(raw);
+  if (Number.isFinite(parsed) && parsed === 0) return 0;
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 20;
 }
 
 async function enforceRateLimit(request: Request, env: Env, routeKey: string): Promise<boolean> {
   const windowSeconds = parseWindowSeconds(env);
-  const maxRequests = parseMaxRequests(env);
+  const maxRequests = parseMaxRequests(env, routeKey);
+  if (maxRequests === 0) {
+    return true;
+  }
   const nowSeconds = Math.floor(Date.now() / 1000);
   const bucket = Math.floor(nowSeconds / windowSeconds);
   const ipHash = await sha256Hex(getClientIp(request));
