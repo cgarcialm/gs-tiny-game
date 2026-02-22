@@ -738,10 +738,10 @@ export default class TitleScene extends Phaser.Scene {
       const farm = results[2].status === "fulfilled" ? results[2].value : [];
       const ng = results[3].status === "fulfilled" ? results[3].value : [];
       const rows = [
+        this.formatNameGateRow("NORTHGATE", ng[0], "northgate"),
         this.formatNameGateRow("ICE HOCKEY", ice[0], "ice_hockey"),
         this.formatNameGateRow("SEATTLE TRAFFIC", sea[0], "seattle_traffic"),
         this.formatNameGateRow("FARMERS MARKET", farm[0], "farmers_market"),
-        this.formatNameGateRow("NORTHGATE", ng[0], "northgate"),
       ];
       this.nameScoresLabelText.setText(rows.map((row) => row.label).join("\n"));
       this.nameScoresValueText.setText(rows.map((row) => row.value).join("\n"));
