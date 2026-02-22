@@ -41,7 +41,7 @@ export class HelpMenu {
       ""
     ].join("\n");
     
-    const categoryText = scene.add.text(-115, -30, categories, {
+    const categoryText = scene.add.text(-115, -38, categories, {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#00d4ff",
@@ -63,7 +63,7 @@ export class HelpMenu {
       "",
     ].join("\n");
     
-    this.helpText = scene.add.text(-40, -30, keys, {
+    this.helpText = scene.add.text(-40, -38, keys, {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#cfe8ff",
