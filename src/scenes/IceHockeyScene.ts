@@ -740,6 +740,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     // Spawn enemy hockey players with different shot and movement patterns
     const ox = ICE_HOCKEY_WORLD_OFFSET_X;
     const oy = ICE_HOCKEY_WORLD_OFFSET_Y;
+    const entryX = 245 + ox;
     const enemyData = [
       { x: 120 + ox, y: 60 + oy, pattern: 'aimed', movement: 'figure8' },
       { x: 200 + ox, y: 60 + oy, pattern: 'spread', movement: 'zigzag' },
@@ -747,7 +748,8 @@ export default class IceHockeyScene extends Phaser.Scene {
     ];
     enemyData.forEach((data, index) => {
       // Create proper hockey player sprite (black jersey with red accents)
-      const enemy = createHockeyPlayerSprite(this, data.x, data.y, 0x1a1a1a, 0xff0000);
+      const startX = speedMultiplier > 1 ? entryX : data.x;
+      const enemy = createHockeyPlayerSprite(this, startX, data.y, 0x1a1a1a, 0xff0000);
       enemy.setDepth(5);
       
       // Store enemy data
@@ -765,6 +767,20 @@ export default class IceHockeyScene extends Phaser.Scene {
       
       this.enemies.push(enemy);
       this.worldContainer.add(enemy);
+
+      if (speedMultiplier > 1) {
+        enemy.setData('entering', true);
+        this.tweens.add({
+          targets: enemy,
+          x: data.x,
+          y: data.y,
+          duration: 900,
+          ease: "Sine.easeOut",
+          onComplete: () => {
+            enemy.setData('entering', false);
+          },
+        });
+      }
     });
   }
   
@@ -772,6 +788,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     const dt = this.game.loop.delta;
     
     this.enemies.forEach((enemy) => {
+      if (enemy.getData('entering')) return;
       const movementPattern = enemy.getData('movementPattern');
       const speedMultiplier = enemy.getData('speedMultiplier') ?? 1;
       const startX = enemy.getData('startX');
