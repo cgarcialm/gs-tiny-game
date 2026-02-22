@@ -10,13 +10,7 @@ import { fadeToScene } from "../utils/sceneTransitions";
 import { createGraysonSprite } from "../utils/sprites";
 import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES } from "../config/sceneConstants";
-import {
-  fetchLeaderboard,
-  formatRunDurationLoose,
-  formatSeattleArrivalFromDurationMs,
-  getPlayerName,
-  setPlayerName
-} from "../services/leaderboard";
+import { getPlayerName, setPlayerName } from "../services/leaderboard";
 
 const PLAYER_ASCII = String.raw`
    _---
@@ -67,7 +61,7 @@ const LEADERBOARD_X = 226;
 const LEADERBOARD_Y = 30;
 const NAME_GATE_TITLE_Y = 26;
 const NAME_GATE_SCORES_Y = 74;
-const NAME_GATE_INPUT_Y = 140;
+const NAME_GATE_INPUT_Y = 100;
 
 // Sizes
 const CARD_WIDTH = 20;
@@ -140,9 +134,6 @@ export default class TitleScene extends Phaser.Scene {
   private nameGateContainer!: Phaser.GameObjects.Container;
   private nameValueText!: Phaser.GameObjects.Text;
   private nameErrorText!: Phaser.GameObjects.Text;
-  private nameScoresText!: Phaser.GameObjects.Text;
-  private nameScoresLabelText!: Phaser.GameObjects.Text;
-  private nameScoresValueText!: Phaser.GameObjects.Text;
   private nameEntryActive = false;
   private nameInput = "";
   private nameBlinkTween?: Phaser.Tweens.Tween;
@@ -671,33 +662,6 @@ export default class TitleScene extends Phaser.Scene {
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5).setDepth(502);
 
-    this.nameScoresText = this.add.text(160, NAME_GATE_SCORES_Y - 10, "BEST SCORES", {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#ffeab6",
-      align: "center",
-      lineSpacing: 2,
-      resolution: TEXT_RESOLUTION,
-    }).setOrigin(0.5).setDepth(502);
-
-    this.nameScoresLabelText = this.add.text(56, NAME_GATE_SCORES_Y, "Loading...", {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#9ee6ff",
-      align: "left",
-      lineSpacing: 2,
-      resolution: TEXT_RESOLUTION,
-    }).setOrigin(0, 0).setDepth(502);
-
-    this.nameScoresValueText = this.add.text(160, NAME_GATE_SCORES_Y, "", {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#c9b6ff",
-      align: "left",
-      lineSpacing: 2,
-      resolution: TEXT_RESOLUTION,
-    }).setOrigin(0, 0).setDepth(502);
-
     const footer = this.add.text(160, 168, "Press ENTER to continue", {
       fontFamily: "monospace",
       fontSize: "8px",
@@ -713,60 +677,14 @@ export default class TitleScene extends Phaser.Scene {
       subtitle,
       this.nameValueText,
       this.nameErrorText,
-      this.nameScoresText,
-      this.nameScoresLabelText,
-      this.nameScoresValueText,
       footer
     ]);
     this.nameGateContainer.setDepth(500);
 
     this.refreshNameEntryText();
     this.input.keyboard?.on("keydown", this.handleNameInput, this);
-    void this.loadNameGateScores();
   }
 
-  private async loadNameGateScores() {
-    try {
-      const results = await Promise.allSettled([
-        fetchLeaderboard(1, "ice_hockey"),
-        fetchLeaderboard(1, "seattle_traffic"),
-        fetchLeaderboard(1, "farmers_market"),
-        fetchLeaderboard(1, "northgate"),
-      ]);
-      const ice = results[0].status === "fulfilled" ? results[0].value : [];
-      const sea = results[1].status === "fulfilled" ? results[1].value : [];
-      const farm = results[2].status === "fulfilled" ? results[2].value : [];
-      const ng = results[3].status === "fulfilled" ? results[3].value : [];
-      const rows = [
-        this.formatNameGateRow("NORTHGATE", ng[0], "northgate"),
-        this.formatNameGateRow("ICE HOCKEY", ice[0], "ice_hockey"),
-        this.formatNameGateRow("SEATTLE TRAFFIC", sea[0], "seattle_traffic"),
-        this.formatNameGateRow("FARMERS MARKET", farm[0], "farmers_market"),
-      ];
-      this.nameScoresLabelText.setText(rows.map((row) => row.label).join("\n"));
-      this.nameScoresValueText.setText(rows.map((row) => row.value).join("\n"));
-    } catch {
-      this.nameScoresLabelText.setText("Unavailable");
-      this.nameScoresValueText.setText("");
-    }
-  }
-
-  private formatNameGateRow(
-    label: string,
-    result: { duration_ms?: number; deaths?: number; player_name?: string } | null,
-    key: "ice_hockey" | "seattle_traffic" | "farmers_market" | "northgate"
-  ): { label: string; value: string } {
-    if (!result || result.duration_ms === undefined) {
-      return { label: `${label}:`, value: "-" };
-    }
-    const timeLabel =
-      key === "seattle_traffic"
-        ? formatSeattleArrivalFromDurationMs(result.duration_ms)
-        : formatRunDurationLoose(result.duration_ms);
-    const nameTag = typeof result.player_name === "string" ? result.player_name.slice(0, 10) : "Anon";
-    const deaths = result.deaths ?? 0;
-    return { label: `${label}:`, value: `${nameTag} ${timeLabel} (${deaths} deaths)` };
-  }
 
   private isAllowedNameChar(char: string): boolean {
     return /^[a-zA-Z0-9 _-]$/.test(char);
