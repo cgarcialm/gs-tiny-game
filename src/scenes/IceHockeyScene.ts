@@ -1185,7 +1185,8 @@ export default class IceHockeyScene extends Phaser.Scene {
       }
       const isEquipmentMessage = (this.hasStick || this.hasSkates) && !this.memoryFragmentSpawned;
       const isRealizationMessage = this.hasShownRealization && this.gameplayStarted;
-      if (!isEquipmentMessage && !isRealizationMessage) {
+      const isMemoryCollectionMessage = this.memoryFragmentSpawned && !this.gameplayStarted;
+      if (!isEquipmentMessage && !isRealizationMessage && !isMemoryCollectionMessage) {
         return; // Block only for memory / other blocking dialogues
       }
     }
@@ -1201,7 +1202,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     }
     
     // After enemies defeated, player can still move to collect memory
-    if (this.memoryFragmentSpawned && !this.gameplayStarted && !this.dialogueManager.isVisible()) {
+    if (this.memoryFragmentSpawned && !this.gameplayStarted) {
       this.handlePlayerMovement(); // Allow movement to reach memory
       this.updateMinimap(); // Keep minimap updated
     }
@@ -1222,7 +1223,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     }
     
     // Always check for memory collection (even after enemies defeated)
-    if (this.memoryFragmentSpawned && !this.dialogueManager.isVisible()) {
+    if (this.memoryFragmentSpawned) {
       this.checkMemoryCollection();
     }
   }
@@ -1306,7 +1307,7 @@ export default class IceHockeyScene extends Phaser.Scene {
   
   private checkMemoryCollection() {
     if (!this.memoryFragment) return;
-    if (!checkProximity(this.playerPhysics, this.memoryFragment, 9)) return;
+    if (!checkProximity(this.playerPhysics, this.memoryFragment, 12)) return;
     this.memoryFragment.destroy();
     this.memoryFragment = undefined;
     this.levelComplete();
@@ -1327,19 +1328,14 @@ export default class IceHockeyScene extends Phaser.Scene {
       cardIcon.setAlpha(1); // Bright when collected
     }
 
+    // Mark progression immediately so a quick leaderboard exit can't reopen Ice Hockey.
+    this.gameState.completeLevel(VOID_LEVELS.AFTER_ICE_HOCKEY);
+
     const result = buildMiniGameResult("ice_hockey");
     void (async () => {
       await submitMiniGameResult("ice_hockey", result);
       this.scene.start(SCENES.LEADERBOARD, { miniGame: "ice_hockey", nextScene: SCENES.GAME });
     })();
-    
-    // Small delay to show the card lighting up
-    this.time.delayedCall(500, () => {
-      // Complete Ice Hockey level
-      this.gameState.completeLevel(VOID_LEVELS.AFTER_ICE_HOCKEY);
-      
-      // scene transition handled after submit
-    });
   }
   
   private updatePucks() {
