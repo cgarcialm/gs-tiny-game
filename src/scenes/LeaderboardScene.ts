@@ -42,6 +42,7 @@ export default class LeaderboardScene extends Phaser.Scene {
   private allBestCache: { labels: string; values: string; updatedAt: number } | null = null;
   private tabCache = new Map<string, LeaderboardEntry[]>();
   private retryCount = 0;
+  // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
   private _cheatConsole?: CheatConsole;
 
   constructor() {
