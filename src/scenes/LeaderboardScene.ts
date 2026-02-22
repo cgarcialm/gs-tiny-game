@@ -92,16 +92,16 @@ export default class LeaderboardScene extends Phaser.Scene {
 
     this.scoresText = this.add.text(20, 88, "Loading...", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "9px",
       color: "#c9b6ff",
       align: "left",
       lineSpacing: 2,
       resolution: 3,
     });
 
-    this.allLabelText = this.add.text(70, 88, "", {
+    this.allLabelText = this.add.text(56, 88, "", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "9px",
       color: "#9ee6ff",
       align: "left",
       lineSpacing: 2,
@@ -110,7 +110,7 @@ export default class LeaderboardScene extends Phaser.Scene {
 
     this.allValueText = this.add.text(160, 88, "", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "9px",
       color: "#c9b6ff",
       align: "left",
       lineSpacing: 2,
@@ -127,7 +127,7 @@ export default class LeaderboardScene extends Phaser.Scene {
 
     this.globalScoresText = this.add.text(178, 88, "Loading...", {
       fontFamily: "monospace",
-      fontSize: "9px",
+      fontSize: "8px",
       color: "#c9b6ff",
       align: "left",
       lineSpacing: 2,
