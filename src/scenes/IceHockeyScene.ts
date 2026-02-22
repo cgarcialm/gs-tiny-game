@@ -183,7 +183,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.cameras.main.ignore(this.dialogueManager.getContainer());
     this.uiCamera.ignore(this.worldContainer);
     
-    const helpHintText = this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help | L Leaderboard", HELP_HINT_TEXT_STYLE)
+    const helpHintText = this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(10)
       .setScrollFactor(0);
@@ -1253,14 +1253,17 @@ export default class IceHockeyScene extends Phaser.Scene {
     }
 
     const result = buildMiniGameResult("ice_hockey");
-    void submitMiniGameResult("ice_hockey", result);
+    void (async () => {
+      await submitMiniGameResult("ice_hockey", result);
+      this.scene.start(SCENES.LEADERBOARD, { miniGame: "ice_hockey", nextScene: SCENES.GAME });
+    })();
     
     // Small delay to show the card lighting up
     this.time.delayedCall(500, () => {
       // Complete Ice Hockey level
       this.gameState.completeLevel(VOID_LEVELS.AFTER_ICE_HOCKEY);
       
-      this.scene.start(SCENES.LEADERBOARD, { miniGame: "ice_hockey", nextScene: SCENES.GAME });
+      // scene transition handled after submit
     });
   }
   

@@ -210,7 +210,7 @@ export default class GameScene extends Phaser.Scene {
   
   // Help hint (bottom-right corner) - shown after first Eboshi interaction in level 0
   this.helpHintText = this.add
-    .text(HELP_HINT_X, HELP_HINT_Y, "H for Help | L Leaderboard", HELP_HINT_TEXT_STYLE)
+    .text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
     .setOrigin(1, 1)
     .setDepth(10);
     

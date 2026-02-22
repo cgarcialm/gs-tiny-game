@@ -53,7 +53,7 @@ export default class Void3DScene extends Phaser.Scene {
     this.gameState.setCurrentMusic(fullMusic);
     
     // Help hint (bottom-right corner)
-    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help | L Leaderboard", HELP_HINT_TEXT_STYLE)
+    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(100);
     

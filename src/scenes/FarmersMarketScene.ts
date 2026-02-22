@@ -229,7 +229,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     });
     
     // Help hint (bottom-right corner with background)
-    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help | L Leaderboard", HELP_HINT_TEXT_STYLE)
+    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(100);
   }
@@ -1254,12 +1254,15 @@ export default class FarmersMarketScene extends Phaser.Scene {
       this.cardPiece = null;
 
       const result = buildMiniGameResult("farmers_market");
-      void submitMiniGameResult("farmers_market", result);
+      void (async () => {
+        await submitMiniGameResult("farmers_market", result);
+        this.scene.start(SCENES.LEADERBOARD, { miniGame: "farmers_market", nextScene: SCENES.GAME });
+      })();
       
       // Transition back to GameScene (faster)
       this.time.delayedCall(200, () => {
         this.gameState.completeLevel(VOID_LEVELS.AFTER_FARMERS_MARKET);
-        this.scene.start(SCENES.LEADERBOARD, { miniGame: "farmers_market", nextScene: SCENES.GAME });
+        // scene transition handled after submit
       });
     }
   }

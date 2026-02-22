@@ -185,7 +185,7 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     this.createUI();
     
     // Help hint (bottom-right corner)
-    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help | L Leaderboard", HELP_HINT_TEXT_STYLE)
+    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(10);
     
@@ -2611,11 +2611,14 @@ export default class SeattleTrafficScene extends Phaser.Scene {
     const result = buildMiniGameResult("seattle_traffic", {
       duration_ms: elapsedMinutes * 60 * 1000,
     });
-    void submitMiniGameResult("seattle_traffic", result);
+    void (async () => {
+      await submitMiniGameResult("seattle_traffic", result);
+      this.scene.start(SCENES.LEADERBOARD, { miniGame: "seattle_traffic", nextScene: SCENES.GAME });
+    })();
 
     // Victory! Transition to next level
     this.gameState.completeLevel(VOID_LEVELS.AFTER_SEATTLE_TRAFFIC);
-    this.scene.start(SCENES.LEADERBOARD, { miniGame: "seattle_traffic", nextScene: SCENES.GAME });
+    // scene transition handled after submit
   }
   
   private loseByRage(reason: 'crash' | 'rage' = 'rage') {

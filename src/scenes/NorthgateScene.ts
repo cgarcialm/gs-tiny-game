@@ -477,7 +477,7 @@ export default class NorthgateScene extends Phaser.Scene {
       .setOrigin(0.5).setVisible(false);
     
     // Help hint (bottom-right corner) - always visible in later levels
-    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help | L Leaderboard", HELP_HINT_TEXT_STYLE)
+    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(10);
     
@@ -623,11 +623,14 @@ export default class NorthgateScene extends Phaser.Scene {
         this.player.setVelocity(0, 0); // Stop movement
 
         const result = buildMiniGameResult("northgate");
-        void submitMiniGameResult("northgate", result);
+        void (async () => {
+          await submitMiniGameResult("northgate", result);
+          this.scene.start(SCENES.LEADERBOARD, { miniGame: "northgate", nextScene: SCENES.GAME });
+        })();
 
         // Complete Northgate level and transition back to void
         this.gameState.completeLevel(VOID_LEVELS.AFTER_NORTHGATE);
-        this.scene.start(SCENES.LEADERBOARD, { miniGame: "northgate", nextScene: SCENES.GAME });
+        // scene transition handled after submit
       }
     }
   }
