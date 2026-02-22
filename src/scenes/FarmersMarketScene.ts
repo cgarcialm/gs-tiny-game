@@ -241,22 +241,33 @@ export default class FarmersMarketScene extends Phaser.Scene {
   private createWalls() {
     // Use rectangles with physics enabled - matching NEW visual walls
     this.walls = this.physics.add.staticGroup();
+    const debugWallHitboxes = false; // Temporary debug: visualize actual wall collision boxes
+    const wallDebugGraphics = debugWallHitboxes ? this.add.graphics().setDepth(30) : null;
     
     // Helper to create physics rectangle
     const addWall = (x: number, y: number, width: number, height: number, skipInset: boolean = false) => {
       // Make physics box 2px smaller on each side for easier navigation (unless skipInset)
       const inset = skipInset ? 0 : 1;
+      const wallX = x + inset;
+      const wallY = y + inset;
+      const wallW = width - inset * 2;
+      const wallH = height - inset * 2;
       const wall = this.add.rectangle(
-        x + inset, 
-        y + inset, 
-        width - inset * 2, 
-        height - inset * 2, 
+        wallX, 
+        wallY, 
+        wallW, 
+        wallH, 
         0x000000, 0 // Invisible
       );
       wall.setOrigin(0, 0); // Top-left origin like fillRect
       this.physics.add.existing(wall, true); // true = static
       this.walls.add(wall);
       wall.setAlpha(0); // Invisible
+
+      if (wallDebugGraphics) {
+        wallDebugGraphics.lineStyle(1, 0xff4d6d, 0.95);
+        wallDebugGraphics.strokeRect(wallX, wallY, wallW, wallH);
+      }
     };
     
     // Scoreboard barrier (blocks top area) - no inset to avoid gaps
@@ -267,6 +278,13 @@ export default class FarmersMarketScene extends Phaser.Scene {
     addWall(172, 24, 143, 4, true); // Top right
     addWall(5, 171, 143, 4, true); // Bottom left
     addWall(172, 171, 143, 4, true); // Bottom right
+    // Tunnel side rails (prevent walking around outside border from the tunnel openings)
+    // Top only needs to bridge the gap between the scoreboard barrier (y=0..20) and top wall (y=24..28)
+    addWall(148, 20, 4, 8, true); // Top tunnel left rail
+    addWall(168, 20, 4, 8, true); // Top tunnel right rail
+    // Bottom must extend all the way to the world bottom so the player can't go around the outer wall
+    addWall(148, 171, 4, 69, true); // Bottom tunnel left rail
+    addWall(168, 171, 4, 69, true); // Bottom tunnel right rail
     // Side walls (solid) - no inset (too thin!)
     addWall(5, 25, 4, 150, true); // Left
     addWall(311, 25, 4, 150, true); // Right
