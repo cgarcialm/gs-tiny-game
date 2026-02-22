@@ -683,7 +683,7 @@ export default class TitleScene extends Phaser.Scene {
     this.nameScoresValueText = this.add.text(160, NAME_GATE_SCORES_Y, "", {
       fontFamily: "monospace",
       fontSize: "8px",
-      color: "#ffeab6",
+      color: "#c9b6ff",
       align: "left",
       lineSpacing: 2,
       resolution: TEXT_RESOLUTION,

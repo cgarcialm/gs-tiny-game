@@ -11,10 +11,10 @@ type LeaderboardTab = { key: MiniGameKey | "all"; label: string };
 
 const MINI_GAMES: LeaderboardTab[] = [
   { key: "all", label: "ALL GAMES" },
+  { key: "northgate", label: "NORTHGATE" },
   { key: "ice_hockey", label: "ICE HOCKEY" },
   { key: "seattle_traffic", label: "SEATTLE TRAFFIC" },
   { key: "farmers_market", label: "FARMERS MARKET" },
-  { key: "northgate", label: "NORTHGATE" },
 ];
 
 interface LeaderboardSceneData {
@@ -64,7 +64,7 @@ export default class LeaderboardScene extends Phaser.Scene {
 
     this.tabsText = this.add.text(160, 50, "", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "8px",
       color: "#9ee6ff",
       align: "center",
       resolution: 2,
