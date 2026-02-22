@@ -28,6 +28,7 @@ const ICE_HOCKEY_WORLD_WIDTH = 390 + ICE_HOCKEY_WORLD_OFFSET_X * 2;   // 1150 â€
 const ICE_HOCKEY_WORLD_HEIGHT = 258 + ICE_HOCKEY_WORLD_OFFSET_Y * 2;  // 1210 â€“ extra so scroll down works
 const ICE_HOCKEY_SCREEN_CENTER_X = 160;
 const ICE_HOCKEY_SCREEN_CENTER_Y = 90;
+const ICE_HOCKEY_CAMERA_FOLLOW_OFFSET_Y = 24; // Keeps player slightly lower on screen for more look-ahead
 const ICE_HOCKEY_RIGHT_UI_SCREEN_X = 250;
 const ICE_HOCKEY_RIGHT_UI_SCREEN_Y = 0;
 const ICE_HOCKEY_DIALOGUE_BOTTOM_Y = 165;
@@ -177,6 +178,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     );
     this.cameras.main.setZoom(0.9);
     this.cameras.main.startFollow(this.playerPhysics, true, 0.08, 0.08);
+    this.cameras.main.setFollowOffset(0, ICE_HOCKEY_CAMERA_FOLLOW_OFFSET_Y);
     this.cameraRotationRad = 0;
     this.keyQ = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
     this.keyE = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E);
