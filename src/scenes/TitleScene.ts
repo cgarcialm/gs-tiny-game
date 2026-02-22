@@ -60,7 +60,6 @@ const HINT_TEXT_Y = 164;
 const LEADERBOARD_X = 226;
 const LEADERBOARD_Y = 30;
 const NAME_GATE_TITLE_Y = 26;
-const NAME_GATE_SCORES_Y = 74;
 const NAME_GATE_INPUT_Y = 100;
 
 // Sizes
