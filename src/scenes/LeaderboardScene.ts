@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { SCENES } from "../config/sceneConstants";
+import { API_BASE_URL } from "../config/leaderboard";
 import type { MiniGameKey, LeaderboardEntry } from "../services/leaderboard";
 import {
   fetchLeaderboard,
@@ -27,16 +28,19 @@ export default class LeaderboardScene extends Phaser.Scene {
   private selectedIndex = 0;
   private returnScene?: string;
   private nextScene?: string;
-  private titleText!: Phaser.GameObjects.Text;
   private tabsText!: Phaser.GameObjects.Text;
+  private selectedTabText!: Phaser.GameObjects.Text;
   private scoresText!: Phaser.GameObjects.Text;
-  private footerText!: Phaser.GameObjects.Text;
   private localText!: Phaser.GameObjects.Text;
   private globalTitleText!: Phaser.GameObjects.Text;
   private globalScoresText!: Phaser.GameObjects.Text;
   private loadRequestId = 0;
   private allLabelText!: Phaser.GameObjects.Text;
   private allValueText!: Phaser.GameObjects.Text;
+  private allBestCache: { labels: string; values: string; updatedAt: number } | null = null;
+  private tabCache = new Map<string, LeaderboardEntry[]>();
+  private latestCache: LeaderboardEntry[] | null = null;
+  private retryCount = 0;
 
   constructor() {
     super("Leaderboard");
@@ -53,7 +57,7 @@ export default class LeaderboardScene extends Phaser.Scene {
     this.add.rectangle(160, 90, 320, 180, 0x0b0b10, 1);
     this.add.rectangle(160, 90, 300, 160, 0x000000, 0.6).setStrokeStyle(2, 0x00d4ff);
 
-    this.titleText = this.add.text(160, 26, "LEADERBOARD", {
+    this.add.text(160, 26, "LEADERBOARD", {
       fontFamily: "monospace",
       fontSize: "14px",
       color: "#00d4ff",
@@ -69,40 +73,48 @@ export default class LeaderboardScene extends Phaser.Scene {
       align: "center",
       resolution: 2,
     }).setOrigin(0.5);
+    
+    this.selectedTabText = this.add.text(160, 50, "", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffffff",
+      align: "center",
+      resolution: 2,
+    }).setOrigin(0.5);
 
     this.localText = this.add.text(20, 72, "", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: "9px",
       color: "#ffeab6",
       align: "left",
-      resolution: 2,
+      resolution: 3,
     });
 
     this.scoresText = this.add.text(20, 88, "Loading...", {
       fontFamily: "monospace",
-      fontSize: "9px",
+      fontSize: "10px",
       color: "#c9b6ff",
       align: "left",
       lineSpacing: 2,
-      resolution: 2,
+      resolution: 3,
     });
 
     this.allLabelText = this.add.text(70, 88, "", {
       fontFamily: "monospace",
-      fontSize: "9px",
+      fontSize: "10px",
       color: "#9ee6ff",
       align: "left",
       lineSpacing: 2,
-      resolution: 2,
+      resolution: 3,
     }).setOrigin(0, 0).setVisible(false);
 
     this.allValueText = this.add.text(160, 88, "", {
       fontFamily: "monospace",
-      fontSize: "9px",
+      fontSize: "10px",
       color: "#c9b6ff",
       align: "left",
       lineSpacing: 2,
-      resolution: 2,
+      resolution: 3,
     }).setOrigin(0, 0).setVisible(false);
 
     this.globalTitleText = this.add.text(178, 72, "LATEST", {
@@ -110,19 +122,19 @@ export default class LeaderboardScene extends Phaser.Scene {
       fontSize: "8px",
       color: "#9ee6ff",
       align: "left",
-      resolution: 2,
+      resolution: 3,
     });
 
     this.globalScoresText = this.add.text(178, 88, "Loading...", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: "9px",
       color: "#c9b6ff",
       align: "left",
       lineSpacing: 2,
-      resolution: 2,
+      resolution: 3,
     });
 
-    this.footerText = this.add.text(160, 165, "LEFT/RIGHT to switch • ESC to continue", {
+    this.add.text(160, 165, "LEFT/RIGHT to switch • ENTER/ESC to continue", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#888888",
@@ -133,6 +145,7 @@ export default class LeaderboardScene extends Phaser.Scene {
     this.input.keyboard?.on("keydown-LEFT", () => this.shiftTab(-1));
     this.input.keyboard?.on("keydown-RIGHT", () => this.shiftTab(1));
     this.input.keyboard?.on("keydown-ESC", () => this.exit());
+    this.input.keyboard?.on("keydown-ENTER", () => this.exit());
 
     this.renderTabHeader();
     void this.loadScores();
@@ -142,15 +155,30 @@ export default class LeaderboardScene extends Phaser.Scene {
     const total = MINI_GAMES.length;
     if (total === 0) return;
     this.selectedIndex = (this.selectedIndex + direction + total) % total;
+    this.retryCount = 0;
     this.renderTabHeader();
     void this.loadScores();
   }
 
   private renderTabHeader() {
-    const parts = MINI_GAMES.map((game, index) => (index === this.selectedIndex ? `[${game.label}]` : `${game.label}`));
-    const line1 = `${parts[0] ?? ""}`;
-    const line2 = `${parts[1] ?? ""} | ${parts[2] ?? ""} | ${parts[3] ?? ""} | ${parts[4] ?? ""}`;
+    const labels = MINI_GAMES.map((game) => game.label);
+    const line1 = `${labels[0] ?? ""}`;
+    const line2 = `${labels[1] ?? ""} | ${labels[2] ?? ""} | ${labels[3] ?? ""} | ${labels[4] ?? ""}`;
     this.tabsText.setText(`${line1}\n${line2}`);
+
+    const selectedLine1 = this.selectedIndex === 0 ? line1 : " ".repeat(line1.length);
+    const segments = [
+      labels[1] ?? "",
+      labels[2] ?? "",
+      labels[3] ?? "",
+      labels[4] ?? "",
+    ];
+    const selectedSegments = segments.map((seg, idx) => {
+      const tabIndex = idx + 1;
+      return this.selectedIndex === tabIndex ? seg : " ".repeat(seg.length);
+    });
+    const selectedLine2 = `${selectedSegments[0]} | ${selectedSegments[1]} | ${selectedSegments[2]} | ${selectedSegments[3]}`;
+    this.selectedTabText.setText(`${selectedLine1}\n${selectedLine2}`);
     const isAll = MINI_GAMES[this.selectedIndex]?.key === "all";
     if (isAll) {
       this.localText.setText("BEST BY GAME");
@@ -165,15 +193,6 @@ export default class LeaderboardScene extends Phaser.Scene {
     this.scoresText.setVisible(!isAll);
   }
 
-  private formatScoreLine(label: string, miniGame: MiniGameKey, score: { duration_ms?: number; deaths?: number }): string {
-    const timeLabel =
-      miniGame === "seattle_traffic"
-        ? `ETA ${formatSeattleArrivalFromDurationMs(score.duration_ms ?? 0)}`
-        : `T ${formatRunDuration(score.duration_ms ?? 0)}`;
-    const deaths = score.deaths ?? 0;
-    return `${label} ${timeLabel} (${deaths})`;
-  }
-
   private async loadScores() {
     const requestId = ++this.loadRequestId;
     if (this.selectedIndex < 0 || this.selectedIndex >= MINI_GAMES.length) {
@@ -181,34 +200,46 @@ export default class LeaderboardScene extends Phaser.Scene {
     }
     const miniGame = MINI_GAMES[this.selectedIndex].key;
     try {
-      const allEntries = await fetchLeaderboard(20);
-      if (requestId !== this.loadRequestId) return;
-
       if (miniGame === "all") {
         this.scoresText.setOrigin(0.5, 0).setX(160).setAlign("center");
         this.localText.setOrigin(0.5, 0).setX(160).setAlign("center");
-        const bestByGame = new Map<string, LeaderboardEntry>();
-        for (const entry of allEntries) {
-          const key = entry.mini_game;
-          const current = bestByGame.get(key);
-          if (!current) {
-            bestByGame.set(key, entry);
-            continue;
-          }
-          const a = entry.duration_ms ?? Number.POSITIVE_INFINITY;
-          const b = current.duration_ms ?? Number.POSITIVE_INFINITY;
-          if (a < b || (a === b && (entry.deaths ?? 0) < (current.deaths ?? 0))) {
-            bestByGame.set(key, entry);
-          }
+        const now = Date.now();
+        if (this.allBestCache && now - this.allBestCache.updatedAt < 10000) {
+          this.allLabelText.setText(this.allBestCache.labels);
+          this.allValueText.setText(this.allBestCache.values);
+          return;
         }
+
+        const results = await Promise.allSettled([
+          fetchLeaderboard(1, "ice_hockey"),
+          fetchLeaderboard(1, "seattle_traffic"),
+          fetchLeaderboard(1, "farmers_market"),
+          fetchLeaderboard(1, "northgate"),
+        ]);
+        if (requestId !== this.loadRequestId) return;
+        const ice = results[0].status === "fulfilled" ? results[0].value[0] : undefined;
+        const sea = results[1].status === "fulfilled" ? results[1].value[0] : undefined;
+        const farm = results[2].status === "fulfilled" ? results[2].value[0] : undefined;
+        const ng = results[3].status === "fulfilled" ? results[3].value[0] : undefined;
         const rows = [
-          this.formatTopRowParts("ICE HOCKEY", bestByGame.get("ice_hockey")),
-          this.formatTopRowParts("SEATTLE TRAFFIC", bestByGame.get("seattle_traffic")),
-          this.formatTopRowParts("FARMERS MARKET", bestByGame.get("farmers_market")),
-          this.formatTopRowParts("NORTHGATE", bestByGame.get("northgate")),
+          this.formatTopRowParts("ICE HOCKEY", ice),
+          this.formatTopRowParts("SEATTLE TRAFFIC", sea),
+          this.formatTopRowParts("FARMERS MARKET", farm),
+          this.formatTopRowParts("NORTHGATE", ng),
         ];
-        this.allLabelText.setText(rows.map((row) => row.label).join("\n"));
-        this.allValueText.setText(rows.map((row) => row.value).join("\n"));
+        const labels = rows.map((row) => row.label).join("\n");
+        const values = rows.map((row) => row.value).join("\n");
+        this.allLabelText.setText(labels);
+        this.allValueText.setText(values);
+        this.allBestCache = { labels, values, updatedAt: now };
+        if (labels.includes("-") && this.retryCount < 2) {
+          this.retryCount += 1;
+          this.time.delayedCall(800, () => {
+            if (requestId === this.loadRequestId) {
+              void this.loadScores();
+            }
+          });
+        }
         return;
       }
 
@@ -216,37 +247,40 @@ export default class LeaderboardScene extends Phaser.Scene {
       this.localText.setOrigin(0, 0).setX(20).setAlign("left");
       const entries = await fetchLeaderboard(5, miniGame);
       if (requestId !== this.loadRequestId) return;
-      if (entries.length === 0) {
+      const cacheKey = miniGame;
+      const useEntries = entries.length > 0 ? entries : this.tabCache.get(cacheKey) ?? [];
+      if (useEntries.length === 0) {
         this.scoresText.setText("No scores yet.");
+        if (this.retryCount < 2) {
+          this.retryCount += 1;
+          this.time.delayedCall(800, () => {
+            if (requestId === this.loadRequestId) {
+              void this.loadScores();
+            }
+          });
+        }
       } else {
-        const top = entries[0];
+        this.tabCache.set(cacheKey, useEntries);
+        const top = useEntries[0];
         const topLine = this.formatEntryRow(top, 0).replace(/^1\.\s*/, "");
         this.localText.setText(`BEST ${topLine}`);
-        const rows = entries.slice(1).map((entry, idx) => this.formatEntryRow(entry, idx + 1));
-        this.scoresText.setText(rows.length > 0 ? rows.join("\n") : "No more scores.");
+        const rows = useEntries.slice(1).map((entry, idx) => this.formatEntryRow(entry, idx + 1));
+        this.scoresText.setText(rows.join("\n"));
       }
-      const latest = entries.slice(0, 3);
+
+      const latest = useEntries.slice(0, 3);
       if (latest.length === 0) {
         this.globalScoresText.setText("No scores.");
       } else {
+        this.latestCache = latest;
         const rows = latest.map((entry, idx) => this.formatEntryRow(entry, idx));
         this.globalScoresText.setText(rows.join("\n"));
       }
     } catch {
-      this.scoresText.setText("Leaderboard unavailable.");
-      this.globalScoresText.setText("Unavailable.");
+      const hint = API_BASE_URL ? `\nAPI: ${API_BASE_URL}` : "\nAPI not set";
+      this.scoresText.setText(`Leaderboard unavailable.${hint}`);
+      this.globalScoresText.setText(`Unavailable.${hint}`);
     }
-  }
-
-  private formatTopRow(label: string, top: LeaderboardEntry | undefined): string {
-    if (!top) return `${label}: -`;
-    const score =
-      top.mini_game === "seattle_traffic"
-        ? `ETA ${formatSeattleArrivalFromDurationMs(top.duration_ms ?? 0)}`
-        : `T ${formatRunDuration(top.duration_ms ?? 0)}`;
-    const nameTag = top.player_name.slice(0, 10);
-    const deaths = top.deaths ?? 0;
-    return `${label}: ${nameTag} ${score} (${deaths})`;
   }
 
   private formatTopRowParts(label: string, top: LeaderboardEntry | undefined): { label: string; value: string } {

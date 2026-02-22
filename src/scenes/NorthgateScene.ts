@@ -7,7 +7,7 @@ import { PauseMenu } from "../utils/pauseMenu";
 import { DialogueManager } from "../utils/dialogueManager";
 import { handleMenuInput } from "../utils/menuHandler";
 import { initializeGameScene } from "../utils/sceneSetup";
-import { fadeToScene, fadeIn } from "../utils/sceneTransitions";
+import { fadeIn } from "../utils/sceneTransitions";
 import { PROMPT_TEXT_STYLE, HELP_HINT_TEXT_STYLE, STATION_SIGN_STYLE, SMALL_LABEL_STYLE, THOUGHT_BUBBLE_STYLE } from "../config/textStyles";
 import { createDizzyStars } from "../utils/visualEffects";
 import { checkProximity } from "../utils/collectionHelpers";

@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import { initializeGameScene } from "../utils/sceneSetup";
-import { fadeToScene } from "../utils/sceneTransitions";
 import { handleMenuInput } from "../utils/menuHandler";
 import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES, VOID_LEVELS } from "../config/sceneConstants";

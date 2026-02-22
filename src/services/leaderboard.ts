@@ -196,7 +196,7 @@ function readMiniGameSession(miniGame: MiniGameKey): { startMs?: number; deaths?
   const deaths = deathsRaw ? Number(deathsRaw) : undefined;
   return {
     startMs: Number.isFinite(startMs) ? startMs : undefined,
-    deaths: Number.isFinite(deaths) ? Math.max(0, Math.floor(deaths)) : undefined,
+    deaths: typeof deaths === "number" && Number.isFinite(deaths) ? Math.max(0, Math.floor(deaths)) : undefined,
   };
 }
 

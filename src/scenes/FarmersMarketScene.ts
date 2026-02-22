@@ -2,7 +2,6 @@ import Phaser from "phaser";
 import { createGraysonPacManSprite, animateGraysonChomp, createSmushPacManSprite, animateSmushChomp, createPieSliceSprite, createShopperSprite, updateShopperWalk } from "../utils/sprites";
 import { createCardPieceSprite, spawnCardPieceSparkles } from "../utils/sprites";
 import { initializeGameScene } from "../utils/sceneSetup";
-import { fadeToScene } from "../utils/sceneTransitions";
 import { handleMenuInput } from "../utils/menuHandler";
 import { shouldCloseDialogue } from "../utils/controls";
 import type { GameControls } from "../utils/controls";

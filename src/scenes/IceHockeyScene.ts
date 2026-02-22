@@ -8,7 +8,6 @@ import { initializeGameScene } from "../utils/sceneSetup";
 import type { DialogueManager } from "../utils/dialogueManager";
 import type { HelpMenu } from "../utils/helpMenu";
 import type { PauseMenu } from "../utils/pauseMenu";
-import { fadeToScene } from "../utils/sceneTransitions";
 import { handleMenuInput } from "../utils/menuHandler";
 import { spawnFloatingText, createParticleBurst } from "../utils/visualEffects";
 import { checkProximity } from "../utils/collectionHelpers";

@@ -15,11 +15,9 @@ import {
   formatRunDuration,
   formatRunDurationLoose,
   formatSeattleArrivalFromDurationMs,
-  getLocalScore,
   getPlayerName,
   setPlayerName
 } from "../services/leaderboard";
-import { LEADERBOARD_ENABLED } from "../config/leaderboard";
 
 const PLAYER_ASCII = String.raw`
    _---
@@ -816,30 +814,5 @@ export default class TitleScene extends Phaser.Scene {
     }
   }
 
-  private async loadLeaderboard() {
-    try {
-      const entries = await fetchLeaderboard(5);
-      const youName = getPlayerName().trim() || "(set name)";
-
-      if (entries.length === 0) {
-        this.leaderboardText.setText(`Latest Scores\nNo entries yet\nYou: ${youName}`);
-        return;
-      }
-
-      const rows = entries.map((entry, index) => {
-        const nameTag = entry.player_name.slice(0, 10);
-        const gameTag = this.formatMiniGameTag(entry.mini_game);
-        const deaths = entry.deaths ?? 0;
-        const score =
-          entry.mini_game === "seattle_traffic"
-            ? `ETA ${formatSeattleArrivalFromDurationMs(entry.duration_ms ?? 0)}`
-            : `T ${formatRunDuration(entry.duration_ms ?? 0)}`;
-        return `${index + 1}. ${nameTag} ${gameTag} ${score} D${deaths}`;
-      });
-
-      this.leaderboardText.setText(`Latest Scores\n${rows.join("\n")}\nYou: ${youName}`);
-    } catch {
-      this.leaderboardText.setText("Latest Scores\nUnavailable");
-    }
-  }
+  // leaderboard display removed from title scene
 }
