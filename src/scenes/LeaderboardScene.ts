@@ -44,6 +44,7 @@ export default class LeaderboardScene extends Phaser.Scene {
   private retryCount = 0;
   private initialMiniGame?: MiniGameKey;
   private tabsLocked = true;
+  private openedAtMs = 0;
   // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
   private _cheatConsole?: CheatConsole;
 
@@ -55,6 +56,7 @@ export default class LeaderboardScene extends Phaser.Scene {
     this.returnScene = data.returnScene;
     this.nextScene = data.nextScene;
     this.initialMiniGame = data.miniGame;
+    this.openedAtMs = this.time.now;
     this._cheatConsole = new CheatConsole(this);
     const initialIndex = data.miniGame
       ? Math.max(0, MINI_GAMES.findIndex((g) => g.key === data.miniGame))
@@ -174,20 +176,6 @@ export default class LeaderboardScene extends Phaser.Scene {
     });
     this.input.keyboard?.on("keyup-RIGHT", () => {
       unlockIfReleased();
-    });
-
-    this.time.addEvent({
-      delay: 200,
-      loop: true,
-      callback: () => {
-        if (
-          this.returnScene &&
-          !this.scene.isActive(this.returnScene) &&
-          !this.scene.isPaused(this.returnScene)
-        ) {
-          this.scene.stop();
-        }
-      },
     });
 
     this.renderTabHeader();
@@ -384,6 +372,7 @@ export default class LeaderboardScene extends Phaser.Scene {
   }
 
   private exit() {
+    if (this.time.now - this.openedAtMs < 300) return;
     if (this.nextScene) {
       this.scene.start(this.nextScene);
       return;

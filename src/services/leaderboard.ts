@@ -6,6 +6,7 @@ export interface LeaderboardSubmissionPayload {
   client_id: string;
   player_name: string;
   mini_game: MiniGameKey;
+  run_id?: string;
   duration_ms?: number;
   deaths?: number;
 }
@@ -35,6 +36,7 @@ const SCORE_KINDS = {
 const FULL_RUN_FLAGS = {
   invalid: "leaderboard.full_run.invalid",
   submitted: "leaderboard.full_run.submitted",
+  runId: "leaderboard.full_run.run_id",
 } as const;
 
 const SEATTLE_START_TIME_MINUTES = 7 * 60 + 15;
@@ -82,6 +84,13 @@ function generateClientId(): string {
     return crypto.randomUUID();
   }
   return `cid_${Math.random().toString(36).slice(2, 12)}${Date.now().toString(36)}`;
+}
+
+function generateRunId(): string {
+  if (typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `run_${Math.random().toString(36).slice(2, 12)}${Date.now().toString(36)}`;
 }
 
 export function getClientId(): string {
@@ -148,6 +157,7 @@ export async function fetchLeaderboard(
       client_id: row.client_id,
       player_name: row.player_name,
       mini_game: row.mini_game as MiniGameKey,
+      run_id: typeof row.run_id === "string" ? row.run_id : undefined,
       duration_ms: Number.isFinite(Number(row.duration_ms)) ? Math.floor(Number(row.duration_ms)) : undefined,
       deaths: Number.isFinite(Number(row.deaths)) ? Math.floor(Number(row.deaths)) : undefined,
       created_at: row.created_at,
@@ -185,12 +195,28 @@ export function startMiniGameSession(miniGame: MiniGameKey): void {
   }
 }
 
+function getActiveFullRunId(): string | undefined {
+  const runId = localStorage.getItem(FULL_RUN_FLAGS.runId)?.trim();
+  if (!runId) return undefined;
+  if (!localStorage.getItem(miniGameStorageKey("full_run", "startMs"))) return undefined;
+  return runId;
+}
+
 export function recordMiniGameDeath(miniGame: MiniGameKey): number {
   const deathsKey = miniGameStorageKey(miniGame, "deaths");
   const current = Number(localStorage.getItem(deathsKey) ?? "0");
   const next = Number.isFinite(current) ? Math.max(0, Math.floor(current)) + 1 : 1;
   localStorage.setItem(deathsKey, String(next));
   localStorage.removeItem(miniGameStorageKey(miniGame, "startMs"));
+
+  // Track cumulative deaths for a full run, if one is active.
+  if (miniGame !== "full_run" && localStorage.getItem(miniGameStorageKey("full_run", "startMs"))) {
+    const fullRunDeathsKey = miniGameStorageKey("full_run", "deaths");
+    const fullRunCurrent = Number(localStorage.getItem(fullRunDeathsKey) ?? "0");
+    const fullRunNext = Number.isFinite(fullRunCurrent) ? Math.max(0, Math.floor(fullRunCurrent)) + 1 : 1;
+    localStorage.setItem(fullRunDeathsKey, String(fullRunNext));
+  }
+
   return next;
 }
 
@@ -213,6 +239,9 @@ function readMiniGameSession(miniGame: MiniGameKey): { startMs?: number; deaths?
 function clearMiniGameSession(miniGame: MiniGameKey): void {
   localStorage.removeItem(miniGameStorageKey(miniGame, "startMs"));
   localStorage.removeItem(miniGameStorageKey(miniGame, "deaths"));
+  if (miniGame === "full_run") {
+    localStorage.removeItem(FULL_RUN_FLAGS.runId);
+  }
 }
 
 export function startFullRunSession(): boolean {
@@ -220,6 +249,7 @@ export function startFullRunSession(): boolean {
   const startKey = miniGameStorageKey("full_run", "startMs");
   if (localStorage.getItem(startKey)) return false;
   startMiniGameSession("full_run");
+  localStorage.setItem(FULL_RUN_FLAGS.runId, generateRunId());
   localStorage.removeItem(FULL_RUN_FLAGS.invalid);
   localStorage.removeItem(FULL_RUN_FLAGS.submitted);
   return true;
@@ -255,7 +285,7 @@ export function buildMiniGameResult(
 }
 
 export function buildFullRunResult(): { duration_ms?: number; deaths?: number } {
-  return buildMiniGameResult("full_run", { deaths: 0 });
+  return buildMiniGameResult("full_run");
 }
 
 function writeScore(kind: keyof typeof SCORE_KINDS, miniGame: MiniGameKey, result: { duration_ms?: number; deaths?: number }) {
@@ -296,6 +326,7 @@ export async function submitMiniGameResult(
     client_id: getClientId(),
     player_name: playerName,
     mini_game: miniGame,
+    run_id: getActiveFullRunId(),
     duration_ms: result.duration_ms,
     deaths: result.deaths,
   };

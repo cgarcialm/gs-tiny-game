@@ -10,6 +10,7 @@ interface SubmitPayload {
   client_id: string;
   player_name: string;
   mini_game: string;
+  run_id?: string;
   duration_ms?: number;
   deaths?: number;
 }
@@ -145,6 +146,20 @@ function validateSubmission(payload: SubmitPayload): string[] {
     errors.push("mini_game must be a supported value");
   }
 
+  if (payload.run_id !== undefined) {
+    if (typeof payload.run_id !== "string") {
+      errors.push("run_id must be a string");
+    } else {
+      const trimmedRunId = payload.run_id.trim();
+      if (trimmedRunId.length < 8 || trimmedRunId.length > 64) {
+        errors.push("run_id must be 8-64 chars");
+      }
+      if (!/^[a-zA-Z0-9_-]+$/.test(trimmedRunId)) {
+        errors.push("run_id contains invalid characters");
+      }
+    }
+  }
+
   return errors;
 }
 
@@ -191,15 +206,17 @@ async function handleSubmit(request: Request, env: Env, corsHeaders: Record<stri
       client_id,
       player_name,
       mini_game,
+      run_id,
       duration_ms,
       deaths
-    ) VALUES (?, ?, ?, ?, ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       entryId,
       payload.client_id,
       payload.player_name.trim(),
       payload.mini_game,
+      payload.run_id?.trim() || null,
       payload.duration_ms ?? null,
       payload.deaths ?? null
     )
@@ -233,6 +250,7 @@ async function handleLeaderboard(request: Request, env: Env, corsHeaders: Record
         client_id,
         player_name,
         mini_game,
+        run_id,
         duration_ms,
         deaths,
         created_at
@@ -252,6 +270,7 @@ async function handleLeaderboard(request: Request, env: Env, corsHeaders: Record
       client_id,
       player_name,
       mini_game,
+      run_id,
       duration_ms,
       deaths,
       created_at

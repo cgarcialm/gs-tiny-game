@@ -18,7 +18,7 @@ import { SCENES, type SceneName } from "./sceneConstants";
  * "FarmersMarket" = Skip to Farmers Market Pac-Man scene
  * "Camping" = Skip to Camping scene
  */
-export const DEBUG_START_SCENE: SceneName = SCENES.TITLE;
+export const DEBUG_START_SCENE: SceneName = SCENES.FARMERS_MARKET;
 
 /**
  * Set to desired level number to skip ahead in GameScene (only applies if starting in "Game")
@@ -53,3 +53,12 @@ export const DEBUG_SHOW_SMUSH_AI = false;
  * false = hide debug hitbox rings
  */
 export const DEBUG_SHOW_ICE_HOCKEY_PICKUP_HITBOXES = false;
+
+/**
+ * Ice Hockey debug tuning
+ * Lower speed scales make opponents/chasers easier.
+ * Increase first shot delay to give more setup time.
+ */
+export const DEBUG_ICE_HOCKEY_OPPONENT_SPEED_SCALE = 0.4;
+export const DEBUG_ICE_HOCKEY_CHASER_SPEED_SCALE = 0.35;
+export const DEBUG_ICE_HOCKEY_FIRST_SHOT_DELAY_MS = 5000;

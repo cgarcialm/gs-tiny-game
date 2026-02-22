@@ -1,0 +1,36 @@
+# GitHub Pages deploy status (requires GitHub token for private API access / rate limits)
+# Repo Pages settings/status
+curl -H "Authorization: Bearer <GITHUB_TOKEN>" https://api.github.com/repos/cgarcialm/gs-tiny-game/pages
+# Latest Pages build status (works only if GitHub Pages build API is available for this repo/setup)
+curl -H "Authorization: Bearer <GITHUB_TOKEN>" https://api.github.com/repos/cgarcialm/gs-tiny-game/pages/builds/latest
+
+# Quick frontend checks
+# Response headers only (fast check that site is reachable)
+curl -I https://cgarcialm.github.io/gs-tiny-game/
+# Full HTML response (check deployed page content)
+curl https://cgarcialm.github.io/gs-tiny-game/
+
+# Local leaderboard worker checks (while wrangler dev --local is running)
+# Any leaderboard row (quick health check)
+curl "http://localhost:8787/leaderboard?limit=1"
+# Best score for one mini game (ice hockey)
+curl "http://127.0.0.1:8787/leaderboard?limit=1&mini_game=ice_hockey"
+# Latest played runs for one mini game (ice hockey)
+curl "http://127.0.0.1:8787/leaderboard?limit=3&mini_game=ice_hockey&sort=latest"
+
+# Production leaderboard worker checks
+# Any leaderboard row (quick production health check)
+curl "https://gs-tiny-game-leaderboard.ceci-garcialm.workers.dev/leaderboard?limit=1"
+# Best score for Northgate in production
+curl "https://gs-tiny-game-leaderboard.ceci-garcialm.workers.dev/leaderboard?limit=1&mini_game=northgate"
+# Latest played full-run entries in production
+curl "https://gs-tiny-game-leaderboard.ceci-garcialm.workers.dev/leaderboard?limit=3&mini_game=full_run&sort=latest"
+
+# Full-run deaths audit helper for GeeSpot (manual check using public API response text)
+# Latest runs, then grep GeeSpot rows (API has no player_name filter, so filter client-side)
+curl "https://gs-tiny-game-leaderboard.ceci-garcialm.workers.dev/leaderboard?limit=50&sort=latest" | grep -i "GeeSpot"
+# Latest full_run rows, then grep GeeSpot to find the target full-run entry/timestamp
+curl "https://gs-tiny-game-leaderboard.ceci-garcialm.workers.dev/leaderboard?limit=20&mini_game=full_run&sort=latest" | grep -i "GeeSpot"
+
+# Note: Updating full_run deaths cannot be done with the public game Worker curl endpoints.
+# Use Cloudflare Dashboard SQL editor or wrangler d1 execute --remote with SQL UPDATE.
