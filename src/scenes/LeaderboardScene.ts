@@ -42,6 +42,8 @@ export default class LeaderboardScene extends Phaser.Scene {
   private allBestCache: { labels: string; values: string; updatedAt: number } | null = null;
   private tabCache = new Map<string, LeaderboardEntry[]>();
   private retryCount = 0;
+  private initialMiniGame?: MiniGameKey;
+  private tabsLocked = true;
   // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
   private _cheatConsole?: CheatConsole;
 
@@ -52,6 +54,7 @@ export default class LeaderboardScene extends Phaser.Scene {
   create(data: LeaderboardSceneData) {
     this.returnScene = data.returnScene;
     this.nextScene = data.nextScene;
+    this.initialMiniGame = data.miniGame;
     this._cheatConsole = new CheatConsole(this);
     const initialIndex = data.miniGame
       ? Math.max(0, MINI_GAMES.findIndex((g) => g.key === data.miniGame))
@@ -146,10 +149,32 @@ export default class LeaderboardScene extends Phaser.Scene {
       resolution: 2,
     }).setOrigin(0.5);
 
-    this.input.keyboard?.on("keydown-LEFT", () => this.shiftTab(-1));
-    this.input.keyboard?.on("keydown-RIGHT", () => this.shiftTab(1));
+    const leftKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
+    const rightKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
+    this.tabsLocked = true;
+    const unlockIfReleased = () => {
+      if (!leftKey?.isDown && !rightKey?.isDown) {
+        this.tabsLocked = false;
+      }
+    };
+    this.time.delayedCall(150, unlockIfReleased);
+
+    this.input.keyboard?.on("keydown-LEFT", () => {
+      if (this.tabsLocked) return;
+      this.shiftTab(-1);
+    });
+    this.input.keyboard?.on("keydown-RIGHT", () => {
+      if (this.tabsLocked) return;
+      this.shiftTab(1);
+    });
     this.input.keyboard?.on("keydown-L", () => this.exit());
     this.input.keyboard?.on("keydown-ENTER", () => this.exit());
+    this.input.keyboard?.on("keyup-LEFT", () => {
+      unlockIfReleased();
+    });
+    this.input.keyboard?.on("keyup-RIGHT", () => {
+      unlockIfReleased();
+    });
 
     this.time.addEvent({
       delay: 200,
@@ -217,6 +242,14 @@ export default class LeaderboardScene extends Phaser.Scene {
 
   private async loadScores() {
     const requestId = ++this.loadRequestId;
+    if (this.initialMiniGame) {
+      const targetIndex = MINI_GAMES.findIndex((g) => g.key === this.initialMiniGame);
+      if (targetIndex >= 0 && this.selectedIndex !== targetIndex) {
+        this.selectedIndex = targetIndex;
+      }
+      this.initialMiniGame = undefined;
+      this.renderTabHeader();
+    }
     if (this.selectedIndex < 0 || this.selectedIndex >= MINI_GAMES.length) {
       this.selectedIndex = 0;
     }
