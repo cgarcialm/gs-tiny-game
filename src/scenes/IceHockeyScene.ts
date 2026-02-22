@@ -791,13 +791,24 @@ export default class IceHockeyScene extends Phaser.Scene {
 
       if (speedMultiplier > 1) {
         enemy.setData('entering', true);
-        this.tweens.add({
-          targets: enemy,
-          x: data.x,
-          y: data.y,
-          duration: 900,
+        const enterIndex = index;
+        const arcControlX = entryX - (22 + enterIndex * 8);
+        const arcControlY = entryY + (enterIndex - 1) * 26; // slight staggered fan from center
+        const finalDelay = enterIndex * 110;
+        this.tweens.addCounter({
+          from: 0,
+          to: 1,
+          duration: 760,
+          delay: finalDelay,
           ease: "Sine.easeOut",
+          onUpdate: (tween) => {
+            const t = tween.getValue();
+            // Quadratic Bezier for a soft skate-in arc from center-right to target slot
+            enemy.x = (1 - t) * (1 - t) * startX + 2 * (1 - t) * t * arcControlX + t * t * data.x;
+            enemy.y = (1 - t) * (1 - t) * startY + 2 * (1 - t) * t * arcControlY + t * t * data.y;
+          },
           onComplete: () => {
+            enemy.setPosition(data.x, data.y);
             enemy.setData('entering', false);
           },
         });
