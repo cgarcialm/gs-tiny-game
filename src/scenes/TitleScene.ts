@@ -12,7 +12,6 @@ import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES } from "../config/sceneConstants";
 import {
   fetchLeaderboard,
-  formatRunDuration,
   formatRunDurationLoose,
   formatSeattleArrivalFromDurationMs,
   getPlayerName,
@@ -146,6 +145,7 @@ export default class TitleScene extends Phaser.Scene {
   private nameScoresValueText!: Phaser.GameObjects.Text;
   private nameEntryActive = false;
   private nameInput = "";
+  private nameBlinkTween?: Phaser.Tweens.Tween;
   private playerTagText!: Phaser.GameObjects.Text;
   private cardPieces: Phaser.GameObjects.Ellipse[] = [];
   
@@ -652,6 +652,16 @@ export default class TitleScene extends Phaser.Scene {
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5).setDepth(502);
 
+    this.nameBlinkTween?.stop();
+    this.nameBlinkTween = this.tweens.add({
+      targets: this.nameValueText,
+      alpha: 0.2,
+      duration: 450,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
     this.nameErrorText = this.add.text(160, NAME_GATE_INPUT_Y + 16, "", {
       fontFamily: "monospace",
       fontSize: "8px",
@@ -786,6 +796,8 @@ export default class TitleScene extends Phaser.Scene {
       this.nameInput = cleaned;
       this.playerTagText.setText(`PLAYER: ${cleaned}`).setAlpha(1);
       this.nameValueText.setText(cleaned);
+      this.nameBlinkTween?.stop();
+      this.nameBlinkTween = undefined;
       this.input.keyboard?.off("keydown", this.handleNameInput, this);
       this.nameGateContainer.destroy();
       this.hintText.setVisible(true);
@@ -796,21 +808,6 @@ export default class TitleScene extends Phaser.Scene {
       if (this.nameInput.length >= 16) return;
       this.nameInput += event.key;
       this.refreshNameEntryText();
-    }
-  }
-
-  private formatMiniGameTag(miniGame: string): string {
-    switch (miniGame) {
-      case "ice_hockey":
-        return "ICE HOCKEY";
-      case "seattle_traffic":
-        return "SEATTLE TRAFFIC";
-      case "farmers_market":
-        return "FARMERS MARKET";
-      case "northgate":
-        return "NORTHGATE";
-      default:
-        return "UNK";
     }
   }
 
