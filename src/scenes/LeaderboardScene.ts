@@ -147,6 +147,20 @@ export default class LeaderboardScene extends Phaser.Scene {
     this.input.keyboard?.on("keydown-L", () => this.exit());
     this.input.keyboard?.on("keydown-ENTER", () => this.exit());
 
+    this.time.addEvent({
+      delay: 200,
+      loop: true,
+      callback: () => {
+        if (
+          this.returnScene &&
+          !this.scene.isActive(this.returnScene) &&
+          !this.scene.isPaused(this.returnScene)
+        ) {
+          this.scene.stop();
+        }
+      },
+    });
+
     this.renderTabHeader();
     void this.loadScores();
   }
