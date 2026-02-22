@@ -175,6 +175,7 @@ export default class IceHockeyScene extends Phaser.Scene {
       ICE_HOCKEY_WORLD_WIDTH,
       ICE_HOCKEY_WORLD_HEIGHT
     );
+    this.cameras.main.setZoom(0.9);
     this.cameras.main.startFollow(this.playerPhysics, true, 0.08, 0.08);
     this.cameraRotationRad = 0;
     this.keyQ = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
