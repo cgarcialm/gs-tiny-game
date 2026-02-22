@@ -118,6 +118,7 @@ export async function fetchLeaderboard(limit = 10, miniGame?: MiniGameKey): Prom
   });
 
   if (!response.ok) {
+    if (response.status === 429) return [];
     throw new Error(`Leaderboard fetch failed (${response.status})`);
   }
 
@@ -152,6 +153,14 @@ export function formatRunDuration(runDurationMs: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+export function formatRunDurationLoose(runDurationMs: number): string {
+  const safeMs = Math.max(0, Math.floor(runDurationMs));
+  const totalSeconds = Math.floor(safeMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds}`;
 }
 
 export function startMiniGameSession(miniGame: MiniGameKey): void {

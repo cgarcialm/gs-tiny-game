@@ -13,6 +13,7 @@ import { SCENES } from "../config/sceneConstants";
 import {
   fetchLeaderboard,
   formatRunDuration,
+  formatRunDurationLoose,
   formatSeattleArrivalFromDurationMs,
   getLocalScore,
   getPlayerName,
@@ -68,8 +69,8 @@ const HINT_TEXT_Y = 164;
 const LEADERBOARD_X = 226;
 const LEADERBOARD_Y = 30;
 const NAME_GATE_TITLE_Y = 26;
-const NAME_GATE_INPUT_Y = 68;
-const NAME_GATE_SCORES_Y = 112;
+const NAME_GATE_SCORES_Y = 74;
+const NAME_GATE_INPUT_Y = 148;
 
 // Sizes
 const CARD_WIDTH = 20;
@@ -143,6 +144,8 @@ export default class TitleScene extends Phaser.Scene {
   private nameValueText!: Phaser.GameObjects.Text;
   private nameErrorText!: Phaser.GameObjects.Text;
   private nameScoresText!: Phaser.GameObjects.Text;
+  private nameScoresLabelText!: Phaser.GameObjects.Text;
+  private nameScoresValueText!: Phaser.GameObjects.Text;
   private nameEntryActive = false;
   private nameInput = "";
   private playerTagText!: Phaser.GameObjects.Text;
@@ -250,13 +253,7 @@ export default class TitleScene extends Phaser.Scene {
       lineSpacing: 2,
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0, 0);
-
-    if (LEADERBOARD_ENABLED) {
-      this.leaderboardText.setText("Latest Scores\nLoading...");
-      void this.loadLeaderboard();
-    } else {
-      this.leaderboardText.setText("Latest Scores\nDisabled");
-    }
+    this.leaderboardText.setVisible(false);
 
     this.activateNameGate(savedName);
     
@@ -665,7 +662,7 @@ export default class TitleScene extends Phaser.Scene {
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5).setDepth(502);
 
-    this.nameScoresText = this.add.text(160, NAME_GATE_SCORES_Y, "BEST SCORES\nLoading...", {
+    this.nameScoresText = this.add.text(160, NAME_GATE_SCORES_Y - 10, "BEST SCORES", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#ffeab6",
@@ -673,6 +670,24 @@ export default class TitleScene extends Phaser.Scene {
       lineSpacing: 2,
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5).setDepth(502);
+
+    this.nameScoresLabelText = this.add.text(56, NAME_GATE_SCORES_Y, "Loading...", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#9ee6ff",
+      align: "left",
+      lineSpacing: 2,
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0, 0).setDepth(502);
+
+    this.nameScoresValueText = this.add.text(160, NAME_GATE_SCORES_Y, "", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffeab6",
+      align: "left",
+      lineSpacing: 2,
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0, 0).setDepth(502);
 
     const footer = this.add.text(160, 168, "Press ENTER to continue", {
       fontFamily: "monospace",
@@ -682,22 +697,23 @@ export default class TitleScene extends Phaser.Scene {
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5).setDepth(502);
 
-    this.nameGateContainer = this.add.container(0, 0, [overlay, panel, title, subtitle, this.nameValueText, this.nameErrorText, this.nameScoresText, footer]);
+    this.nameGateContainer = this.add.container(0, 0, [
+      overlay,
+      panel,
+      title,
+      subtitle,
+      this.nameValueText,
+      this.nameErrorText,
+      this.nameScoresText,
+      this.nameScoresLabelText,
+      this.nameScoresValueText,
+      footer
+    ]);
     this.nameGateContainer.setDepth(500);
 
     this.refreshNameEntryText();
     this.input.keyboard?.on("keydown", this.handleNameInput, this);
     void this.loadNameGateScores();
-  }
-
-  private buildLocalScoreSummary(): string {
-    const rows = [
-      this.formatLocalScoreRow("ICE HOCKEY", null, "ice_hockey"),
-      this.formatLocalScoreRow("SEATTLE TRAFFIC", null, "seattle_traffic"),
-      this.formatLocalScoreRow("FARMERS MARKET", null, "farmers_market"),
-      this.formatLocalScoreRow("NORTHGATE", null, "northgate"),
-    ];
-    return ["BEST SCORES", ...rows].join("\n");
   }
 
   private async loadNameGateScores() {
@@ -713,26 +729,34 @@ export default class TitleScene extends Phaser.Scene {
       const farm = results[2].status === "fulfilled" ? results[2].value : [];
       const ng = results[3].status === "fulfilled" ? results[3].value : [];
       const rows = [
-        this.formatLocalScoreRow("ICE HOCKEY", ice[0], "ice_hockey"),
-        this.formatLocalScoreRow("SEATTLE TRAFFIC", sea[0], "seattle_traffic"),
-        this.formatLocalScoreRow("FARMERS MARKET", farm[0], "farmers_market"),
-        this.formatLocalScoreRow("NORTHGATE", ng[0], "northgate"),
+        this.formatNameGateRow("ICE HOCKEY", ice[0], "ice_hockey"),
+        this.formatNameGateRow("SEATTLE TRAFFIC", sea[0], "seattle_traffic"),
+        this.formatNameGateRow("FARMERS MARKET", farm[0], "farmers_market"),
+        this.formatNameGateRow("NORTHGATE", ng[0], "northgate"),
       ];
-      this.nameScoresText.setText(["BEST SCORES", ...rows].join("\n"));
+      this.nameScoresLabelText.setText(rows.map((row) => row.label).join("\n"));
+      this.nameScoresValueText.setText(rows.map((row) => row.value).join("\n"));
     } catch {
-      this.nameScoresText.setText("BEST SCORES\nUnavailable");
+      this.nameScoresLabelText.setText("Unavailable");
+      this.nameScoresValueText.setText("");
     }
   }
 
-  private formatLocalScoreRow(label: string, result: { duration_ms?: number; deaths?: number; player_name?: string } | null, key: "ice_hockey" | "seattle_traffic" | "farmers_market" | "northgate"): string {
-    if (!result || result.duration_ms === undefined) return `${label}: -`;
+  private formatNameGateRow(
+    label: string,
+    result: { duration_ms?: number; deaths?: number; player_name?: string } | null,
+    key: "ice_hockey" | "seattle_traffic" | "farmers_market" | "northgate"
+  ): { label: string; value: string } {
+    if (!result || result.duration_ms === undefined) {
+      return { label: `${label}:`, value: "-" };
+    }
     const timeLabel =
       key === "seattle_traffic"
         ? formatSeattleArrivalFromDurationMs(result.duration_ms)
-        : formatRunDuration(result.duration_ms);
+        : formatRunDurationLoose(result.duration_ms);
     const nameTag = typeof result.player_name === "string" ? result.player_name.slice(0, 10) : "Anon";
     const deaths = result.deaths ?? 0;
-    return `${label}: ${nameTag} ${timeLabel} D${deaths}`;
+    return { label: `${label}:`, value: `${nameTag} ${timeLabel} (${deaths} deaths)` };
   }
 
   private isAllowedNameChar(char: string): boolean {
@@ -767,7 +791,6 @@ export default class TitleScene extends Phaser.Scene {
       this.input.keyboard?.off("keydown", this.handleNameInput, this);
       this.nameGateContainer.destroy();
       this.hintText.setVisible(true);
-      this.leaderboardText.setVisible(true);
       return;
     }
 
