@@ -7,6 +7,7 @@ import {
   formatRunDuration,
   formatSeattleArrivalFromDurationMs,
 } from "../services/leaderboard";
+import { CheatConsole } from "../utils/cheatConsole";
 
 type LeaderboardTab = { key: MiniGameKey | "all"; label: string };
 
@@ -41,6 +42,7 @@ export default class LeaderboardScene extends Phaser.Scene {
   private allBestCache: { labels: string; values: string; updatedAt: number } | null = null;
   private tabCache = new Map<string, LeaderboardEntry[]>();
   private retryCount = 0;
+  private _cheatConsole?: CheatConsole;
 
   constructor() {
     super("Leaderboard");
@@ -49,6 +51,7 @@ export default class LeaderboardScene extends Phaser.Scene {
   create(data: LeaderboardSceneData) {
     this.returnScene = data.returnScene;
     this.nextScene = data.nextScene;
+    this._cheatConsole = new CheatConsole(this);
     const initialIndex = data.miniGame
       ? Math.max(0, MINI_GAMES.findIndex((g) => g.key === data.miniGame))
       : 0;
