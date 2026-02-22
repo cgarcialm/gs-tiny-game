@@ -16,6 +16,10 @@ import { HELP_HINT_TEXT_STYLE } from "../config/textStyles";
 import { DEBUG_SHOW_SMUSH_AI } from "../config/debug";
 import { buildMiniGameResult, recordMiniGameDeath, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
 
+const INITIAL_PLAYER_ENTRY_X = 160;
+const INITIAL_PLAYER_ENTRY_Y = 162;
+const INITIAL_PIE_SAFE_RADIUS = 90;
+
 /**
  * Farmers Market Scene - Pac-Man Style
  * Grayson collects strawberry rhubarb pies while dodging excited Smushs
@@ -184,7 +188,7 @@ export default class FarmersMarketScene extends Phaser.Scene {
     
     // Spawn pies randomly
     this.spawnPies();
-    
+
     // Animate entrances through tunnels
     this.time.delayedCall(300, () => {
       let graysonDone = false;
@@ -1510,9 +1514,12 @@ export default class FarmersMarketScene extends Phaser.Scene {
     if (this.totalPiesSpawned >= this.maxPiesToSpawn) return;
     if (this.validDotPositions.length === 0) return;
     
-    const playerX = this.playerPhysics?.x ?? 160;
-    const playerY = this.playerPhysics?.y ?? 90;
-    const minDistFromPlayer = 60; // Pies must spawn at least 60px away from Grayson
+    const isInitialPie = this.totalPiesSpawned < 2;
+    // During the opening animation Grayson starts off-screen, so use his entry position
+    // to keep the first pies away from the area the player immediately reaches.
+    const playerX = isInitialPie ? INITIAL_PLAYER_ENTRY_X : (this.playerPhysics?.x ?? 160);
+    const playerY = isInitialPie ? INITIAL_PLAYER_ENTRY_Y : (this.playerPhysics?.y ?? 90);
+    const minDistFromPlayer = isInitialPie ? INITIAL_PIE_SAFE_RADIUS : 60;
     
     // Find positions that don't have existing ACTIVE pies AND are far enough from player
     const availablePositions = this.validDotPositions.filter(vPos => {

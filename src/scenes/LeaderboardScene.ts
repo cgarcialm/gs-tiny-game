@@ -265,19 +265,33 @@ export default class LeaderboardScene extends Phaser.Scene {
           return;
         }
 
-        const results = await Promise.allSettled([
-          fetchLeaderboard(1, "ice_hockey"),
-          fetchLeaderboard(1, "seattle_traffic"),
-          fetchLeaderboard(1, "farmers_market"),
-          fetchLeaderboard(1, "northgate"),
-          fetchLeaderboard(1, "full_run"),
-        ]);
-        if (requestId !== this.loadRequestId) return;
-        const ice = results[0].status === "fulfilled" ? results[0].value[0] : undefined;
-        const sea = results[1].status === "fulfilled" ? results[1].value[0] : undefined;
-        const farm = results[2].status === "fulfilled" ? results[2].value[0] : undefined;
-        const ng = results[3].status === "fulfilled" ? results[3].value[0] : undefined;
-        const full = results[4].status === "fulfilled" ? results[4].value[0] : undefined;
+        const bestByGame: Partial<Record<MiniGameKey, LeaderboardEntry | undefined>> = {};
+        const miniGames: MiniGameKey[] = [
+          "ice_hockey",
+          "seattle_traffic",
+          "farmers_market",
+          "northgate",
+          "full_run",
+        ];
+        for (const key of miniGames) {
+          try {
+            const entries = await fetchLeaderboard(1, key);
+            if (requestId !== this.loadRequestId) return;
+            if (entries.length > 0) {
+              bestByGame[key] = entries[0];
+              this.tabCache.set(key, entries);
+            } else {
+              bestByGame[key] = this.tabCache.get(key)?.[0];
+            }
+          } catch {
+            bestByGame[key] = this.tabCache.get(key)?.[0];
+          }
+        }
+        const ice = bestByGame.ice_hockey;
+        const sea = bestByGame.seattle_traffic;
+        const farm = bestByGame.farmers_market;
+        const ng = bestByGame.northgate;
+        const full = bestByGame.full_run;
         const rows = [
           this.formatTopRowParts("ICE HOCKEY", ice),
           this.formatTopRowParts("SEATTLE TRAFFIC", sea),
@@ -289,8 +303,13 @@ export default class LeaderboardScene extends Phaser.Scene {
         const values = rows.map((row) => row.value).join("\n");
         this.allLabelText.setText(labels);
         this.allValueText.setText(values);
-        this.allBestCache = { labels, values, updatedAt: now };
-        if (labels.includes("-") && this.retryCount < 2) {
+        const hasMissing = rows.some((row) => row.value === "-");
+        if (!hasMissing) {
+          this.allBestCache = { labels, values, updatedAt: now };
+        } else if (this.allBestCache) {
+          this.allBestCache = null;
+        }
+        if (hasMissing && this.retryCount < 2) {
           this.retryCount += 1;
           this.time.delayedCall(800, () => {
             if (requestId === this.loadRequestId) {
@@ -319,6 +338,7 @@ export default class LeaderboardScene extends Phaser.Scene {
         }
       } else {
         this.tabCache.set(cacheKey, useEntries);
+        this.allBestCache = null;
         const top = useEntries[0];
         const topLine = this.formatEntryRow(top, 0).replace(/^1\s*/, "");
         this.localText.setText(`BEST ${topLine}`);
