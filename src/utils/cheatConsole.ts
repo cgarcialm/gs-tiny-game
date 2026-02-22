@@ -183,6 +183,7 @@ export class CheatConsole {
   private skipCurrentMinigame(): void {
     const sceneName = this.scene.sys.settings.key;
     const gameState = new GameStateManager(this.scene.registry, true);
+    gameState.markCheatUsed();
     console.log('Current scene:', sceneName);
     
     switch (sceneName) {
@@ -231,6 +232,7 @@ export class CheatConsole {
 
   private jumpToLevel(level: number): void {
     const gameState = new GameStateManager(this.scene.registry, true);
+    gameState.markCheatUsed();
     
     if (level === 5) {
       // Jump to 3D void transition - stop current music (Void3D will start full version)
@@ -291,4 +293,3 @@ export class CheatConsole {
     return this.isOpen;
   }
 }
-

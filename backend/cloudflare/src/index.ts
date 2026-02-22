@@ -20,7 +20,7 @@ const JSON_HEADERS = {
 
 const LEADERBOARD_LIMIT_MIN = 1;
 const LEADERBOARD_LIMIT_MAX = 50;
-const ALLOWED_MINI_GAMES = new Set(["ice_hockey", "seattle_traffic", "farmers_market", "northgate"]);
+const ALLOWED_MINI_GAMES = new Set(["ice_hockey", "seattle_traffic", "farmers_market", "northgate", "full_run"]);
 
 function sanitizeOrigins(rawAllowedOrigins: string | undefined): Set<string> {
   const defaults = ["http://localhost:5173", "http://127.0.0.1:5173"];

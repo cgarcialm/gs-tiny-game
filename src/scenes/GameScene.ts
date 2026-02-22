@@ -16,6 +16,7 @@ import { checkProximity } from "../utils/collectionHelpers";
 import { animateCounterUpdate } from "../utils/uiAnimations";
 import { GameStateManager } from "../managers/GameStateManager";
 import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
+import { invalidateFullRun, startFullRunSession, submitFullRunResult } from "../services/leaderboard";
 
 type DialogueState = "idle" | "open";
 type ChaseState = "idle" | "chasing";
@@ -176,6 +177,14 @@ export default class GameScene extends Phaser.Scene {
           console.log(`[DEBUG] Starting from Title scene at level 0`);
         }
       }
+    }
+
+    const startedFullRun = startFullRunSession();
+    if (startedFullRun && (!fromTitleScene || this.completedLevels !== 0)) {
+      invalidateFullRun();
+    }
+    if (this.gameState.isCheatUsed()) {
+      invalidateFullRun();
     }
 
     // Setup scene based on completed levels
@@ -1507,6 +1516,11 @@ export default class GameScene extends Phaser.Scene {
   }
 
   private startCardShuffleGame() {
+    if (this.gameState.isCheatUsed()) {
+      invalidateFullRun();
+    }
+    void submitFullRunResult();
+
     // Keep Grayson visible
     
     // Create 4 card piece sprites with numbers

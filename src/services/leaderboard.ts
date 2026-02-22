@@ -1,6 +1,6 @@
 import { API_BASE_URL, LEADERBOARD_ENABLED } from "../config/leaderboard";
 
-export type MiniGameKey = "ice_hockey" | "seattle_traffic" | "farmers_market" | "northgate";
+export type MiniGameKey = "ice_hockey" | "seattle_traffic" | "farmers_market" | "northgate" | "full_run";
 
 export interface LeaderboardSubmissionPayload {
   client_id: string;
@@ -30,6 +30,11 @@ const MINI_GAME_KEYS = {
 const SCORE_KINDS = {
   best: "best",
   last: "last",
+} as const;
+
+const FULL_RUN_FLAGS = {
+  invalid: "leaderboard.full_run.invalid",
+  submitted: "leaderboard.full_run.submitted",
 } as const;
 
 const SEATTLE_START_TIME_MINUTES = 7 * 60 + 15;
@@ -205,6 +210,32 @@ function clearMiniGameSession(miniGame: MiniGameKey): void {
   localStorage.removeItem(miniGameStorageKey(miniGame, "deaths"));
 }
 
+export function startFullRunSession(): boolean {
+  if (!LEADERBOARD_ENABLED) return false;
+  const startKey = miniGameStorageKey("full_run", "startMs");
+  if (localStorage.getItem(startKey)) return false;
+  startMiniGameSession("full_run");
+  localStorage.removeItem(FULL_RUN_FLAGS.invalid);
+  localStorage.removeItem(FULL_RUN_FLAGS.submitted);
+  return true;
+}
+
+export function invalidateFullRun(): void {
+  localStorage.setItem(FULL_RUN_FLAGS.invalid, "1");
+}
+
+function isFullRunInvalid(): boolean {
+  return localStorage.getItem(FULL_RUN_FLAGS.invalid) === "1";
+}
+
+function markFullRunSubmitted(): void {
+  localStorage.setItem(FULL_RUN_FLAGS.submitted, "1");
+}
+
+function hasFullRunSubmitted(): boolean {
+  return localStorage.getItem(FULL_RUN_FLAGS.submitted) === "1";
+}
+
 export function buildMiniGameResult(
   miniGame: MiniGameKey,
   extra: { duration_ms?: number; deaths?: number } = {}
@@ -216,6 +247,10 @@ export function buildMiniGameResult(
     duration_ms: extra.duration_ms ?? computedDuration,
     deaths: extra.deaths ?? session.deaths,
   };
+}
+
+export function buildFullRunResult(): { duration_ms?: number; deaths?: number } {
+  return buildMiniGameResult("full_run", { deaths: 0 });
 }
 
 function writeScore(kind: keyof typeof SCORE_KINDS, miniGame: MiniGameKey, result: { duration_ms?: number; deaths?: number }) {
@@ -287,6 +322,24 @@ export async function submitMiniGameResult(
   } catch {
     return false;
   }
+}
+
+export async function submitFullRunResult(): Promise<boolean> {
+  if (!LEADERBOARD_ENABLED) return false;
+  if (hasFullRunSubmitted()) return false;
+  if (isFullRunInvalid()) {
+    clearMiniGameSession("full_run");
+    localStorage.removeItem(FULL_RUN_FLAGS.invalid);
+    localStorage.removeItem(FULL_RUN_FLAGS.submitted);
+    return false;
+  }
+  const result = buildFullRunResult();
+  if (result.duration_ms === undefined) return false;
+  const ok = await submitMiniGameResult("full_run", result);
+  if (ok) {
+    markFullRunSubmitted();
+  }
+  return ok;
 }
 
 export function formatArrivalTimeMinutes(totalMinutes: number): string {

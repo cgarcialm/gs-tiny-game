@@ -213,6 +213,7 @@ export class GameStateManager {
     this.registry.set('completedLevels', 0);
     this.registry.set('fromTitleScene', false);
     this.registry.set('showHelpHint', false);
+    this.registry.set('cheatUsed', false);
     
     this.log('Progress reset complete');
   }
@@ -262,5 +263,20 @@ export class GameStateManager {
   setRaw<T = any>(key: string, value: T): void {
     this.registry.set(key, value);
   }
-}
 
+  // ============================================================================
+  // CHEAT TRACKING
+  // ============================================================================
+
+  isCheatUsed(): boolean {
+    return this.registry.get('cheatUsed') ?? false;
+  }
+
+  markCheatUsed(): void {
+    this.registry.set('cheatUsed', true);
+  }
+
+  clearCheatUsed(): void {
+    this.registry.set('cheatUsed', false);
+  }
+}
