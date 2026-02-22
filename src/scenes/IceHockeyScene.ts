@@ -64,6 +64,7 @@ export default class IceHockeyScene extends Phaser.Scene {
   private enemies: Phaser.GameObjects.Container[] = [];
   private pucks: Phaser.Physics.Arcade.Sprite[] = [];
   private playerPucks: Phaser.Physics.Arcade.Sprite[] = []; // Pucks shot by player
+  private enemyWave = 0;
   private speed = 80; // Start slow without skates
   private normalSpeed = 80;
   private skateSpeed = 140;
@@ -142,6 +143,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     this.chaseEnemyTimer = 0;
     this.chasers = [];
     this.enemiesDefeated = 0;
+    this.enemyWave = 0;
     
     // Start with brief invincibility to prevent race conditions during scene initialization
     this.isInvincible = true;
@@ -730,10 +732,10 @@ export default class IceHockeyScene extends Phaser.Scene {
     });
     
     // Spawn enemy hockey players after a short delay
-    this.time.delayedCall(600, () => this.spawnEnemies());
+    this.time.delayedCall(1200, () => this.spawnEnemies(1));
   }
   
-  private spawnEnemies() {
+  private spawnEnemies(speedMultiplier: number) {
     // Spawn enemy hockey players with different shot and movement patterns
     const ox = ICE_HOCKEY_WORLD_OFFSET_X;
     const oy = ICE_HOCKEY_WORLD_OFFSET_Y;
@@ -755,6 +757,7 @@ export default class IceHockeyScene extends Phaser.Scene {
       enemy.setData('startY', data.y);
       enemy.setData('shotPattern', data.pattern); // Shot pattern type
       enemy.setData('movementPattern', data.movement); // Movement pattern type
+      enemy.setData('speedMultiplier', speedMultiplier);
       
       this.enemies.push(enemy);
       this.worldContainer.add(enemy);
@@ -766,6 +769,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     
     this.enemies.forEach((enemy) => {
       const movementPattern = enemy.getData('movementPattern');
+      const speedMultiplier = enemy.getData('speedMultiplier') ?? 1;
       const startX = enemy.getData('startX');
       const startY = enemy.getData('startY');
       
@@ -773,7 +777,7 @@ export default class IceHockeyScene extends Phaser.Scene {
       switch (movementPattern) {
         case 'circle':
           // Circular patrol
-          const patrolAngle = enemy.getData('patrolAngle') + 0.02;
+          const patrolAngle = enemy.getData('patrolAngle') + 0.02 * speedMultiplier;
           enemy.setData('patrolAngle', patrolAngle);
           enemy.x = startX + Math.cos(patrolAngle) * 15;
           enemy.y = startY + Math.sin(patrolAngle) * 15;
@@ -781,7 +785,7 @@ export default class IceHockeyScene extends Phaser.Scene {
           
         case 'figure8':
           // Figure-8 pattern (RotMG classic!)
-          const f8Angle = enemy.getData('patrolAngle') + 0.025;
+          const f8Angle = enemy.getData('patrolAngle') + 0.025 * speedMultiplier;
           enemy.setData('patrolAngle', f8Angle);
           // Lissajous curve for figure-8
           enemy.x = startX + Math.sin(f8Angle) * 25;
@@ -790,7 +794,7 @@ export default class IceHockeyScene extends Phaser.Scene {
           
         case 'zigzag':
           // Zigzag pattern - sharp direction changes (slower)
-          const zzAngle = enemy.getData('patrolAngle') + 0.005; // Even slower movement
+          const zzAngle = enemy.getData('patrolAngle') + 0.005 * speedMultiplier; // Even slower movement
           enemy.setData('patrolAngle', zzAngle);
           // Use floor to create sharp angles instead of smooth
           const zzStep = Math.floor(zzAngle / (Math.PI / 4)) % 2;
@@ -1543,6 +1547,15 @@ export default class IceHockeyScene extends Phaser.Scene {
     
     // Check if ALL enemies defeated
     if (this.enemies.length === 0) {
+      if (this.enemyWave === 0) {
+        this.enemyWave = 1;
+        this.enemiesDefeated = 0;
+        this.scoreDisplay.setText(`KIL  ${this.enemiesDefeated}/${this.totalEnemies}`);
+        this.spawnCrowdChatter("Second\nwave!");
+        this.time.delayedCall(900, () => this.spawnEnemies(1.35));
+        return;
+      }
+
       // All enemies defeated! Spawn THE memory fragment at center ice
       this.time.delayedCall(500, () => {
         this.spawnMemoryFragment();
