@@ -744,6 +744,7 @@ export default class IceHockeyScene extends Phaser.Scene {
     const ox = ICE_HOCKEY_WORLD_OFFSET_X;
     const oy = ICE_HOCKEY_WORLD_OFFSET_Y;
     const entryX = 245 + ox;
+    const entryY = 90 + oy; // Vertical center of rink playfield
     const positions = [
       { x: 120 + ox, y: 60 + oy },
       { x: 200 + ox, y: 60 + oy },
@@ -768,7 +769,8 @@ export default class IceHockeyScene extends Phaser.Scene {
       };
       // Create proper hockey player sprite (black jersey with red accents)
       const startX = speedMultiplier > 1 ? entryX : data.x;
-      const enemy = createHockeyPlayerSprite(this, startX, data.y, 0x1a1a1a, 0xff0000);
+      const startY = speedMultiplier > 1 ? entryY : data.y;
+      const enemy = createHockeyPlayerSprite(this, startX, startY, 0x1a1a1a, 0xff0000);
       enemy.setDepth(5);
       
       // Store enemy data
