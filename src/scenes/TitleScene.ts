@@ -67,7 +67,7 @@ const LEADERBOARD_X = 226;
 const LEADERBOARD_Y = 30;
 const NAME_GATE_TITLE_Y = 26;
 const NAME_GATE_SCORES_Y = 74;
-const NAME_GATE_INPUT_Y = 148;
+const NAME_GATE_INPUT_Y = 140;
 
 // Sizes
 const CARD_WIDTH = 20;
@@ -560,6 +560,7 @@ export default class TitleScene extends Phaser.Scene {
     // Note: Don't use resetProgress() here because it stops music, and we want to keep it playing
     this.gameState.setCompletedLevels(0);
     this.gameState.resetHelpHint(); // Reset help hint for new game
+    this.gameState.clearCheatUsed();
     // Set flag to ignore DEBUG_START_LEVEL (this is a proper story start)
     this.gameState.markFromTitleScene();
     
