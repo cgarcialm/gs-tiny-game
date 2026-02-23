@@ -2607,9 +2607,9 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private winGame() {
     const startMinutes = 7 * 60 + 15;
-    const elapsedMinutes = Math.max(0, Math.floor(this.currentTime - startMinutes));
+    const elapsedMinutesFloat = Math.max(0, this.currentTime - startMinutes);
     const result = buildMiniGameResult("seattle_traffic", {
-      duration_ms: elapsedMinutes * 60 * 1000,
+      duration_ms: Math.round(elapsedMinutesFloat * 60 * 1000),
     });
     void (async () => {
       await submitMiniGameResult("seattle_traffic", result);

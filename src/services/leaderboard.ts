@@ -387,8 +387,18 @@ export function formatArrivalTimeMinutes(totalMinutes: number): string {
   return `${hours12}:${String(mins).padStart(2, "0")}`;
 }
 
+export function formatArrivalTimeSeconds(totalSeconds: number): string {
+  if (!Number.isFinite(totalSeconds)) return "-:--:--";
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const hours24 = Math.floor(seconds / 3600) % 24;
+  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return `${hours12}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
 export function formatSeattleArrivalFromDurationMs(durationMs: number): string {
   const safeMs = Math.max(0, Math.floor(durationMs));
-  const minutesAfterStart = Math.floor(safeMs / 60000);
-  return formatArrivalTimeMinutes(SEATTLE_START_TIME_MINUTES + minutesAfterStart);
+  const secondsAfterStart = Math.floor(safeMs / 1000);
+  return formatArrivalTimeSeconds(SEATTLE_START_TIME_MINUTES * 60 + secondsAfterStart);
 }

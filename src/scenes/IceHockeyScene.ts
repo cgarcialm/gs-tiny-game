@@ -802,7 +802,8 @@ export default class IceHockeyScene extends Phaser.Scene {
           delay: finalDelay,
           ease: "Sine.easeOut",
           onUpdate: (tween) => {
-            const t = tween.getValue();
+            const rawT = tween.getValue();
+            const t = rawT ?? 0;
             // Quadratic Bezier for a soft skate-in arc from center-right to target slot
             enemy.x = (1 - t) * (1 - t) * startX + 2 * (1 - t) * t * arcControlX + t * t * data.x;
             enemy.y = (1 - t) * (1 - t) * startY + 2 * (1 - t) * t * arcControlY + t * t * data.y;
