@@ -639,8 +639,12 @@ export default class FarmersMarketScene extends Phaser.Scene {
   update() {
     // Handle menu input (ESC for pause, H for help, M for mute)
     const openLeaderboard = () => {
-      this.scene.pause();
+      if (this.scene.isActive(SCENES.LEADERBOARD)) {
+        this.scene.stop(SCENES.LEADERBOARD);
+      }
       this.scene.launch(SCENES.LEADERBOARD, { returnScene: this.sys.settings.key });
+      this.scene.bringToTop(SCENES.LEADERBOARD);
+      this.scene.pause();
     };
     if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, openLeaderboard, undefined, this.gameState)) {
       return;

@@ -46,6 +46,11 @@ export default class LeaderboardScene extends Phaser.Scene {
   private tabsLocked = true;
   private openedAtMs = 0;
   private newestPulseTween?: Phaser.Tweens.Tween;
+  private onLeftKeyDown?: () => void;
+  private onRightKeyDown?: () => void;
+  private onLeaderboardCloseKey?: () => void;
+  private onLeftKeyUp?: () => void;
+  private onRightKeyUp?: () => void;
   // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
   private _cheatConsole?: CheatConsole;
 
@@ -170,21 +175,36 @@ export default class LeaderboardScene extends Phaser.Scene {
     };
     this.time.delayedCall(150, unlockIfReleased);
 
-    this.input.keyboard?.on("keydown-LEFT", () => {
+    this.removeKeyboardListeners();
+    this.onLeftKeyDown = () => {
       if (this.tabsLocked) return;
       this.shiftTab(-1);
-    });
-    this.input.keyboard?.on("keydown-RIGHT", () => {
+    };
+    this.onRightKeyDown = () => {
       if (this.tabsLocked) return;
       this.shiftTab(1);
-    });
-    this.input.keyboard?.on("keydown-L", () => this.exit());
-    this.input.keyboard?.on("keydown-ENTER", () => this.exit());
-    this.input.keyboard?.on("keyup-LEFT", () => {
+    };
+    this.onLeaderboardCloseKey = () => this.exit();
+    this.onLeftKeyUp = () => {
       unlockIfReleased();
-    });
-    this.input.keyboard?.on("keyup-RIGHT", () => {
+    };
+    this.onRightKeyUp = () => {
       unlockIfReleased();
+    };
+
+    this.input.keyboard?.on("keydown-LEFT", this.onLeftKeyDown);
+    this.input.keyboard?.on("keydown-RIGHT", this.onRightKeyDown);
+    this.input.keyboard?.on("keydown-L", this.onLeaderboardCloseKey);
+    this.input.keyboard?.on("keydown-ENTER", this.onLeaderboardCloseKey);
+    this.input.keyboard?.on("keyup-LEFT", this.onLeftKeyUp);
+    this.input.keyboard?.on("keyup-RIGHT", this.onRightKeyUp);
+
+    this.events.once("shutdown", () => {
+      this.removeKeyboardListeners();
+      if (this.newestPulseTween) {
+        this.newestPulseTween.stop();
+        this.newestPulseTween = undefined;
+      }
     });
 
     this.renderTabHeader();
@@ -431,6 +451,22 @@ export default class LeaderboardScene extends Phaser.Scene {
       repeat: -1,
       ease: "Sine.easeInOut",
     });
+  }
+
+  private removeKeyboardListeners() {
+    if (this.onLeftKeyDown) this.input.keyboard?.off("keydown-LEFT", this.onLeftKeyDown);
+    if (this.onRightKeyDown) this.input.keyboard?.off("keydown-RIGHT", this.onRightKeyDown);
+    if (this.onLeaderboardCloseKey) {
+      this.input.keyboard?.off("keydown-L", this.onLeaderboardCloseKey);
+      this.input.keyboard?.off("keydown-ENTER", this.onLeaderboardCloseKey);
+    }
+    if (this.onLeftKeyUp) this.input.keyboard?.off("keyup-LEFT", this.onLeftKeyUp);
+    if (this.onRightKeyUp) this.input.keyboard?.off("keyup-RIGHT", this.onRightKeyUp);
+    this.onLeftKeyDown = undefined;
+    this.onRightKeyDown = undefined;
+    this.onLeaderboardCloseKey = undefined;
+    this.onLeftKeyUp = undefined;
+    this.onRightKeyUp = undefined;
   }
 
 }

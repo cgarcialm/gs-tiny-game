@@ -259,8 +259,12 @@ export default class TitleScene extends Phaser.Scene {
     // Handle menu input (ESC for pause, H for help, M for mute)
     // In title scene, "exit to title" means restart the scene
     const openLeaderboard = () => {
-      this.scene.pause();
+      if (this.scene.isActive(SCENES.LEADERBOARD)) {
+        this.scene.stop(SCENES.LEADERBOARD);
+      }
       this.scene.launch(SCENES.LEADERBOARD, { returnScene: this.sys.settings.key });
+      this.scene.bringToTop(SCENES.LEADERBOARD);
+      this.scene.pause();
     };
     if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, () => {
       this.scene.restart();
