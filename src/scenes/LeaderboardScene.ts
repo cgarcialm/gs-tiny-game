@@ -428,12 +428,8 @@ export default class LeaderboardScene extends Phaser.Scene {
       alpha: 0.65,
       duration: 350,
       yoyo: true,
-      repeat: 5,
+      repeat: -1,
       ease: "Sine.easeInOut",
-      onComplete: () => {
-        this.globalTitleText.setAlpha(1);
-        this.newestPulseTween = undefined;
-      },
     });
   }
 
