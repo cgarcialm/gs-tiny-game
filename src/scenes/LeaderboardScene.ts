@@ -101,12 +101,13 @@ export default class LeaderboardScene extends Phaser.Scene {
 
     this.scoresText = this.add.text(20, 88, "Loading...", {
       fontFamily: "monospace",
-      fontSize: "9px",
-      color: "#c9b6ff",
+      fontSize: "10px",
+      color: "#e7d8ff",
       align: "left",
       lineSpacing: 2,
-      resolution: 3,
+      resolution: 4,
     });
+    this.scoresText.setShadow(0, 0, "#c9b6ff", 2, false, true);
 
     this.allLabelText = this.add.text(56, 88, "", {
       fontFamily: "monospace",
@@ -119,12 +120,13 @@ export default class LeaderboardScene extends Phaser.Scene {
 
     this.allValueText = this.add.text(160, 88, "", {
       fontFamily: "monospace",
-      fontSize: "9px",
-      color: "#c9b6ff",
+      fontSize: "10px",
+      color: "#e7d8ff",
       align: "left",
       lineSpacing: 2,
-      resolution: 3,
+      resolution: 4,
     }).setOrigin(0, 0).setVisible(false);
+    this.allValueText.setShadow(0, 0, "#c9b6ff", 2, false, true);
 
     this.globalTitleText = this.add.text(178, 72, "LATEST", {
       fontFamily: "monospace",
@@ -136,12 +138,13 @@ export default class LeaderboardScene extends Phaser.Scene {
 
     this.globalScoresText = this.add.text(178, 88, "Loading...", {
       fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#c9b6ff",
+      fontSize: "9px",
+      color: "#e7d8ff",
       align: "left",
       lineSpacing: 2,
-      resolution: 3,
+      resolution: 4,
     });
+    this.globalScoresText.setShadow(0, 0, "#c9b6ff", 2, false, true);
 
     this.add.text(160, 165, "LEFT/RIGHT to switch • L/ENTER to continue", {
       fontFamily: "monospace",
@@ -354,19 +357,19 @@ export default class LeaderboardScene extends Phaser.Scene {
     if (!top) return { label: `${label}:`, value: "-" };
     const score =
       top.mini_game === "seattle_traffic"
-        ? `ETA ${formatSeattleArrivalFromDurationMs(top.duration_ms ?? 0)}`
-        : `T ${formatRunDuration(top.duration_ms ?? 0)}`;
-    const nameTag = top.player_name.slice(0, 10);
+        ? `${formatSeattleArrivalFromDurationMs(top.duration_ms ?? 0)}`
+        : `${formatRunDuration(top.duration_ms ?? 0)}`;
+    const nameTag = top.player_name.slice(0, 8);
     const deaths = top.deaths ?? 0;
     return { label: `${label}:`, value: `${nameTag} ${score} (${deaths})` };
   }
 
   private formatEntryRow(entry: LeaderboardEntry, index: number): string {
-    const nameTag = entry.player_name.slice(0, 10);
+    const nameTag = entry.player_name.slice(0, 8);
     const score =
       entry.mini_game === "seattle_traffic"
-        ? `ETA ${formatSeattleArrivalFromDurationMs(entry.duration_ms ?? 0)}`
-        : `T ${formatRunDuration(entry.duration_ms ?? 0)}`;
+        ? `${formatSeattleArrivalFromDurationMs(entry.duration_ms ?? 0)}`
+        : `${formatRunDuration(entry.duration_ms ?? 0)}`;
     const deaths = entry.deaths ?? 0;
     return `${index + 1} ${nameTag} ${score} (${deaths})`;
   }
