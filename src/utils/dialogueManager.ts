@@ -25,11 +25,12 @@ export class DialogueManager {
     this.dialogText = scene.add.text(20, 146, "", {
       fontFamily: "monospace",
       fontSize: "10px",
-      color: "#dff1ff",
+      color: "#eef7ff",
       wordWrap: { width: 280 },
-      resolution: 2,
+      resolution: 3,
     });
     this.dialogText.setOrigin(0, 0);
+    this.dialogText.setShadow(0, 0, "#99bbff", 1, false, true);
     
     this.container.add([this.dialogBox, this.dialogText]);
     this.container.setScrollFactor(0); // Keep dialogue on screen when camera scrolls (e.g. Ice Hockey)
@@ -95,4 +96,3 @@ export class DialogueManager {
     this.container.destroy();
   }
 }
-

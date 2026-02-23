@@ -80,24 +80,27 @@ export default class LeaderboardScene extends Phaser.Scene {
       fontSize: "8px",
       color: "#9ee6ff",
       align: "center",
-      resolution: 2,
+      resolution: 3,
     }).setOrigin(0.5);
+    this.tabsText.setShadow(0, 0, "#4ecfff", 1, false, true);
     
     this.selectedTabText = this.add.text(160, 50, "", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#ffffff",
       align: "center",
-      resolution: 2,
+      resolution: 3,
     }).setOrigin(0.5);
+    this.selectedTabText.setShadow(0, 0, "#ffffff", 1, false, true);
 
     this.localText = this.add.text(20, 72, "", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#ffeab6",
       align: "left",
-      resolution: 3,
+      resolution: 4,
     });
+    this.localText.setShadow(0, 0, "#ffeab6", 1, false, true);
 
     this.scoresText = this.add.text(20, 88, "Loading...", {
       fontFamily: "monospace",
@@ -115,8 +118,9 @@ export default class LeaderboardScene extends Phaser.Scene {
       color: "#9ee6ff",
       align: "left",
       lineSpacing: 2,
-      resolution: 3,
+      resolution: 4,
     }).setOrigin(0, 0).setVisible(false);
+    this.allLabelText.setShadow(0, 0, "#66ddff", 1, false, true);
 
     this.allValueText = this.add.text(160, 88, "", {
       fontFamily: "monospace",
@@ -133,8 +137,9 @@ export default class LeaderboardScene extends Phaser.Scene {
       fontSize: "8px",
       color: "#9ee6ff",
       align: "left",
-      resolution: 3,
+      resolution: 4,
     });
+    this.globalTitleText.setShadow(0, 0, "#66ddff", 1, false, true);
 
     this.globalScoresText = this.add.text(178, 88, "Loading...", {
       fontFamily: "monospace",
@@ -148,10 +153,10 @@ export default class LeaderboardScene extends Phaser.Scene {
 
     this.add.text(160, 165, "LEFT/RIGHT to switch • L/ENTER to continue", {
       fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#888888",
+      fontSize: "9px",
+      color: "#b3b3b3",
       align: "center",
-      resolution: 2,
+      resolution: 4,
     }).setOrigin(0.5);
 
     const leftKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);

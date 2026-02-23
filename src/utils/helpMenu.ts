@@ -26,8 +26,9 @@ export class HelpMenu {
       color: "#00d4ff",
       fontStyle: "bold",
       align: "center",
-      resolution: 2,
+      resolution: 3,
     }).setOrigin(0.5);
+    this.titleText.setShadow(0, 0, "#00d4ff", 2, false, true);
     
     // Left column - categories
     const categories = [
@@ -47,8 +48,9 @@ export class HelpMenu {
       color: "#00d4ff",
       align: "left",
       lineSpacing: 2,
-      resolution: 2,
+      resolution: 3,
     }).setOrigin(0, 0);
+    categoryText.setShadow(0, 0, "#00d4ff", 1, false, true);
     
     // Right column - keys
     const keys = [
@@ -65,21 +67,23 @@ export class HelpMenu {
     
     this.helpText = scene.add.text(-40, -38, keys, {
       fontFamily: "monospace",
-      fontSize: "9px",
-      color: "#cfe8ff",
+      fontSize: "10px",
+      color: "#e7f4ff",
       align: "left",
       lineSpacing: 2,
-      resolution: 2,
+      resolution: 4,
     }).setOrigin(0, 0);
+    this.helpText.setShadow(0, 0, "#b8deff", 2, false, true);
     
     // Footer - bottom right corner
     const footerText = scene.add.text(120, 64, "H to close", {
       fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#999999",
+      fontSize: "9px",
+      color: "#bbbbbb",
       align: "right",
-      resolution: 2,
+      resolution: 3,
     }).setOrigin(1, 1);
+    footerText.setShadow(0, 0, "#666666", 1, false, true);
     
     // Add to container
     this.container.add([this.background, this.titleText, categoryText, this.helpText, footerText]);
