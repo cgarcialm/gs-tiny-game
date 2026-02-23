@@ -113,7 +113,7 @@ export default class LeaderboardScene extends Phaser.Scene {
     });
     this.scoresText.setShadow(0, 0, "#b8b8b8", 1, false, true);
 
-    this.allLabelText = this.add.text(56, 88, "", {
+    this.allLabelText = this.add.text(32, 88, "", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#9ee6ff",
@@ -123,7 +123,7 @@ export default class LeaderboardScene extends Phaser.Scene {
     }).setOrigin(0, 0).setVisible(false);
     this.allLabelText.setShadow(0, 0, "#66ddff", 1, false, true);
 
-    this.allValueText = this.add.text(160, 88, "", {
+    this.allValueText = this.add.text(126, 88, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#e7d8ff",
@@ -383,7 +383,7 @@ export default class LeaderboardScene extends Phaser.Scene {
         ? `${top.player_name.slice(0, 8)}...`
         : top.player_name;
     const deaths = top.deaths ?? 0;
-    return { label: `${label}:`, value: `${allGamesName} ${score} (${deaths})` };
+    return { label: `${label}:`, value: `${allGamesName} ${score} (${deaths} deaths)` };
   }
 
   private formatEntryRow(entry: LeaderboardEntry, index: number, mode: "best" | "list" | "latest" = "list"): string {
