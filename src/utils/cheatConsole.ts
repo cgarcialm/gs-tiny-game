@@ -46,8 +46,12 @@ export class CheatConsole {
   private setupKeyboardListener(): void {
     // Listen for keydown on the document
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Backtick (`) to toggle console - classic game console key
-      if (event.key === '`') {
+      const isBacktick =
+        event.key === '`' ||
+        event.code === 'Backquote';
+
+      // Backtick (`) only (with event.code fallback for keyboard layout differences)
+      if (isBacktick) {
         event.preventDefault();
         this.toggle();
       }
