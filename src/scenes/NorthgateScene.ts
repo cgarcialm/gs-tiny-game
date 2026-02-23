@@ -53,6 +53,9 @@ export default class NorthgateScene extends Phaser.Scene {
   
   // Dialogue
   private dialogVisible = false;
+  private dialogBlocksMovement = true;
+  private dialogAutoHideAtMs = 0;
+  private furrySpeechText?: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
 
   constructor() {
@@ -504,12 +507,17 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Handle dialogue
     if (this.dialogVisible) {
-      if (shouldCloseDialogue(this.controls)) {
+      if (this.dialogAutoHideAtMs > 0 && this.time.now >= this.dialogAutoHideAtMs) {
+        this.hideDialog();
+        this.guardDialogueCooldown = 1.5;
+      } else if (this.dialogBlocksMovement && shouldCloseDialogue(this.controls)) {
         this.hideDialog();
         // Set cooldown when dialogue is closed to prevent instant re-trigger
         this.guardDialogueCooldown = 1.5; // 1.5 second cooldown
       }
-      return;
+      if (this.dialogBlocksMovement) {
+        return;
+      }
     }
     
     // Decrease guard dialogue cooldown
@@ -680,12 +688,35 @@ export default class NorthgateScene extends Phaser.Scene {
       if (checkProximity(this.player, furry, 18) && 
           !this.furryDialogueShown[index] && !this.dialogVisible) {
         this.furryDialogueShown[index] = true;
-        
-        // Stop player movement when dialogue appears
-        this.player.setVelocity(0, 0);
-        
+
         const dialogue = furry.getData('dialogue');
-        this.showDialog(dialogue);
+        this.showFurrySpeech(furry, String(dialogue ?? ""));
+      }
+    });
+  }
+
+  private showFurrySpeech(furry: Phaser.GameObjects.Container, message: string) {
+    if (this.furrySpeechText) {
+      this.tweens.killTweensOf(this.furrySpeechText);
+      this.furrySpeechText.destroy();
+      this.furrySpeechText = undefined;
+    }
+
+    const speech = this.add.text(furry.x, furry.y - 18, message, THOUGHT_BUBBLE_STYLE)
+      .setOrigin(0.5, 1)
+      .setDepth(120);
+    this.furrySpeechText = speech;
+
+    this.tweens.add({
+      targets: speech,
+      alpha: 0,
+      delay: 3000,
+      duration: 250,
+      onComplete: () => {
+        if (this.furrySpeechText === speech) {
+          this.furrySpeechText = undefined;
+        }
+        speech.destroy();
       }
     });
   }
@@ -991,13 +1022,24 @@ export default class NorthgateScene extends Phaser.Scene {
     });
   }
   
-  private showDialog(message: string) {
+  private showDialog(message: string, options?: { blocksMovement?: boolean; autoHideMs?: number }) {
     this.dialogVisible = true;
+    this.dialogBlocksMovement = options?.blocksMovement ?? true;
+    this.dialogAutoHideAtMs = options?.autoHideMs ? this.time.now + options.autoHideMs : 0;
     this.dialogueManager.show(message);
   }
   
   private hideDialog() {
     this.dialogVisible = false;
+    this.dialogBlocksMovement = true;
+    this.dialogAutoHideAtMs = 0;
     this.dialogueManager.hide();
+  }
+
+  shutdown() {
+    if (this.furrySpeechText) {
+      this.furrySpeechText.destroy();
+      this.furrySpeechText = undefined;
+    }
   }
 }
