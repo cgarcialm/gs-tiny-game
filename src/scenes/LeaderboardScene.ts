@@ -225,10 +225,12 @@ export default class LeaderboardScene extends Phaser.Scene {
     this.selectedTabText.setText(`${selectedLine1}\n${selectedLine2}\n${selectedLine3}`);
     const isAll = MINI_GAMES[this.selectedIndex]?.key === "all";
     if (isAll) {
+      this.localText.setFontSize(10);
       this.localText.setY(72);
       this.scoresText.setY(88);
       this.localText.setText("BEST BY GAME");
     } else {
+      this.localText.setFontSize(11);
       this.localText.setY(74);
       this.scoresText.setY(92);
       this.localText.setText("BEST -");
