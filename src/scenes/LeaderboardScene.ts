@@ -45,6 +45,7 @@ export default class LeaderboardScene extends Phaser.Scene {
   private initialMiniGame?: MiniGameKey;
   private tabsLocked = true;
   private openedAtMs = 0;
+  private newestPulseTween?: Phaser.Tweens.Tween;
   // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
   private _cheatConsole?: CheatConsole;
 
@@ -95,7 +96,7 @@ export default class LeaderboardScene extends Phaser.Scene {
 
     this.localText = this.add.text(20, 72, "", {
       fontFamily: "monospace",
-      fontSize: "9px",
+      fontSize: "11px",
       color: "#ffeab6",
       align: "left",
       resolution: 4,
@@ -104,13 +105,13 @@ export default class LeaderboardScene extends Phaser.Scene {
 
     this.scoresText = this.add.text(20, 88, "Loading...", {
       fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#e7d8ff",
+      fontSize: "9px",
+      color: "#ffffff",
       align: "left",
       lineSpacing: 2,
       resolution: 4,
     });
-    this.scoresText.setShadow(0, 0, "#c9b6ff", 2, false, true);
+    this.scoresText.setShadow(0, 0, "#b8b8b8", 1, false, true);
 
     this.allLabelText = this.add.text(56, 88, "", {
       fontFamily: "monospace",
@@ -132,24 +133,24 @@ export default class LeaderboardScene extends Phaser.Scene {
     }).setOrigin(0, 0).setVisible(false);
     this.allValueText.setShadow(0, 0, "#c9b6ff", 2, false, true);
 
-    this.globalTitleText = this.add.text(178, 72, "LATEST", {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#9ee6ff",
-      align: "left",
-      resolution: 4,
-    });
-    this.globalTitleText.setShadow(0, 0, "#66ddff", 1, false, true);
-
-    this.globalScoresText = this.add.text(178, 88, "Loading...", {
+    this.globalTitleText = this.add.text(160, 138, "NEWEST", {
       fontFamily: "monospace",
       fontSize: "9px",
-      color: "#e7d8ff",
-      align: "left",
+      color: "#c9b6ff",
+      align: "center",
+      resolution: 4,
+    }).setOrigin(0.5, 0);
+    this.globalTitleText.setShadow(0, 0, "#8f7bcf", 1, false, true);
+
+    this.globalScoresText = this.add.text(160, 138, "", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9aa3b2",
+      align: "center",
       lineSpacing: 2,
       resolution: 4,
-    });
-    this.globalScoresText.setShadow(0, 0, "#c9b6ff", 2, false, true);
+    }).setOrigin(0.5, 0);
+    this.globalScoresText.setShadow(0, 0, "#5a6270", 1, false, true);
 
     this.add.text(160, 165, "LEFT/RIGHT to switch • L/ENTER to continue", {
       fontFamily: "monospace",
@@ -224,16 +225,22 @@ export default class LeaderboardScene extends Phaser.Scene {
     this.selectedTabText.setText(`${selectedLine1}\n${selectedLine2}\n${selectedLine3}`);
     const isAll = MINI_GAMES[this.selectedIndex]?.key === "all";
     if (isAll) {
+      this.localText.setY(72);
+      this.scoresText.setY(88);
       this.localText.setText("BEST BY GAME");
     } else {
+      this.localText.setY(74);
+      this.scoresText.setY(92);
       this.localText.setText("BEST -");
     }
-    this.globalScoresText.setText("Loading...");
+    this.globalTitleText.setText("NEWEST");
+    this.globalScoresText.setText("");
     this.globalTitleText.setVisible(!isAll);
     this.globalScoresText.setVisible(!isAll);
     this.allLabelText.setVisible(isAll);
     this.allValueText.setVisible(isAll);
     this.scoresText.setVisible(!isAll);
+    this.restartNewestPulse();
   }
 
   private async loadScores() {
@@ -316,13 +323,17 @@ export default class LeaderboardScene extends Phaser.Scene {
         return;
       }
 
-      this.scoresText.setOrigin(0, 0).setX(20).setAlign("left");
-      this.localText.setOrigin(0, 0).setX(20).setAlign("left");
+      this.localText.setOrigin(0.5, 0).setX(160).setAlign("center");
+      this.scoresText.setOrigin(0.5, 0).setX(160).setAlign("center");
+      this.globalTitleText.setOrigin(0.5, 0).setX(160).setAlign("center");
+      this.globalScoresText.setOrigin(0.5, 0).setX(160).setAlign("center");
       const entries = await fetchLeaderboard(5, miniGame);
       if (requestId !== this.loadRequestId) return;
       const cacheKey = miniGame;
       const useEntries = entries.length > 0 ? entries : this.tabCache.get(cacheKey) ?? [];
       if (useEntries.length === 0) {
+        this.localText.setText("BEST -");
+        this.scoresText.setY(92);
         this.scoresText.setText("No scores yet.");
         if (this.retryCount < 2) {
           this.retryCount += 1;
@@ -336,20 +347,21 @@ export default class LeaderboardScene extends Phaser.Scene {
         this.tabCache.set(cacheKey, useEntries);
         this.allBestCache = null;
         const top = useEntries[0];
-        const topLine = this.formatEntryRow(top, 0).replace(/^1\s*/, "");
-        this.localText.setText(`BEST ${topLine}`);
-        const rows = useEntries.slice(1).map((entry, idx) => this.formatEntryRow(entry, idx + 1));
+        this.localText.setText(`BEST ${this.formatEntryRow(top, 0, "best")}`);
+        this.scoresText.setY(92);
+        const rows = useEntries.slice(1, 4).map((entry, idx) => this.formatEntryRow(entry, idx + 1, "list"));
         this.scoresText.setText(rows.join("\n"));
       }
 
-      const latestEntries = await fetchLeaderboard(3, miniGame, { sort: "latest" });
+      const latestEntries = await fetchLeaderboard(1, miniGame, { sort: "latest" });
       if (requestId !== this.loadRequestId) return;
-      const latest = latestEntries.length > 0 ? latestEntries : useEntries.slice(0, 3);
+      const latest = latestEntries.length > 0 ? latestEntries : useEntries.slice(0, 1);
       if (latest.length === 0) {
-        this.globalScoresText.setText("No scores.");
+        this.globalTitleText.setText("NEWEST -");
+        this.globalScoresText.setText("");
       } else {
-        const rows = latest.map((entry, idx) => this.formatEntryRow(entry, idx));
-        this.globalScoresText.setText(rows.join("\n"));
+        this.globalTitleText.setText(`NEWEST ${this.formatEntryRow(latest[0], 0, "best")}`);
+        this.globalScoresText.setText("");
       }
     } catch {
       const hint = API_BASE_URL ? `\nAPI: ${API_BASE_URL}` : "\nAPI not set";
@@ -364,18 +376,27 @@ export default class LeaderboardScene extends Phaser.Scene {
       top.mini_game === "seattle_traffic"
         ? `${formatSeattleArrivalFromDurationMs(top.duration_ms ?? 0)}`
         : `${formatRunDuration(top.duration_ms ?? 0)}`;
-    const nameTag = top.player_name.slice(0, 8);
+    const allGamesName =
+      top.player_name.length > 8
+        ? `${top.player_name.slice(0, 8)}...`
+        : top.player_name;
     const deaths = top.deaths ?? 0;
-    return { label: `${label}:`, value: `${nameTag} ${score} (${deaths})` };
+    return { label: `${label}:`, value: `${allGamesName} ${score} (${deaths})` };
   }
 
-  private formatEntryRow(entry: LeaderboardEntry, index: number): string {
-    const nameTag = entry.player_name.slice(0, 8);
+  private formatEntryRow(entry: LeaderboardEntry, index: number, mode: "best" | "list" | "latest" = "list"): string {
+    const nameTag =
+      mode === "latest" && entry.player_name.length > 5
+        ? `${entry.player_name.slice(0, 3)}...`
+        : entry.player_name;
     const score =
       entry.mini_game === "seattle_traffic"
         ? `${formatSeattleArrivalFromDurationMs(entry.duration_ms ?? 0)}`
         : `${formatRunDuration(entry.duration_ms ?? 0)}`;
     const deaths = entry.deaths ?? 0;
+    if (mode === "best") {
+      return `${nameTag}  ${score} (${deaths})`;
+    }
     return `${index + 1} ${nameTag} ${score} (${deaths})`;
   }
 
@@ -391,6 +412,27 @@ export default class LeaderboardScene extends Phaser.Scene {
       return;
     }
     this.scene.start(SCENES.TITLE);
+  }
+
+  private restartNewestPulse() {
+    if (this.newestPulseTween) {
+      this.newestPulseTween.stop();
+      this.newestPulseTween = undefined;
+    }
+    if (!this.globalTitleText.visible) return;
+    this.globalTitleText.setAlpha(1);
+    this.newestPulseTween = this.tweens.add({
+      targets: this.globalTitleText,
+      alpha: 0.65,
+      duration: 350,
+      yoyo: true,
+      repeat: 5,
+      ease: "Sine.easeInOut",
+      onComplete: () => {
+        this.globalTitleText.setAlpha(1);
+        this.newestPulseTween = undefined;
+      },
+    });
   }
 
 }
