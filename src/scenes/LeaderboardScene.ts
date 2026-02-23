@@ -130,7 +130,7 @@ export default class LeaderboardScene extends Phaser.Scene {
 
     this.allValueText = this.add.text(126, 88, "", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "9px",
       color: "#e7d8ff",
       align: "left",
       lineSpacing: 2,
