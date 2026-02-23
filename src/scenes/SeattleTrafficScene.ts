@@ -1102,11 +1102,15 @@ export default class SeattleTrafficScene extends Phaser.Scene {
   
   private createUI() {
     // Clock (top-left)
-    this.add.text(4, 4, "", {
+    // Leave room for the global mute icon (drawn at top-left by handleMenuInput)
+    // Keep a left-anchored background so it doesn't look like the clock floated into the scene.
+    this.add.rectangle(2, 3, 72, 12, 0x000000, 0.8)
+      .setOrigin(0, 0)
+      .setDepth(99);
+    this.add.text(12, 4, "", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#ffffff",
-      backgroundColor: "#000000",
       padding: { x: 3, y: 1 }
     }).setDepth(100).setName('clockText');
     
