@@ -569,7 +569,7 @@ export default class GameScene extends Phaser.Scene {
     // Handle chase sequence
     if (this.chaseState === "chasing") {
       this.updateChaseSequence(dt);
-      return;
+      // Non-blocking: let the player keep moving while Smush chases Eboshi.
     }
     
     // Handle stadium transformation (no player control)
