@@ -227,10 +227,10 @@ export default class TitleScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const savedName = getPlayerName().trim();
-    this.playerTagText = this.add.text(8, 10, savedName ? `PLAYER: ${savedName}` : "", {
+    this.playerTagText = this.add.text(8, 10, savedName ? savedName : "", {
       fontFamily: "monospace",
       fontSize: "8px",
-      color: "#ffeab6",
+      color: "#9ee6ff",
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0, 0).setAlpha(savedName ? 1 : 0);
 
@@ -716,7 +716,7 @@ export default class TitleScene extends Phaser.Scene {
       setPlayerName(cleaned);
       this.nameEntryActive = false;
       this.nameInput = cleaned;
-      this.playerTagText.setText(`PLAYER: ${cleaned}`).setAlpha(1);
+      this.playerTagText.setText(cleaned).setAlpha(1);
       this.nameValueText.setText(cleaned);
       this.nameBlinkTween?.stop();
       this.nameBlinkTween = undefined;
