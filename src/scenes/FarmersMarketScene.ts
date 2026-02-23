@@ -321,11 +321,11 @@ export default class FarmersMarketScene extends Phaser.Scene {
     bg.setOrigin(0.5).setDepth(100);
     
     // Grayson's section (left side)
-    const graysonContainer = this.add.container(10, 10);
+    const graysonContainer = this.add.container(20, 10);
     graysonContainer.setDepth(101).setName('graysonScoreContainer');
     
     // Smush's section (right side - start from further left)
-    const smushContainer = this.add.container(245, 10);
+    const smushContainer = this.add.container(236, 10);
     smushContainer.setDepth(101).setName('smushScoreContainer');
     
     this.updateScoreboard();
