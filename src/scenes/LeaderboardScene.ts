@@ -397,7 +397,7 @@ export default class LeaderboardScene extends Phaser.Scene {
         : `${formatRunDuration(entry.duration_ms ?? 0)}`;
     const deaths = entry.deaths ?? 0;
     if (mode === "best") {
-      return `${nameTag}  ${score} (${deaths})`;
+      return `${nameTag} ${score} (${deaths})`;
     }
     return `${index + 1} ${nameTag} ${score} (${deaths})`;
   }
