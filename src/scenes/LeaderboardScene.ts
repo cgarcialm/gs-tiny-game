@@ -318,10 +318,10 @@ export default class LeaderboardScene extends Phaser.Scene {
         const ng = bestByGame.northgate;
         const full = bestByGame.full_run;
         const rows = [
+          this.formatTopRowParts("NORTHGATE", ng),
           this.formatTopRowParts("ICE HOCKEY", ice),
           this.formatTopRowParts("SEATTLE TRAFFIC", sea),
           this.formatTopRowParts("FARMERS MARKET", farm),
-          this.formatTopRowParts("NORTHGATE", ng),
           this.formatTopRowParts("FULL RUN", full),
         ];
         const labels = rows.map((row) => row.label).join("\n");
