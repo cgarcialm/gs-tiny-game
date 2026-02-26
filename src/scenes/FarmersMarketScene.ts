@@ -1279,17 +1279,14 @@ export default class FarmersMarketScene extends Phaser.Scene {
       this.cardPiece.destroy();
       this.cardPiece = null;
 
+      // Mark progression immediately to avoid returning to Farmers Market if leaderboard closes quickly.
+      this.gameState.completeLevel(VOID_LEVELS.AFTER_FARMERS_MARKET);
+
       const result = buildMiniGameResult("farmers_market");
       void (async () => {
         await submitMiniGameResult("farmers_market", result);
         this.scene.start(SCENES.LEADERBOARD, { miniGame: "farmers_market", nextScene: SCENES.GAME });
       })();
-      
-      // Transition back to GameScene (faster)
-      this.time.delayedCall(200, () => {
-        this.gameState.completeLevel(VOID_LEVELS.AFTER_FARMERS_MARKET);
-        // scene transition handled after submit
-      });
     }
   }
   
