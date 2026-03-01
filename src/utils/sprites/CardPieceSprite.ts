@@ -11,17 +11,21 @@ export function createCardPieceSprite(
   const graphics = scene.add.graphics();
   const pieceSize = 8;
   
+  // Set position first
+  graphics.setPosition(x, y);
+  
+  // Draw at local coordinates (0, 0) relative to the graphics position
   // Orange/golden card fragment (matching the anniversary card color from title)
   graphics.fillStyle(0xffaa00, 1.0); // CARD_COLOR from title scene
-  graphics.fillRect(x - pieceSize / 2, y - pieceSize / 2, pieceSize, pieceSize);
+  graphics.fillRect(-pieceSize / 2, -pieceSize / 2, pieceSize, pieceSize);
   
   // Golden border/stroke
   graphics.lineStyle(1, 0xffdd88, 1.0); // CARD_STROKE from title scene
-  graphics.strokeRect(x - pieceSize / 2, y - pieceSize / 2, pieceSize, pieceSize);
+  graphics.strokeRect(-pieceSize / 2, -pieceSize / 2, pieceSize, pieceSize);
   
   // Add a small red heart detail (fragment of the heart from the card)
   graphics.fillStyle(0xff0000, 0.8);
-  graphics.fillCircle(x - 1, y - 1, 2);
+  graphics.fillCircle(-1, -1, 2);
   
   return graphics;
 }

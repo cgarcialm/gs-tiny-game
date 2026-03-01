@@ -1,0 +1,15 @@
+name = "gs-tiny-game-leaderboard"
+main = "src/index.ts"
+compatibility_date = "2026-02-20"
+
+[vars]
+# ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173,https://cgarcialm.github.io"
+ALLOWED_ORIGINS = "https://cgarcialm.github.io,http://localhost:5173,http://127.0.0.1:5173"
+RATE_LIMIT_WINDOW_SECONDS = "60"
+RATE_LIMIT_MAX_REQUESTS = "20"
+RATE_LIMIT_MAX_REQUESTS_READ = "100000"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gs_tiny_game_leaderboard"
+database_id = "3520824d-cd0d-41da-a346-eb820594c9b7"

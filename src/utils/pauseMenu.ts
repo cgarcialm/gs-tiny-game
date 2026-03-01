@@ -31,27 +31,30 @@ export class PauseMenu {
       color: "#ff0066",
       fontStyle: "bold",
       align: "center",
-      resolution: 2,
+      resolution: 3,
     }).setOrigin(0.5);
+    this.titleText.setShadow(0, 0, "#ff0066", 2, false, true);
     
     // Message
     this.messageText = scene.add.text(0, -5, "Do you want to exit?", {
       fontFamily: "monospace",
       fontSize: "12px",
-      color: "#cfe8ff",
+      color: "#e7f4ff",
       align: "center",
-      resolution: 2,
+      resolution: 3,
     }).setOrigin(0.5);
+    this.messageText.setShadow(0, 0, "#b8deff", 1, false, true);
     
     // Instructions
     this.instructionsText = scene.add.text(0, 35, "ESC - Resume\nENTER - Exit to Title", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "11px",
       color: "#ffeb3b",
       align: "center",
       lineSpacing: 4,
-      resolution: 2,
+      resolution: 3,
     }).setOrigin(0.5);
+    this.instructionsText.setShadow(0, 0, "#b39b00", 1, false, true);
     
     // Add to container
     this.container.add([overlay, this.background, this.titleText, this.messageText, this.instructionsText]);
@@ -103,4 +106,3 @@ export class PauseMenu {
     this.container.destroy();
   }
 }
-

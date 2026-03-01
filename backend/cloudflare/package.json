@@ -1,0 +1,16 @@
+{
+  "name": "gs-tiny-game-leaderboard-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "dev:local": "wrangler dev --local",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260208.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.54.0"
+  }
+}

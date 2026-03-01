@@ -1,10 +1,20 @@
 // Export all sprite functions from a single entry point
 export { createGraysonSprite, updateGraysonWalk } from "./GraysonSprite";
+export { createGraysonTopDownSprite, rotateTopDownSprite } from "./GraysonTopDownSprite";
+export { createHockeyPlayerSprite } from "./HockeyPlayerSprite";
 export { createEboshiSprite } from "./EboshiSprite";
+export { createEboshiWithSweaterSprite } from "./EboshiSweaterSprite";
 export { createSmushSprite } from "./SmushSprite";
 export { createCeciSprite } from "./CeciSprite";
 export { createRandomGuySprite } from "./RandomGuySprite";
 export { createSecurityGuardSprite } from "./SecurityGuardSprite";
 export { createFurrySprite } from "./FurrySprite";
 export { createCardPieceSprite, spawnCardPieceSparkles } from "./CardPieceSprite";
-
+export { createCrowdPersonSprite, getRandomCrowdColors } from "./CrowdPersonSprite";
+export { createGraysonPacManSprite, animateGraysonChomp } from "./GraysonPacManSprite";
+export { createSmushPacManSprite, animateSmushChomp } from "./SmushPacManSprite";
+export { createPieSliceSprite } from "./PieSliceSprite";
+export { createShopperSprite, updateShopperWalk } from "./ShopperSprite";
+export { createVanSprite, createVanSpriteBack, createVanSpriteFromRight } from "./VanSprite";
+export { createVanSideSprite } from "./VanSideSprite";
+export { createTrafficCarSprite, getRandomCarColor } from "./TrafficCarSprite";

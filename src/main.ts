@@ -1,9 +1,15 @@
 import Phaser from "phaser";
+import "./style.css";
 import BootScene from "./scenes/BootScene";
 import GameScene from "./scenes/GameScene";
 import TitleScene from "./scenes/TitleScene";
 import NorthgateScene from "./scenes/NorthgateScene";
 import IceHockeyScene from "./scenes/IceHockeyScene";
+import SeattleTrafficScene from "./scenes/SeattleTrafficScene";
+import FarmersMarketScene from "./scenes/FarmersMarketScene";
+import Void3DScene from "./scenes/Void3DScene";
+import CampingScene from "./scenes/CampingScene";
+import LeaderboardScene from "./scenes/LeaderboardScene";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -16,10 +22,21 @@ const config: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: {
       gravity: { y: 500, x: 0 },
-      debug: false
+      debug: false // Disabled - clean view
     }
   },
-  scene: [BootScene, TitleScene, GameScene, NorthgateScene, IceHockeyScene],
+  scene: [
+    BootScene,
+    TitleScene,
+    GameScene,
+    LeaderboardScene,
+    NorthgateScene,
+    IceHockeyScene,
+    SeattleTrafficScene,
+    FarmersMarketScene,
+    Void3DScene,
+    CampingScene
+  ],
 };
 
 new Phaser.Game(config);

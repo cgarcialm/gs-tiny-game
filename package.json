@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:clean": "rm -rf node_modules/.vite && vite --force",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist"
@@ -15,6 +16,8 @@
     "vite": "^7.1.7"
   },
   "dependencies": {
-    "phaser": "^3.90.0"
+    "@types/three": "^0.181.0",
+    "phaser": "^3.90.0",
+    "three": "^0.181.0"
   }
 }

@@ -1,8 +1,16 @@
 import Phaser from "phaser";
-import { setupControls, getHorizontalAxis } from "../utils/controls";
+import { getHorizontalAxis } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
 import { PauseMenu } from "../utils/pauseMenu";
+import { DialogueManager } from "../utils/dialogueManager";
+import { handleMenuInput } from "../utils/menuHandler";
+import { initializeGameScene } from "../utils/sceneSetup";
+import { fadeToScene } from "../utils/sceneTransitions";
+import { createGraysonSprite } from "../utils/sprites";
+import { GameStateManager } from "../managers/GameStateManager";
+import { SCENES } from "../config/sceneConstants";
+import { getPlayerName, setPlayerName } from "../services/leaderboard";
 
 const PLAYER_ASCII = String.raw`
    _---
@@ -49,6 +57,10 @@ const CARD_HEART_Y = CARD_Y - 2;
 const SMUSH_Y = 60; // Above player
 const EBO_Y = 60;   // Above Ceci
 const HINT_TEXT_Y = 164;
+const LEADERBOARD_X = 226;
+const LEADERBOARD_Y = 30;
+const NAME_GATE_TITLE_Y = 26;
+const NAME_GATE_INPUT_Y = 100;
 
 // Sizes
 const CARD_WIDTH = 20;
@@ -58,7 +70,6 @@ const NUM_PIECES = 15;
 const CHAR_FONT_SIZE = 7;
 const TITLE_FONT_SIZE = 12;
 const HEART_FONT_SIZE = 8;
-const DIALOG_FONT_SIZE = 10;
 const HINT_FONT_SIZE = 9;
 const LINE_SPACING = 1;
 const CHAR_RESOLUTION = 2;
@@ -73,9 +84,6 @@ const SMUSH_COLOR = "#66ff66";
 const EBO_COLOR = "#ffcc99";
 const CARD_COLOR = 0xffaa00;
 const CARD_STROKE = 0xffdd88;
-const DIALOG_COLOR = "#dff1ff";
-const DIALOG_BG_ALPHA = 0.8;
-const DIALOG_STROKE = 0x99bbff;
 const HEART_COLOR = "#ff0000";
 
 // Speeds
@@ -92,13 +100,6 @@ const APPROACH_DISTANCE = 50;
 const CUTSCENE_DURATION = 2000;
 const CHASE_DELAY = 1000;
 
-// Dialog
-const DIALOG_WIDTH = 300;
-const DIALOG_HEIGHT = 40;
-const DIALOG_X = 20;
-const DIALOG_Y = 146;
-const DIALOG_WORDWRAP = 280;
-
 type SceneState = 
   | "approaching"  // Player approaching Ceci
   | "card_ready"   // Ceci showing card, waiting for ENTER
@@ -113,9 +114,13 @@ type SceneState =
   | "intro_complete"; // Ready to start game
 
 export default class TitleScene extends Phaser.Scene {
+  private gameState!: GameStateManager;
   private controls!: GameControls;
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
+  private dialogueManager!: DialogueManager;
+  // @ts-ignore - CheatConsole used for side effects
+  private _cheatConsole: any;
   private grayson!: Phaser.GameObjects.Text;
   private ceci!: Phaser.GameObjects.Text;
   private smush!: Phaser.GameObjects.Text;
@@ -123,9 +128,15 @@ export default class TitleScene extends Phaser.Scene {
   private card!: Phaser.GameObjects.Rectangle;
   private sceneState: SceneState = "approaching";
   
-  private dialogBox!: Phaser.GameObjects.Rectangle;
-  private dialogText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
+  private leaderboardText!: Phaser.GameObjects.Text;
+  private nameGateContainer!: Phaser.GameObjects.Container;
+  private nameValueText!: Phaser.GameObjects.Text;
+  private nameErrorText!: Phaser.GameObjects.Text;
+  private nameEntryActive = false;
+  private nameInput = "";
+  private nameBlinkTween?: Phaser.Tweens.Tween;
+  private playerTagText!: Phaser.GameObjects.Text;
   private cardPieces: Phaser.GameObjects.Ellipse[] = [];
   
   // Transformation effects
@@ -139,7 +150,16 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   create() {
-    this.cameras.main.setRoundPixels(true);
+    // Initialize common scene elements (camera, controls, menus, dialogue, cheat console)
+    const setup = initializeGameScene(this);
+    this.controls = setup.controls;
+    this.helpMenu = setup.helpMenu;
+    this.pauseMenu = setup.pauseMenu;
+    this.dialogueManager = setup.dialogueManager;
+    this.gameState = setup.gameState;
+    // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
+    this._cheatConsole = setup.cheatConsole;
+
     this.cameras.main.setBackgroundColor(BG_COLOR);
 
     // Title
@@ -206,34 +226,24 @@ export default class TitleScene extends Phaser.Scene {
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5);
 
-    // Dialogue UI
-    this.dialogBox = this.add
-      .rectangle(SCREEN_CENTER_X, SCREEN_CENTER_Y + 70, DIALOG_WIDTH, DIALOG_HEIGHT, 0x000000, DIALOG_BG_ALPHA)
-      .setStrokeStyle(1, DIALOG_STROKE, 0.9)
-      .setOrigin(0.5)
-      .setDepth(1);
+    const savedName = getPlayerName().trim();
+    this.playerTagText = this.add.text(8, 10, savedName ? savedName : "", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#9ee6ff",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0, 0).setAlpha(savedName ? 1 : 0);
 
-    this.dialogText = this.add
-      .text(DIALOG_X, DIALOG_Y, "", {
-        fontFamily: "monospace",
-        fontSize: `${DIALOG_FONT_SIZE}px`,
-        color: DIALOG_COLOR,
-        wordWrap: { width: DIALOG_WORDWRAP },
-        resolution: CHAR_RESOLUTION,
-      })
-      .setOrigin(0, 0)
-      .setDepth(2);
+    this.leaderboardText = this.add.text(LEADERBOARD_X, LEADERBOARD_Y, "", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#9ee6ff",
+      lineSpacing: 2,
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0, 0);
+    this.leaderboardText.setVisible(false);
 
-    this.hideDialog();
-
-    // Setup standard controls (WASD + arrows, space, E, Enter, ESC, H)
-    this.controls = setupControls(this);
-    
-    // Create help menu
-    this.helpMenu = new HelpMenu(this);
-    
-    // Create pause menu
-    this.pauseMenu = new PauseMenu(this);
+    this.activateNameGate(savedName);
     
     // Note: No help hint in TitleScene - this is before the game starts
     // Help hint will appear after Eboshi interaction in GameScene
@@ -242,29 +252,24 @@ export default class TitleScene extends Phaser.Scene {
   update() {
     const dt = this.game.loop.delta / 1000;
 
-    // Handle pause menu toggle (ESC key)
-    if (Phaser.Input.Keyboard.JustDown(this.controls.escape)) {
-      this.pauseMenu.toggle();
-    }
-    
-    // If pause menu is open, handle exit to title (which is same scene, just restart)
-    if (this.pauseMenu.isVisible()) {
-      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
-        // Restart title scene
-        this.pauseMenu.hide();
-        this.scene.restart();
-      }
+    if (this.nameEntryActive) {
       return;
     }
 
-    // Handle help menu toggle (H key)
-    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
-      this.helpMenu.toggle();
-    }
-    
-    // If help menu is open, don't process other input
-    if (this.helpMenu.isVisible()) {
-      return;
+    // Handle menu input (ESC for pause, H for help, M for mute)
+    // In title scene, "exit to title" means restart the scene
+    const openLeaderboard = () => {
+      if (this.scene.isActive(SCENES.LEADERBOARD)) {
+        this.scene.stop(SCENES.LEADERBOARD);
+      }
+      this.scene.launch(SCENES.LEADERBOARD, { returnScene: this.sys.settings.key });
+      this.scene.bringToTop(SCENES.LEADERBOARD);
+      this.scene.pause();
+    };
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, () => {
+      this.scene.restart();
+    }, openLeaderboard, this._cheatConsole, this.gameState)) {
+      return; // Menus are active, don't process game input
     }
 
     switch (this.sceneState) {
@@ -340,7 +345,7 @@ export default class TitleScene extends Phaser.Scene {
     );
 
     if (distance < APPROACH_DISTANCE) {
-      this.showDialog("Ceci: I made you an anniversary card! Press ENTER to look at it.");
+      this.showDialog("Ceci: I made you a one-year-memories card! Press ENTER to look at it.");
       this.sceneState = "card_ready";
     }
   }
@@ -457,14 +462,12 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   private showDialog(message: string) {
-    this.dialogBox.setVisible(true);
-    this.dialogText.setText(message).setVisible(true);
+    this.dialogueManager.show(message);
     this.hintText.setVisible(false);
   }
 
   private hideDialog() {
-    this.dialogBox.setVisible(false);
-    this.dialogText.setVisible(false);
+    this.dialogueManager.hide();
     this.hintText.setVisible(true);
   }
   
@@ -473,17 +476,21 @@ export default class TitleScene extends Phaser.Scene {
     this.sceneState = "transforming";
     this.transformationTime = 0;
     
-    // Import pixel sprite function dynamically
-    import("../utils/sprites").then(({ createGraysonSprite }) => {
-      // Create pixel version at Grayson's position
-      this.pixelGrayson = createGraysonSprite(this, this.grayson.x, this.grayson.y);
-      this.pixelGrayson.setAlpha(0);
-      this.pixelGrayson.setScale(0.5);
-      
-      // Create glitch effect graphics
-      this.glitchGraphics = this.add.graphics();
-      this.glitchGraphics.setDepth(10);
-    });
+    // Start 8-bit music (looping, persists across scenes)
+    const music = this.sound.add('skyline-8bit', { loop: true, volume: 0.6 });
+    music.play();
+    
+    // Store music using GameStateManager (automatically stops previous music if any)
+    this.gameState.setCurrentMusic(music);
+    
+    // Create pixel version at Grayson's position (now using static import)
+    this.pixelGrayson = createGraysonSprite(this, this.grayson.x + 15, this.grayson.y + 10);
+    this.pixelGrayson.setAlpha(0);
+    this.pixelGrayson.setScale(0.5);
+    
+    // Create glitch effect graphics
+    this.glitchGraphics = this.add.graphics();
+    this.glitchGraphics.setDepth(10);
   }
   
   private animateTransformation(dt: number) {
@@ -543,6 +550,14 @@ export default class TitleScene extends Phaser.Scene {
   private enterVoid() {
     this.sceneState = "void_entry";
     
+    // Reset game progress - always start from level 0 when coming from title
+    // Note: Don't use resetProgress() here because it stops music, and we want to keep it playing
+    this.gameState.setCompletedLevels(0);
+    this.gameState.resetHelpHint(); // Reset help hint for new game
+    this.gameState.clearCheatUsed();
+    // Set flag to ignore DEBUG_START_LEVEL (this is a proper story start)
+    this.gameState.markFromTitleScene();
+    
     // Big dramatic text
     this.voidText = this.add.text(SCREEN_CENTER_X, SCREEN_CENTER_Y, "ENTERING THE VOID...", {
       fontFamily: "monospace",
@@ -585,10 +600,138 @@ export default class TitleScene extends Phaser.Scene {
     
     // Fade out and transition to game
     this.time.delayedCall(2000, () => {
-      this.cameras.main.fadeOut(1000, 0, 0, 0);
-      this.time.delayedCall(1000, () => {
-        this.scene.start("Game");
-      });
+      fadeToScene(this, SCENES.GAME, 1000);
     });
   }
+
+  private refreshNameEntryText() {
+    const display = this.nameInput.length > 0 ? this.nameInput : "_";
+    this.nameValueText.setText(display);
+  }
+
+  private activateNameGate(initialName: string) {
+    this.nameEntryActive = true;
+    this.nameInput = initialName;
+    this.hintText.setVisible(false);
+    this.leaderboardText.setVisible(false);
+
+    const overlay = this.add.rectangle(160, 90, 320, 180, 0x000000, 0.88);
+    overlay.setDepth(500);
+
+    const panel = this.add.rectangle(160, 90, 304, 168, 0x0b0b10, 0.98)
+      .setStrokeStyle(2, 0x00d4ff)
+      .setDepth(501);
+
+    const title = this.add.text(160, NAME_GATE_TITLE_Y, "ENTER PLAYER NAME", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#00d4ff",
+      fontStyle: "bold",
+      align: "center",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5).setDepth(502);
+
+    const subtitle = this.add.text(160, NAME_GATE_TITLE_Y + 14, "3-16 chars • letters, numbers, space, _ -", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#9ee6ff",
+      align: "center",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5).setDepth(502);
+
+    this.nameValueText = this.add.text(160, NAME_GATE_INPUT_Y, "_", {
+      fontFamily: "monospace",
+      fontSize: "14px",
+      color: "#ffffff",
+      align: "center",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5).setDepth(502);
+
+    this.nameBlinkTween?.stop();
+    this.nameBlinkTween = this.tweens.add({
+      targets: this.nameValueText,
+      alpha: 0.2,
+      duration: 450,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    this.nameErrorText = this.add.text(160, NAME_GATE_INPUT_Y + 16, "", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffaaaa",
+      align: "center",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5).setDepth(502);
+
+    const footer = this.add.text(160, 168, "Press ENTER to continue", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#888888",
+      align: "center",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5).setDepth(502);
+
+    this.nameGateContainer = this.add.container(0, 0, [
+      overlay,
+      panel,
+      title,
+      subtitle,
+      this.nameValueText,
+      this.nameErrorText,
+      footer
+    ]);
+    this.nameGateContainer.setDepth(500);
+
+    this.refreshNameEntryText();
+    this.input.keyboard?.on("keydown", this.handleNameInput, this);
+  }
+
+
+  private isAllowedNameChar(char: string): boolean {
+    return /^[a-zA-Z0-9 _-]$/.test(char);
+  }
+
+  private sanitizePlayerName(name: string): string {
+    return name.trim().replace(/\s+/g, " ");
+  }
+
+  private handleNameInput(event: KeyboardEvent) {
+    if (!this.nameEntryActive) return;
+    this.nameErrorText.setText("");
+
+    if (event.key === "Backspace") {
+      this.nameInput = this.nameInput.slice(0, -1);
+      this.refreshNameEntryText();
+      return;
+    }
+
+    if (event.key === "Enter") {
+      const cleaned = this.sanitizePlayerName(this.nameInput);
+      if (cleaned.length < 3 || cleaned.length > 16) {
+        this.nameErrorText.setText("Name must be 3-16 chars");
+        return;
+      }
+      setPlayerName(cleaned);
+      this.nameEntryActive = false;
+      this.nameInput = cleaned;
+      this.playerTagText.setText(cleaned).setAlpha(1);
+      this.nameValueText.setText(cleaned);
+      this.nameBlinkTween?.stop();
+      this.nameBlinkTween = undefined;
+      this.input.keyboard?.off("keydown", this.handleNameInput, this);
+      this.nameGateContainer.destroy();
+      this.hintText.setVisible(true);
+      return;
+    }
+
+    if (event.key.length === 1 && this.isAllowedNameChar(event.key)) {
+      if (this.nameInput.length >= 16) return;
+      this.nameInput += event.key;
+      this.refreshNameEntryText();
+    }
+  }
+
+  // leaderboard display removed from title scene
 }

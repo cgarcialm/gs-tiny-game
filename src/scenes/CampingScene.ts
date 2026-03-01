@@ -1,0 +1,2774 @@
+import Phaser from "phaser";
+import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { initializeGameScene } from "../utils/sceneSetup";
+import { fadeToScene, fadeIn } from "../utils/sceneTransitions";
+import { handleMenuInput } from "../utils/menuHandler";
+import { DEBUG_SHOW_GRID } from "../config/debug";
+import type { GameControls } from "../utils/controls";
+import type { HelpMenu } from "../utils/helpMenu";
+import type { PauseMenu } from "../utils/pauseMenu";
+import { GameStateManager } from "../managers/GameStateManager";
+import { SCENES } from "../config/sceneConstants";
+
+/**
+ * Final Scene - 3D Camping Site with Space Needle View
+ * All 4 memories collected - peaceful camping scene overlooking Seattle
+ */
+export default class CampingScene extends Phaser.Scene {
+  private gameState!: GameStateManager;
+  private controls!: GameControls;
+  private helpMenu!: HelpMenu;
+  private pauseMenu!: PauseMenu;
+  
+  // Three.js 3D elements
+  private threeScene!: THREE.Scene;
+  private camera!: THREE.PerspectiveCamera;
+  private threeRenderer!: THREE.WebGLRenderer; // Renamed to avoid conflict with Phaser
+  private spaceNeedle!: THREE.Group;
+  private water!: THREE.Mesh;
+  private airplane!: THREE.Group;
+  
+  // Player character
+  private player!: THREE.Mesh;
+  private isJumping = false;
+  private jumpVelocity = 0;
+  private walkAnimTime = 0;
+  
+  // Character parts for animation
+  private leftLeg!: THREE.Mesh;
+  private rightLeg!: THREE.Mesh;
+  private leftArm!: THREE.Mesh;
+  private rightArm!: THREE.Mesh;
+  private leftShoe!: THREE.Mesh;
+  private rightShoe!: THREE.Mesh;
+  
+  // Fire interaction (using DOM element instead)
+  
+  // Ceci NPC
+  private ceci!: THREE.Group;
+  private ceciLeftLeg!: THREE.Mesh;
+  private ceciRightLeg!: THREE.Mesh;
+  private ceciLeftArm!: THREE.Mesh;
+  private ceciRightArm!: THREE.Mesh;
+  private ceciLeftShoe!: THREE.Mesh;
+  private ceciRightShoe!: THREE.Mesh;
+  private interactPromptDiv?: HTMLDivElement;
+  private hasTalkedToCeci = false;
+  private lastDialogueClose = 0;
+  private ceciFollowing = false;
+  private ceciWalkTime = 0;
+  private dialogueActive = false;
+  
+  // Flower planting
+  private flowerModel?: THREE.Object3D;
+  private plantingFlowers = false;
+  private lastFlowerPosition = new THREE.Vector2(0, 0);
+  private flowerSpacing = 1.5; // Distance between flowers
+  private totalFlowersPlanted = 0; // Track all flowers
+  private flowerCount = 0; // Track credits shown
+  private activeCredits: Array<{ div: HTMLDivElement, worldPos: THREE.Vector3, startY: number, targetY: number, startTime: number, duration: number }> = [];
+  private credits = [
+    "Main Character: Grayson",
+    "Supporting Character: Ceci",
+    "Cat: Smush",
+    "Dog: Eboshi",
+    "Game Design: C. Garcia Lopez",
+    "Game Tester: Eduardo Sousa",
+    "Music: Cecilia G. L. de M.",
+    "Art & Animation: Garcia, Cecilia",
+    "Story: C. Garcia Lopez de M.",
+    "Developer: C. Garcia",
+  ];
+  
+  // Camera controls
+  private cameraAngleH = Math.PI; // Start facing player from front
+  private cameraAngleV = 0; // Horizontal view
+  private cameraDistance = 6; // Medium distance
+  private cameraHeightOffset = 4; // Higher above player
+  
+  // Mouse tracking for delta
+  private lastMouseX = 160;
+  private lastMouseY = 90;
+  
+  // Intro sequence
+  private introActive = true;
+  private introText?: HTMLDivElement;
+  
+  // Easter egg mountain climbing
+  private easterEggMountain?: { x: number; z: number; visibleRadius: number; peakY: number };
+  private climbableMountains: Array<{ x: number; z: number; visibleRadius: number; peakY: number }> = [];
+  private isOnMountain = false;
+  private peakImageShowing: 'grayson' | 'eboshi' | null = null;
+  private peakImageDiv?: HTMLDivElement;
+  
+  // Water wading
+  private lakeCircles: Array<{ x: number; z: number; radius: number }> = [];
+  private isInWater = false;
+  private lastSplashTime = 0;
+
+  constructor() {
+    super("Camping");
+  }
+
+  preload() {
+    // Load soundtrack
+    this.load.audio('skylineEchoes', 'Skyline Echoes.mp3');
+  }
+
+  create() {
+    // Fade in from black (2.5 seconds to match Void3D fade out)
+    fadeIn(this, 2500);
+    
+    // Initialize common scene elements
+    const setup = initializeGameScene(this);
+    this.controls = setup.controls;
+    this.helpMenu = setup.helpMenu;
+    this.pauseMenu = setup.pauseMenu;
+    this.gameState = setup.gameState;
+    
+    // Ensure cleanup when scene shuts down
+    this.events.on('shutdown', this.shutdown, this);
+    
+    // Check if music is already playing from previous scene (Void3D)
+    // If not (e.g., debug skip to this scene), start it
+    const currentMusic = this.gameState.getCurrentMusic();
+    if (!currentMusic || !currentMusic.isPlaying) {
+      const music = this.sound.add('skylineEchoes', {
+        loop: true,
+        volume: 0.6
+      });
+      music.play();
+      this.gameState.setCurrentMusic(music);
+    }
+    
+    // Set up Three.js 3D scene
+    this.setupThreeJS();
+    
+    // If WebGL failed, show a simple 2D fallback
+    if (this.webglFailed) {
+      this.showFallbackEnding();
+      return;
+    }
+    
+    // Setup lighting and fade in the 3D renderer
+    this.setupLighting();
+    
+    // Create camping scene
+    this.createCampingSite();
+    
+    // Create Space Needle in distance
+    this.createSpaceNeedle();
+    
+    // Create player character
+    this.createPlayer();
+    
+    // Create Ceci character (sitting in chair)
+    this.createCeci();
+    
+    // Add debug axes for positioning (controlled by config)
+    if (DEBUG_SHOW_GRID) {
+      this.addDebugAxes();
+    }
+    
+    // Set up mouse controls
+    this.setupMouseControls();
+    
+    // Show intro instruction
+    this.showIntroText();
+  }
+  
+  private showIntroText() {
+    this.introText = document.createElement('div');
+    this.introText.innerHTML = "Use mouse to look around<br>Use WASD or Arrow keys to move";
+    this.introText.style.position = 'fixed';
+    this.introText.style.top = '50%';
+    this.introText.style.left = '50%';
+    this.introText.style.transform = 'translate(-50%, -50%)';
+    this.introText.style.fontSize = '24px';
+    this.introText.style.fontFamily = 'monospace';
+    this.introText.style.color = '#ffffff';
+    this.introText.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    this.introText.style.padding = '20px 30px';
+    this.introText.style.borderRadius = '10px';
+    this.introText.style.zIndex = '9999';
+    this.introText.style.textAlign = 'center';
+    document.body.appendChild(this.introText);
+  }
+
+  private webglFailed = false;
+
+  private setupThreeJS() {
+    try {
+      // Create Three.js scene with sunset gradient
+      this.threeScene = new THREE.Scene();
+      
+      // Sunset gradient background
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d')!;
+      const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+      gradient.addColorStop(0, '#4a2a5a'); // Dark purple top
+      gradient.addColorStop(0.2, '#FF6B9D'); // Pink
+      gradient.addColorStop(0.5, '#FFA500'); // Orange middle
+      gradient.addColorStop(0.75, '#FFD700'); // Golden
+      gradient.addColorStop(1, '#87CEEB'); // Blue bottom
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 256, 256);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      this.threeScene.background = texture;
+      
+      // Create camera - will be controlled by player
+      this.camera = new THREE.PerspectiveCamera(
+        75, // FOV
+        640 / 360, // Aspect ratio (matches renderer size)
+        0.1, // Near
+        1000 // Far
+      );
+      // Initial position will be set in updateCameraPosition()
+      this.updateCameraPosition();
+      
+      // Create renderer
+      this.threeRenderer = new THREE.WebGLRenderer({ 
+        antialias: true, // Enable antialiasing for smoother edges!
+        alpha: true 
+      });
+      this.threeRenderer.setSize(640, 360); // 2x resolution (was 320x180)
+      
+      // Position renderer to overlay Phaser canvas exactly
+      const gameCanvas = this.game.canvas;
+      const rect = gameCanvas.getBoundingClientRect();
+      
+      this.threeRenderer.domElement.style.position = 'absolute';
+      this.threeRenderer.domElement.style.top = rect.top + 'px';
+      this.threeRenderer.domElement.style.left = rect.left + 'px';
+      this.threeRenderer.domElement.style.width = rect.width + 'px';
+      this.threeRenderer.domElement.style.height = rect.height + 'px';
+      this.threeRenderer.domElement.style.pointerEvents = 'none';
+      this.threeRenderer.domElement.style.zIndex = '1';
+      
+      // Add renderer to body
+      document.body.appendChild(this.threeRenderer.domElement);
+      
+      // Start with opacity 0 and fade in (matches Void3D fade out)
+      this.threeRenderer.domElement.style.opacity = '0';
+    } catch (error) {
+      console.warn('WebGL not available for CampingScene:', error);
+      this.webglFailed = true;
+    }
+  }
+
+  private showFallbackEnding() {
+    // WebGL failed - just go back to title since this is the end anyway
+    // Use a small delay to ensure scene is ready
+    this.time.delayedCall(100, () => {
+      this.scene.start(SCENES.TITLE);
+    });
+  }
+
+  private setupLighting() {
+    // Fade in the 3D renderer
+    const fadeAnim = { opacity: 0 };
+    this.tweens.add({
+      targets: fadeAnim,
+      opacity: 1,
+      duration: 2500,
+      ease: 'Power2.easeInOut',
+      onUpdate: () => {
+        if (this.threeRenderer && this.threeRenderer.domElement) {
+          this.threeRenderer.domElement.style.opacity = fadeAnim.opacity.toString();
+        }
+      }
+    });
+    
+    // Sunset lighting
+    const ambient = new THREE.AmbientLight(0xffa500, 0.8); // Warm orange ambient
+    this.threeScene.add(ambient);
+    
+    // Sun position (change this one value to move both sun and light!)
+    const sunPosition = new THREE.Vector3(90, 15, -50);
+    
+    const sunlight = new THREE.DirectionalLight(0xff6b35, 1.2); // Warm sunset light
+    sunlight.position.copy(sunPosition); // Use shared position
+    // Make light point toward the camping area center
+    sunlight.target.position.set(0, 0, 0); // Point at origin (camping center)
+    this.threeScene.add(sunlight);
+    this.threeScene.add(sunlight.target); // Must add target to scene!
+    
+    // Create visible sun in the sky
+    this.createSun(sunPosition);
+    
+    // Add stars in the sky
+    this.createStars();
+    
+    // Add airplane flying in distance
+    this.createAirplane();
+  }
+  
+  private createAirplane() {
+    // Load airplane GLB model
+    const airplaneLoader = new GLTFLoader();
+    airplaneLoader.load(
+      '1400_boeing_737_airplane_for_free.glb',
+      (gltf) => {
+        this.airplane = gltf.scene;
+        
+        // Remove stand/base and brighten materials
+        const toRemove: THREE.Object3D[] = [];
+        this.airplane.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            
+            // Check if this is the stand (usually at bottom, flat)
+            const bbox = new THREE.Box3().setFromObject(mesh);
+            const size = bbox.getSize(new THREE.Vector3());
+            
+            // If it's very flat (stand/base), mark for removal
+            if (size.y < size.x * 0.1 || mesh.name.toLowerCase().includes('stand') || mesh.name.toLowerCase().includes('base')) {
+              toRemove.push(mesh);
+            } else if (mesh.material) {
+              // Bright airplane - clearly visible
+              const mat = mesh.material as THREE.MeshStandardMaterial;
+              mat.color = new THREE.Color(0xdddddd); // Light gray/white
+              mat.emissive = new THREE.Color(0xaaaaaa); // Bright glow
+              mat.emissiveIntensity = 0.25;
+            }
+          }
+        });
+        
+        // Remove stand pieces
+        toRemove.forEach(obj => obj.parent?.remove(obj));
+        
+        // Position back behind city at horizon
+        this.airplane.position.set(-80, 30, -70); // Behind city skyline
+        const scale = 0.3
+        this.airplane.scale.set(scale, scale, scale);
+        this.airplane.rotation.y = Math.PI / 2; // Flying left to right
+        
+        this.threeScene.add(this.airplane);
+        console.log("Airplane GLB loaded - scale 0.5");
+      },
+      undefined,
+      (error) => console.error("Airplane load error:", error)
+    );
+  }
+  
+  private createSun(position: THREE.Vector3) {
+    // Create visible sun sphere in the sky
+    const sunGeometry = new THREE.SphereGeometry(3, 32, 32); // Large sphere
+    const sunMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffaa00 // Orange-yellow sunset color (BasicMaterial is always bright)
+    });
+    const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+    
+    // Use shared position
+    sun.position.copy(position);
+    this.threeScene.add(sun);
+    
+    // Add multiple glow layers for more dramatic effect
+    // Inner glow (bright)
+    const innerGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(5, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xffcc66,
+        transparent: true,
+        opacity: 0.3
+      })
+    );
+    innerGlow.position.copy(position);
+    this.threeScene.add(innerGlow);
+    
+    // Outer glow (larger, softer)
+    const outerGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(7, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xffdd88,
+        transparent: true,
+        opacity: 0.15
+      })
+    );
+    outerGlow.position.copy(position);
+    this.threeScene.add(outerGlow);
+    
+    // Far glow (very large, very soft)
+    const farGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(10, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xffeeaa,
+        transparent: true,
+        opacity: 0.05
+      })
+    );
+    farGlow.position.copy(position);
+    this.threeScene.add(farGlow);
+  }
+
+  private createStars() {
+    // Create many bright stars scattered across the sky
+    const starCount = 400;
+    
+    for (let i = 0; i < starCount; i++) {
+      // Random position - spread across sky above horizon
+      const x = (Math.random() - 0.5) * 100;
+      const y = 20 + Math.random() * 5; // High in sky (y=20 to y=60)
+      const z = (Math.random() - 0.5) * 100;
+      
+      // Create each star as a bright glowing sphere
+      const starSize = 0.1 + Math.random() * 0.2; // Bigger
+      const starGeo = new THREE.SphereGeometry(starSize, 8, 8);
+      const starMat = new THREE.MeshBasicMaterial({ 
+        color: 0xffffee, // Warm white
+        fog: false // Don't let fog affect stars
+      });
+      const star = new THREE.Mesh(starGeo, starMat);
+      star.position.set(x, y, z);
+      this.threeScene.add(star);
+    }
+    
+    console.log("Stars created - look up to see them!");
+  }
+  
+  private showFlowerCredit(x: number, z: number) {
+    // Get next credit from the list (cycle through)
+    const creditText = this.credits[this.flowerCount % this.credits.length];
+    this.flowerCount++;
+    
+    console.log(`Showing credit #${this.flowerCount}: "${creditText}" at (${x}, ${z})`);
+    
+    // Create DOM element (like "Ouch!" text - always crisp!)
+    const creditDiv = document.createElement('div');
+    creditDiv.innerHTML = creditText;
+    creditDiv.style.position = 'fixed';
+    creditDiv.style.fontSize = '14px';
+    creditDiv.style.fontFamily = 'monospace';
+    creditDiv.style.fontWeight = 'bold';
+    creditDiv.style.color = '#ffd700'; // Gold
+    creditDiv.style.textShadow = '2px 2px 4px #000000, -1px -1px 2px #000000'; // Strong outline
+    creditDiv.style.textAlign = 'center';
+    creditDiv.style.whiteSpace = 'nowrap';
+    creditDiv.style.zIndex = '10000';
+    creditDiv.style.pointerEvents = 'none';
+    creditDiv.style.transform = 'translate(-50%, -50%)';
+    document.body.appendChild(creditDiv);
+    
+    // Store credit info for position tracking
+    const worldPos = new THREE.Vector3(x, 0.5, z);
+    const startY = 0.5;
+    const targetY = 2.5;
+    const startTime = Date.now();
+    const duration = 3500;
+    
+    this.activeCredits.push({
+      div: creditDiv,
+      worldPos: worldPos,
+      startY: startY,
+      targetY: targetY,
+      startTime: startTime,
+      duration: duration
+    });
+  }
+
+  private createFlowerSparkles(x: number, z: number) {
+    // Create 3D sparkles using small cubes rotated to look like stars
+    const sparkleColors = [
+      0xffd700, // Gold
+      0xffa500, // Orange
+      0xffff00, // Yellow
+      0xc0c0c0, // Silver
+      0xffffff, // White
+      0xffdf00  // Golden yellow
+    ];
+    
+    for (let i = 0; i < 8; i++) {
+      // Create tiny cube sparkle
+      const sparkleGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08); // Smaller!
+      const sparkleMat = new THREE.MeshBasicMaterial({ 
+        color: sparkleColors[Math.floor(Math.random() * sparkleColors.length)],
+        transparent: true,
+        opacity: 1
+      });
+      const sparkle = new THREE.Mesh(sparkleGeo, sparkleMat);
+      
+      // Position at flower location in a circle
+      const angle = (i / 8) * Math.PI * 2;
+      const radius = 0.3;
+      sparkle.position.set(
+        x + Math.cos(angle) * radius,
+        0.2,
+        z + Math.sin(angle) * radius
+      );
+      
+      // Rotate at 45 degrees to look like a star/diamond
+      sparkle.rotation.x = Math.PI / 4;
+      sparkle.rotation.y = Math.PI / 4;
+      sparkle.rotation.z = Math.random() * Math.PI;
+      
+      this.threeScene.add(sparkle);
+      
+      // Animate up, rotate, and fade
+      const targetY = 1.2 + Math.random() * 0.8;
+      const duration = 1200;
+      const startTime = Date.now();
+      const startRotation = sparkle.rotation.y;
+      
+      const animateSparkle = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+        
+        if (progress < 1 && sparkle.parent) {
+          sparkle.position.y = 0.1 + progress * targetY;
+          sparkle.rotation.y = startRotation + progress * Math.PI * 4; // Spin!
+          sparkleMat.opacity = 1 - progress;
+          requestAnimationFrame(animateSparkle);
+        } else {
+          this.threeScene.remove(sparkle);
+          sparkleGeo.dispose();
+          sparkleMat.dispose();
+        }
+      };
+      
+      animateSparkle();
+    }
+  }
+  
+  private createWaterSplash(x: number, z: number) {
+    // Create water splash particles
+    const splashColors = [0x87CEEB, 0xADD8E6, 0xB0E0E6, 0xE0FFFF, 0xFFFFFF];
+    
+    for (let i = 0; i < 6; i++) {
+      const splashGeo = new THREE.SphereGeometry(0.06, 6, 6);
+      const splashMat = new THREE.MeshBasicMaterial({ 
+        color: splashColors[Math.floor(Math.random() * splashColors.length)],
+        transparent: true,
+        opacity: 0.8
+      });
+      const splash = new THREE.Mesh(splashGeo, splashMat);
+      
+      // Random position around player feet
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 0.2 + Math.random() * 0.3;
+      splash.position.set(
+        x + Math.cos(angle) * radius,
+        0.1,
+        z + Math.sin(angle) * radius
+      );
+      
+      this.threeScene.add(splash);
+      
+      // Animate splash upward and fade
+      const startY = splash.position.y;
+      const targetY = startY + 0.5 + Math.random() * 0.3;
+      const startTime = Date.now();
+      const duration = 400 + Math.random() * 200;
+      
+      const animateSplash = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+        
+        if (progress >= 1) {
+          this.threeScene.remove(splash);
+          splash.geometry.dispose();
+          (splash.material as THREE.Material).dispose();
+          return;
+        }
+        
+        // Arc upward then fall
+        const arcProgress = Math.sin(progress * Math.PI);
+        splash.position.y = startY + (targetY - startY) * arcProgress;
+        
+        // Spread outward
+        splash.position.x += Math.cos(angle) * 0.01;
+        splash.position.z += Math.sin(angle) * 0.01;
+        
+        // Fade out
+        (splash.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - progress);
+        
+        requestAnimationFrame(animateSplash);
+      };
+      
+      animateSplash();
+    }
+  }
+  
+  private createCeci() {
+    // Create Ceci standing between fire and rocks, watching the city
+    this.ceci = new THREE.Group() as any;
+    this.ceci.position.set(3, 0, 3); // Between fire and right-side rocks
+    const ceci = this.ceci; // Alias for easier reference
+    
+    // Black shoes - store for animation
+    const shoeMat = new THREE.MeshStandardMaterial({ 
+      color: 0x1a1a1a,
+      emissive: 0x1a1a1a,
+      emissiveIntensity: 0.15
+    });
+    this.ceciLeftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 0.25), shoeMat);
+    this.ceciLeftShoe.position.set(-0.12, 0, 0);
+    ceci.add(this.ceciLeftShoe);
+    
+    this.ceciRightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 0.25), shoeMat);
+    this.ceciRightShoe.position.set(0.12, 0, 0);
+    ceci.add(this.ceciRightShoe);
+    
+    // Legs (light blue shorts) - standing straight, store for animation
+    const shortsMat = new THREE.MeshStandardMaterial({ 
+      color: 0x5f9ea0,
+      emissive: 0x5f9ea0,
+      emissiveIntensity: 0.2
+    });
+    this.ceciLeftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.6), shortsMat);
+    this.ceciLeftLeg.position.set(-0.12, 0.5, 0);
+    ceci.add(this.ceciLeftLeg);
+    
+    this.ceciRightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.6), shortsMat);
+    this.ceciRightLeg.position.set(0.12, 0.5, 0);
+    ceci.add(this.ceciRightLeg);
+    
+    // Torso (white shirt)
+    const shirtMat = new THREE.MeshStandardMaterial({ 
+      color: 0xffffff,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.25
+    });
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.25), shirtMat);
+    torso.position.set(0, 1, 0);
+    ceci.add(torso);
+    
+    // Arms (skin tone) - down by sides, store for animation
+    const armMat = new THREE.MeshStandardMaterial({ 
+      color: 0xd4a574,
+      emissive: 0xd4a574,
+      emissiveIntensity: 0.15
+    });
+    this.ceciLeftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5), armMat);
+    this.ceciLeftArm.position.set(-0.25, 1.05, 0);
+    ceci.add(this.ceciLeftArm);
+    
+    this.ceciRightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5), armMat);
+    this.ceciRightArm.position.set(0.25, 1.05, 0);
+    ceci.add(this.ceciRightArm);
+    
+    // Head (skin tone)
+    const headMat = new THREE.MeshStandardMaterial({ 
+      color: 0xd4a574,
+      emissive: 0xd4a574,
+      emissiveIntensity: 0.15
+    });
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), headMat);
+    head.position.set(0, 1.5, 0);
+    ceci.add(head);
+    
+    // Long brown hair
+    const hairMat = new THREE.MeshStandardMaterial({ 
+      color: 0x5d4037,
+      emissive: 0x5d4037,
+      emissiveIntensity: 0.2
+    });
+    
+    // Hair on top
+    const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), hairMat);
+    hairTop.position.set(0, 1.55, -0.05);
+    hairTop.scale.set(1, 0.8, 1);
+    ceci.add(hairTop);
+    
+    // Long hair down back
+    const hairBack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 0.1), hairMat);
+    hairBack.position.set(0, 1.2, -0.2);
+    ceci.add(hairBack);
+    
+    // Subtle face for Ceci
+    // Eyes (dark brown)
+    const ceciEyeMat = new THREE.MeshBasicMaterial({ color: 0x3d2817 });
+    
+    const ceciLeftEye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), ceciEyeMat);
+    ceciLeftEye.position.set(-0.06, 1.53, 0.18);
+    ceci.add(ceciLeftEye);
+    
+    const ceciRightEye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), ceciEyeMat);
+    ceciRightEye.position.set(0.06, 1.53, 0.18);
+    ceci.add(ceciRightEye);
+    
+    // Rotate to face the city/lake view (toward Space Needle)
+    ceci.rotation.y = Math.PI; // Facing toward city (northeast)
+    
+    this.threeScene.add(ceci);
+  }
+  
+  private createPlayer() {
+    // Improved Grayson character - colors resist warm lighting
+    this.player = new THREE.Group() as any;
+    this.player.position.set(-2, 0, 2); // Start near tent
+    this.player.rotation.y = Math.PI; // Face camera at start (camera is at angleH π, south)
+    
+    // Shoes/feet (dark brown) - store for animation
+    const shoeMat = new THREE.MeshStandardMaterial({ 
+      color: 0x3e2723,
+      emissive: 0x3e2723,
+      emissiveIntensity: 0.2
+    });
+    this.leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.3), shoeMat);
+    this.leftShoe.position.set(-0.15, 0.08, 0);
+    this.player.add(this.leftShoe);
+    
+    this.rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.3), shoeMat);
+    this.rightShoe.position.set(0.15, 0.08, 0);
+    this.player.add(this.rightShoe);
+    
+    // Legs (brown pants) - store for animation
+    const pantsMat = new THREE.MeshStandardMaterial({ 
+      color: 0x6b4423,
+      emissive: 0x6b4423,
+      emissiveIntensity: 0.15
+    });
+    this.leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6), pantsMat);
+    this.leftLeg.position.set(-0.15, 0.5, 0);
+    this.player.add(this.leftLeg);
+    
+    this.rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6), pantsMat);
+    this.rightLeg.position.set(0.15, 0.5, 0);
+    this.player.add(this.rightLeg);
+    
+    // Torso (bright green shirt)
+    const shirtMat = new THREE.MeshStandardMaterial({ 
+      color: 0x81c784,
+      emissive: 0x81c784,
+      emissiveIntensity: 0.2
+    });
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.3), shirtMat);
+    torso.position.set(0, 1.15, 0);
+    this.player.add(torso);
+    
+    // Arms (skin tone) - store for animation
+    const armMat = new THREE.MeshStandardMaterial({ 
+      color: 0xffe5cc,
+      emissive: 0xffe5cc,
+      emissiveIntensity: 0.15
+    });
+    this.leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), armMat);
+    this.leftArm.position.set(-0.3, 1.1, 0);
+    this.player.add(this.leftArm);
+    
+    this.rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), armMat);
+    this.rightArm.position.set(0.3, 1.1, 0);
+    this.player.add(this.rightArm);
+    
+    // Head (skin tone) - raised higher
+    const headMat = new THREE.MeshStandardMaterial({ 
+      color: 0xffe5cc,
+      emissive: 0xffe5cc,
+      emissiveIntensity: 0.15
+    });
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), headMat);
+    head.position.set(0, 1.75, 0); // Raised (was 1.65)
+    this.player.add(head);
+    
+    // Blonde hair (back and sides)
+    const hairMat = new THREE.MeshStandardMaterial({ 
+      color: 0xf4d03f, // Blonde
+      emissive: 0xf4d03f,
+      emissiveIntensity: 0.2
+    });
+    
+    // Hair back
+    const hairBack = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), hairMat);
+    hairBack.position.set(0, 1.78, -0.15);
+    hairBack.scale.set(0.8, 1, 0.6);
+    this.player.add(hairBack);
+    
+    // Hair left side
+    const hairLeft = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), hairMat);
+    hairLeft.position.set(-0.18, 1.75, 0);
+    hairLeft.scale.set(0.5, 1, 0.8);
+    this.player.add(hairLeft);
+    
+    // Hair right side
+    const hairRight = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), hairMat);
+    hairRight.position.set(0.18, 1.75, 0);
+    hairRight.scale.set(0.5, 1, 0.8);
+    this.player.add(hairRight);
+    
+    // Cap (blue - covers head)
+    const capMat = new THREE.MeshStandardMaterial({ 
+      color: 0x2196f3,
+      emissive: 0x2196f3,
+      emissiveIntensity: 0.25
+    });
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), capMat);
+    cap.position.set(0, 1.85, 0); // Raised
+    this.player.add(cap);
+    
+    // Cap brim
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.05, 16), capMat);
+    brim.position.set(0, 1.9, 0.08);
+    this.player.add(brim);
+    
+    // Subtle face features
+    // Eyes (dark brown, natural)
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x3d2817 });
+    
+    const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), eyeMat);
+    leftEye.position.set(-0.07, 1.77, 0.21);
+    this.player.add(leftEye);
+    
+    const rightEye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), eyeMat);
+    rightEye.position.set(0.07, 1.77, 0.21);
+    this.player.add(rightEye);
+    
+    this.threeScene.add(this.player);
+  }
+  
+  private addDebugAxes() {
+    // Add coordinate axes for easier positioning
+    const axisLength = 20;
+    
+    // X axis (RED) - Left/Right
+    const xGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-axisLength, 0, 0),
+      new THREE.Vector3(axisLength, 0, 0)
+    ]);
+    const xMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+    const xAxis = new THREE.Line(xGeometry, xMaterial);
+    this.threeScene.add(xAxis);
+    
+    // Y axis (GREEN) - Up/Down
+    const yGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, axisLength, 0)
+    ]);
+    const yMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+    const yAxis = new THREE.Line(yGeometry, yMaterial);
+    this.threeScene.add(yAxis);
+    
+    // Z axis (BLUE) - Forward/Back
+    const zGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, -axisLength),
+      new THREE.Vector3(0, 0, axisLength)
+    ]);
+    const zMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
+    const zAxis = new THREE.Line(zGeometry, zMaterial);
+    this.threeScene.add(zAxis);
+    
+    // Add grid on ground for reference
+    const gridHelper = new THREE.GridHelper(40, 40, 0xffffff, 0x555555);
+    gridHelper.position.y = 0.01; // Slightly above ground
+    this.threeScene.add(gridHelper);
+    
+    // Axis labels removed for clean view
+  }
+  
+  private setupMouseControls() {
+    // Track mouse movement for camera rotation
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      // Calculate delta from last position
+      const deltaX = pointer.x - this.lastMouseX;
+      const deltaY = pointer.y - this.lastMouseY;
+      
+      // Accumulate rotation (allows full 360° rotation!)
+      this.cameraAngleH -= deltaX * 0.03;
+      this.cameraAngleV += deltaY * 0.02;
+      
+      // Clamp vertical rotation
+      this.cameraAngleV = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.cameraAngleV));
+      
+      // Update last position
+      this.lastMouseX = pointer.x;
+      this.lastMouseY = pointer.y;
+    });
+  }
+  
+  private createCampingSite() {
+    const groundMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x6B5D4F, // Brown dirt
+      roughness: 0.9 
+    });
+    
+    // One large ground plane covering everything
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(120, 120), // Large enough to cover entire scene
+      groundMaterial
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(0, 0, 0); // Centered at origin
+    this.threeScene.add(ground);
+    
+    // Add scattered rocks on LEFT ground only (camping area)
+    for (let i = 0; i < 15; i++) {
+      const rockGeometry = new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 6, 6);
+      const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
+      const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+      rock.position.set(
+        -30 + Math.random() * 20, // Keep on left side only (x: -30 to -10)
+        0.1,
+        (Math.random() - 0.5) * 20
+      );
+      rock.scale.set(1, 0.7, 1); // Flatten slightly
+      this.threeScene.add(rock);
+    }
+    
+    // Load tent 3D model
+    const tentLoader = new GLTFLoader();
+    tentLoader.load(
+      'tent.glb',
+      (gltf) => {
+        const tentModel = gltf.scene;
+        tentModel.position.set(-7, 0, 1); // Left side of camp
+        tentModel.scale.set(0.015, 0.015, 0.015); // Much smaller (GLB is huge!)
+        tentModel.rotation.y = 0; // Adjust rotation if needed
+        this.threeScene.add(tentModel);
+        console.log("Tent 3D model loaded! Scale:", tentModel.scale);
+      },
+      undefined,
+      (error) => {
+        console.error("Error loading tent model:", error);
+      }
+    );
+    
+    // Load campfire 3D model
+    const fireLoader = new GLTFLoader();
+    fireLoader.load(
+      'low_poly_campfire.glb',
+      (gltf) => {
+        const fireModel = gltf.scene;
+        fireModel.position.set(0, 0.1, 2); // Center of camp
+        fireModel.scale.set(0.1, 0.1, 0.1); // Adjust as needed
+        fireModel.rotation.y = 0;
+        this.threeScene.add(fireModel);
+        console.log("Campfire 3D model loaded!");
+      },
+      undefined,
+      (error) => {
+        console.error("Error loading campfire model:", error);
+      }
+    );
+    
+    // Add lake on right side (toward city)
+    this.createLake();
+    
+    // Add trees around the camping area
+    this.createForestTrees();
+    
+    // Camp chair facing fire
+    this.createCampChair(-3, 0.5, 4.5);
+  }
+  
+  private createLake() {
+    // ==================== EDIT LAKE CIRCLES HERE ====================
+    // Each circle: { x: X_POSITION, z: Z_POSITION, radius: SIZE }
+    // Lake is formed by overlapping these circles for organic shape
+    this.lakeCircles = [
+      { x: 10, z: -10, radius: 10 },   // Main body (further right)
+      { x: 15, z: -15, radius: 8 },    // Extends right toward city
+      { x: 8, z: -6, radius: 6 },       // At edge1 point (8, 2)
+      { x: 5, z: -22, radius: 9 },     // Extends back (negative z)
+      { x: -1, z: -12, radius: 10 },     // At edge2 point (-4, -7)
+      { x: 20, z: 5, radius: 7 },      // Positive z extension
+      { x: 18, z: -5, radius: 6 },     // Right extension
+      { x: 10, z: -6, radius: 10 },       // Far positive z
+      { x: -8, z: -10, radius: 8 },       // Left extension (near mountains)
+      { x: -10, z: -20, radius: 10 }       // Left extension (near mountains)
+    ];
+    const LAKE_CIRCLES = this.lakeCircles;
+    // ================================================================
+    
+    // Create organic lake from overlapping circles
+    const waterCircles: THREE.Mesh[] = [];
+    const circles = LAKE_CIRCLES;
+    
+    const basinMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x1a3a5f,
+      emissive: 0x1a4d7f,
+      emissiveIntensity: 0.4,
+      roughness: 0.9
+    });
+    
+    const waterMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x87CEEB,
+      emissive: 0x4a90e2,
+      emissiveIntensity: 0.3,
+      roughness: 0.2,
+      metalness: 0.4,
+      transparent: false
+    });
+    
+    circles.forEach(circle => {
+      // Basin circle (dark blue below)
+      const basinGeo = new THREE.CircleGeometry(circle.radius, 32);
+      const basinMesh = new THREE.Mesh(basinGeo, basinMaterial);
+      basinMesh.rotation.x = -Math.PI / 2;
+      basinMesh.position.set(circle.x, 0.01, circle.z);
+      this.threeScene.add(basinMesh);
+      
+      // Water circle with subdivisions for waves
+      const waterGeo = new THREE.CircleGeometry(circle.radius, 32);
+      const waterMesh = new THREE.Mesh(waterGeo, waterMaterial);
+      waterMesh.rotation.x = -Math.PI / 2;
+      waterMesh.position.set(circle.x, 0.05, circle.z); // Raised slightly above ground
+      this.threeScene.add(waterMesh);
+      
+      // Store for animation
+      waterMesh.userData.originalPositions = waterMesh.geometry.attributes.position.array.slice();
+      waterCircles.push(waterMesh);
+    });
+    
+    // Water on RIGHT side (X+) extending far behind camp (Z+)
+    // Keep X position on the right (X=50+), extend Z massively
+    const farWaterGeo = new THREE.PlaneGeometry(70, 500, 32, 32); // 70 wide (right side only), 400 deep
+    const farWaterMesh = new THREE.Mesh(farWaterGeo, waterMaterial);
+    farWaterMesh.rotation.x = -Math.PI / 2;
+    farWaterMesh.position.set(50, 0.1, 150); // X=50 (right side), Z=150 (covers Z: -50 to 350)
+    this.threeScene.add(farWaterMesh);
+    farWaterMesh.userData.originalPositions = farWaterMesh.geometry.attributes.position.array.slice();
+    waterCircles.push(farWaterMesh);
+    
+    // Basin under far water - matches extended water
+    const farBasinGeo = new THREE.PlaneGeometry(70, 400);
+    const farBasinMesh = new THREE.Mesh(farBasinGeo, basinMaterial);
+    farBasinMesh.rotation.x = -Math.PI / 2;
+    farBasinMesh.position.set(50, 0.01, 150);
+    this.threeScene.add(farBasinMesh);
+    
+    // Add another rectangle at z=-50 from x=10 onwards
+    const backWaterGeo = new THREE.PlaneGeometry(70, 20, 32, 32); // Width 70, height 20
+    const backWaterMesh = new THREE.Mesh(backWaterGeo, waterMaterial);
+    backWaterMesh.rotation.x = -Math.PI / 2;
+    backWaterMesh.position.set(45, 0.1, -20); // Centered at x=45 (covers x=10 to x=80), z=-50
+    this.threeScene.add(backWaterMesh);
+    backWaterMesh.userData.originalPositions = backWaterMesh.geometry.attributes.position.array.slice();
+    waterCircles.push(backWaterMesh);
+    
+    // Basin under back water
+    const backBasinGeo = new THREE.PlaneGeometry(70, 20);
+    const backBasinMesh = new THREE.Mesh(backBasinGeo, basinMaterial);
+    backBasinMesh.rotation.x = -Math.PI / 2;
+    backBasinMesh.position.set(45, 0.01, -20);
+    this.threeScene.add(backBasinMesh);
+    
+    // Store all water circles for animation
+    this.water = waterCircles[0]; // Main reference (for compatibility)
+    (this.water as any).allCircles = waterCircles;
+  }
+  
+  private createForestTrees() {
+    // Create MANY pine trees - LEFT side and behind camp ONLY
+    // City/Space Needle is on the RIGHT (+x direction, -z)
+    // Keep that view completely clear!
+    
+    const treeCount = 50;
+    const treePositions: {x: number, z: number, height: number}[] = [];
+    
+    // FIXED TREES for hammock area
+    const hammockTree1 = { x: -4, z: 7 }; // Further back
+    const hammockTree2 = { x: -7, z: 4 }; // Next to tent area
+    
+    // Create the two fixed trees first (marked with bright foliage for visibility)
+    [hammockTree1, hammockTree2].forEach((pos) => {
+      const height = 10;
+      
+      // Trunk
+      const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, height);
+      const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a0f });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      trunk.position.set(pos.x, height / 2, pos.z);
+      this.threeScene.add(trunk);
+      
+      // Foliage (brighter green to mark hammock trees)
+      const foliageGeometry = new THREE.ConeGeometry(1.5, 5, 8);
+      const foliageMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x3a7d3a, // Brighter green for hammock trees
+        emissive: 0x1a4d2e,
+        emissiveIntensity: 0.3
+      });
+      const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+      foliage.position.set(pos.x, height - 1, pos.z);
+      this.threeScene.add(foliage);
+      
+      treePositions.push({x: pos.x, z: pos.z, height});
+    });
+    
+    // Now create random trees
+    for (let i = 0; i < treeCount; i++) {
+      // Random position - focus on LEFT and BEHIND
+      let x = -5 - Math.random() * 20; // LEFT side only (negative x)
+      let z = -4 + Math.random() * 19; // From z=-4 to z=15 (not past -4)
+      
+      // Also add some trees behind the camp
+      if (Math.random() < 0.3) {
+        x = (Math.random() - 0.5) * 30; // Can be anywhere horizontally
+        z = 5 + Math.random() * 20; // But must be BEHIND (positive z)
+      }
+      
+      // Ensure z doesn't go below -4
+      if (z < -4) z = -4 + Math.random() * 4;
+      
+      // Skip if too close to campfire
+      const distToFire = Math.sqrt(x * x + (z - 2) * (z - 2));
+      if (distToFire < 6) continue;
+      
+      // Skip if too close to tent (tent is at -8, 0)
+      const distToTent = Math.sqrt((x + 8) * (x + 8) + z * z);
+      if (distToTent < 4) continue;
+      
+      // Skip if in hammock area (protect area between the two fixed trees)
+      const distToHammock1 = Math.sqrt((x - hammockTree1.x) * (x - hammockTree1.x) + (z - hammockTree1.z) * (z - hammockTree1.z));
+      const distToHammock2 = Math.sqrt((x - hammockTree2.x) * (x - hammockTree2.x) + (z - hammockTree2.z) * (z - hammockTree2.z));
+      if (distToHammock1 < 3 || distToHammock2 < 3) continue;
+      
+      // Skip if in lake area (8, -6, radius 6)
+      const distToLake = Math.sqrt((x - 8) * (x - 8) + (z + 6) * (z + 6));
+      if (distToLake < 7) continue; // 6 + 1 buffer
+      
+      const height = 8 + Math.random() * 8;
+      
+      // Trunk (very dark brown, almost black)
+      const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, height);
+      const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a0f });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      trunk.position.set(x, height / 2, z);
+      this.threeScene.add(trunk);
+      
+      // Pine foliage (dark green cone)
+      const foliageGeometry = new THREE.ConeGeometry(1.5 + Math.random() * 0.5, 5, 8);
+      const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x1a4d2e });
+      const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+      foliage.position.set(x, height - 1, z);
+      this.threeScene.add(foliage);
+      
+      // Save position
+      treePositions.push({x, z, height});
+    }
+    
+    // Find and log 5 closest trees to center (campfire at 0, 2)
+    const centerX = 0, centerZ = 2;
+    const sorted = treePositions
+      .map(t => ({
+        ...t,
+        dist: Math.sqrt((t.x - centerX) * (t.x - centerX) + (t.z - centerZ) * (t.z - centerZ))
+      }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 5);
+    
+    console.log("5 Closest trees to campfire:");
+    sorted.forEach((t, i) => {
+      console.log(`  Tree ${i + 1}: x=${t.x.toFixed(1)}, z=${t.z.toFixed(1)}, dist=${t.dist.toFixed(1)}`);
+    });
+    
+    // Add mountain backdrop on LEFT and behind
+    this.createMountainBackdrop();
+    
+    // Add water beyond the city (right side)
+    this.createDistantWater();
+    
+    // Add distant mountain range with snow (far horizon)
+    this.createDistantMountains();
+    
+    // Add Mt. Rainier at horizon corner
+    this.loadMtRainier();
+    
+    // Add shoreline rocks along the water edge
+    this.createShorelineRocks();
+    
+    // Add directional fog walls on left and back (not blocking city/Mt. Rainier)
+    this.createDirectionalFog();
+    
+    // Add grass patches around camping area
+    this.loadGrass();
+    
+    // Load flowers for planting
+    this.loadFlowers();
+    
+    // Create hammock between the two fixed trees
+    this.createHammock(hammockTree1.x, hammockTree1.z, hammockTree2.x, hammockTree2.z);
+  }
+  
+  private loadMtRainier() {
+    // Load Mt. Rainier model at the corner of horizon lines
+    const rainierLoader = new GLTFLoader();
+    rainierLoader.load(
+      'mount_rainier.glb',
+      (gltf) => {
+        const mtRainier = gltf.scene;
+        
+        // Position at corner where diagonal and right horizon lines meet
+        mtRainier.position.set(80, -5, -80); // Corner position
+        const scale = 1.8
+        mtRainier.scale.set(scale, scale, scale); // Prominent feature
+        mtRainier.rotation.y = 30;
+        
+        // Make mountain darker
+        mtRainier.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            if (mesh.material) {
+              const mat = mesh.material as THREE.MeshStandardMaterial;
+              // Slightly darken the original color
+              mat.color.multiplyScalar(0.98); // 85% of original brightness (subtle darkening)
+              mat.emissive = new THREE.Color(0x000000); // No glow
+              mat.emissiveIntensity = 0;
+            }
+          }
+        });
+        
+        this.threeScene.add(mtRainier);
+        console.log("Mt. Rainier loaded at horizon corner!");
+      },
+      undefined,
+      (error) => console.error("Error loading Mt. Rainier:", error)
+    );
+  }
+  
+  private createDistantMountains() {
+    // Far distant mountains beyond city - creates horizon
+    const distantMountainMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x1a3a5a, // Dark blue (distant atmosphere)
+      roughness: 0.8
+    });
+    
+    const snowMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xe0e8f0, // White-blue snow
+      emissive: 0xffffff,
+      emissiveIntensity: 0.1,
+      roughness: 0.6
+    });
+    
+    const baseY = 0;
+    
+    // Diagonal horizon - stops before Mt. Rainier
+    const mountains = [
+      { x: -10, z: -65, radius: 8, height: 10 },
+      { x: 0, z: -65, radius: 10, height: 8 },
+      { x: 10, z: -63, radius: 6, height: 5 },
+      { x: 17, z: -65, radius: 8, height: 6 },
+      { x: 25, z: -62, radius: 7, height: 4 },
+      { x: 40, z: -68, radius: 10, height: 5 },
+      // { x: 40, z: -60, radius: 5, height: 4 },
+      // { x: 50, z: -61, radius: 6, height: 5 }
+      // Removed x=60 and x=70 to clear space for Mt. Rainier
+    ];
+    
+    // Right-side horizon - skips Mt. Rainier area
+    const rightHorizonX = 85; // Right side horizon
+    const rightMountains = [
+      // Skip z=-60 (too close to Mt. Rainier at z=-70)
+      { x: rightHorizonX, z: -50, radius: 4, height: 3 },
+      { x: rightHorizonX, z: -40, radius: 6, height: 5 },
+      { x: rightHorizonX, z: -30, radius: 5, height: 4 },
+      { x: rightHorizonX, z: -20, radius: 4, height: 3 },
+      { x: rightHorizonX, z: -10, radius: 5, height: 4 },
+      { x: rightHorizonX, z: 0, radius: 6, height: 5 },
+      { x: rightHorizonX, z: 10, radius: 4, height: 3 },
+      { x: rightHorizonX, z: 20, radius: 5, height: 4 },
+      { x: rightHorizonX, z: 30, radius: 4, height: 3 },
+      { x: rightHorizonX, z: 40, radius: 6, height: 5 },
+      { x: rightHorizonX, z: 50, radius: 5, height: 4 }
+    ];
+    
+    // Combine both mountain lines
+    const allMountains = [...mountains, ...rightMountains];
+    
+    allMountains.forEach(m => {
+      // Mountain body (dark)
+      const mountainGeo = new THREE.ConeGeometry(m.radius, m.height, 32);
+      const mountain = new THREE.Mesh(mountainGeo, distantMountainMaterial);
+      mountain.position.set(m.x, baseY + m.height / 2, m.z);
+      this.threeScene.add(mountain);
+      
+      // Snow cap (top 30% of mountain)
+      const snowCapHeight = m.height * 0.3;
+      const snowCapRadius = m.radius * 0.3; // Narrower at top
+      const snowGeo = new THREE.ConeGeometry(snowCapRadius, snowCapHeight, 32);
+      const snowCap = new THREE.Mesh(snowGeo, snowMaterial);
+      snowCap.position.set(m.x, baseY + m.height - snowCapHeight / 2, m.z);
+      this.threeScene.add(snowCap);
+    });
+  }
+  
+  private createDistantWater() {
+    // Water area beyond city (right side)
+    // x: 30 to 70, z: -25 to -50
+    
+    const waterMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x87CEEB,
+      emissive: 0x4a90e2,
+      emissiveIntensity: 0.3,
+      roughness: 0.2,
+      metalness: 0.4,
+      transparent: false
+    });
+    
+    const basinMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x1a3a5f,
+      emissive: 0x1a4d7f,
+      emissiveIntensity: 0.4,
+      roughness: 0.9
+    });
+    
+    // Water plane in that area - extended Z to fill background
+    const distantWaterGeo = new THREE.PlaneGeometry(40, 100, 32, 32); // Same X width, extended Z depth
+    const distantWater = new THREE.Mesh(distantWaterGeo, waterMaterial);
+    distantWater.rotation.x = -Math.PI / 2;
+    distantWater.position.set(60, 0.1, -70); // Same X, extended Z into background
+    this.threeScene.add(distantWater);
+    distantWater.userData.originalPositions = distantWater.geometry.attributes.position.array.slice();
+    
+    // Basin - matches extended water
+    const distantBasin = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 100),
+      basinMaterial
+    );
+    distantBasin.rotation.x = -Math.PI / 2;
+    distantBasin.position.set(60, 0.01, -70);
+    this.threeScene.add(distantBasin);
+    
+    // Add corner circle to smooth the transition between back water and distant water
+    const cornerRadius = 15;
+    const cornerWaterGeo = new THREE.CircleGeometry(cornerRadius, 32);
+    const cornerWater = new THREE.Mesh(cornerWaterGeo, waterMaterial);
+    cornerWater.rotation.x = -Math.PI / 2;
+    cornerWater.position.set(40, 0.1, -30); // Correct corner (between backWater z=-20 and distantWater z=-40)
+    this.threeScene.add(cornerWater);
+    cornerWater.userData.originalPositions = cornerWater.geometry.attributes.position.array.slice();
+    
+    // Corner basin
+    const cornerBasin = new THREE.Mesh(
+      new THREE.CircleGeometry(cornerRadius, 32),
+      basinMaterial
+    );
+    cornerBasin.rotation.x = -Math.PI / 2;
+    cornerBasin.position.set(55, 0.01, -30);
+    this.threeScene.add(cornerBasin);
+    
+    // Add to animation
+    if (this.water && (this.water as any).allCircles) {
+      (this.water as any).allCircles.push(distantWater);
+      (this.water as any).allCircles.push(cornerWater);
+    }
+  }
+  
+  private loadFlowers() {
+    // Load flower pack
+    const flowerLoader = new GLTFLoader();
+    flowerLoader.load(
+      'low_poly_flowers_pack_game_ready.glb',
+      (gltf) => {
+        // Store one of the flower models from the pack
+        this.flowerModel = gltf.scene.children[0] || gltf.scene;
+        console.log("Flowers loaded! Pack has", gltf.scene.children.length, "models");
+      },
+      undefined,
+      (error) => console.error("Error loading flowers:", error)
+    );
+  }
+  
+  private loadGrass() {
+    // Load grass model and scatter around camping area
+    const grassLoader = new GLTFLoader();
+    grassLoader.load(
+      'grass.glb',
+      (gltf) => {
+        const grassModel = gltf.scene;
+        console.log("Grass loaded!");
+        
+        // Scatter grass patches around camping area and toward shore
+        const numGrassPatches = 30;
+        
+        for (let i = 0; i < numGrassPatches; i++) {
+          const grass = grassModel.clone();
+          
+          // Make grass greener (resist warm lighting)
+          grass.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
+              if (mesh.material) {
+                const mat = mesh.material as THREE.MeshStandardMaterial;
+                // Add green emissive to keep grass green
+                mat.emissive = new THREE.Color(0x2d5a2d);
+                mat.emissiveIntensity = 0.3;
+              }
+            }
+          });
+          
+          // Position across camping area to shore
+          const x = -25 + Math.random() * 45; // x: -35 to 10 (extends to shore!)
+          const z = 5 + Math.random() * 30; // z: -10 to 20
+          
+          // Skip if too close to camp objects
+          const distToFire = Math.sqrt(x * x + (z - 2) ** 2);
+          const distToTent = Math.sqrt((x + 7) ** 2 + (z - 1) ** 2);
+          if (distToFire < 4 || distToTent < 4) continue;
+          
+          grass.position.set(x, 0, z);
+          grass.scale.set(0.5 + Math.random() * 0.5, 0.5 + Math.random() * 0.5, 0.5 + Math.random() * 0.5);
+          grass.rotation.y = Math.random() * Math.PI * 2;
+          
+          this.threeScene.add(grass);
+        }
+        
+        console.log("Grass patches placed!");
+      },
+      undefined,
+      (error) => console.error("Error loading grass:", error)
+    );
+  }
+  
+  private createShorelineRocks() {
+    // Add gray rocks along shore (ground side only, not in water)
+    const numRocks = 100;
+    
+    // Shore edge points
+    const edge1 = { x: 15, z: 2 };
+    const edge2 = { x: -13, z: -7 };
+    
+    for (let i = 0; i < numRocks; i++) {
+      // Position along the shore line
+      const t = i / numRocks; // Evenly distributed along shore
+      const baseX = edge1.x + (edge2.x - edge1.x) * t;
+      const baseZ = edge1.z + (edge2.z - edge1.z) * t;
+      
+      // Offset toward camping ground (away from water)
+      const perpX = -(edge2.z - edge1.z); // Perpendicular to shore
+      const perpZ = (edge2.x - edge1.x);
+      const perpLength = Math.sqrt(perpX * perpX + perpZ * perpZ);
+      
+      // Place on ground side with scatter
+      const offset = -1 - Math.random() * 3; // -1 to -3 units toward ground
+      const x = baseX + (perpX / perpLength) * offset;
+      const z = baseZ + (perpZ / perpLength) * offset;
+      
+      // Skip if too close to camp objects
+      const distToFire = Math.sqrt(x * x + (z - 2) * (z - 2));
+      const distToTent = Math.sqrt((x + 8) * (x + 8) + z * z);
+      if (distToFire < 3.5 || distToTent < 3.5) continue;
+      
+      // Create gray rock using MeshBasicMaterial (unaffected by lighting)
+      const rockSize = 0.3 + Math.random() * 0.5;
+      const rockGeo = new THREE.SphereGeometry(rockSize, 8, 8);
+      
+      // Pick from actual gray colors (not hex math!)
+      const grayColors = [0x505050, 0x606060, 0x707070, 0x808080, 0x909090, 0x5a5a5a, 0x6a6a6a];
+      const grayShade = grayColors[Math.floor(Math.random() * grayColors.length)];
+      
+      const rockMat = new THREE.MeshBasicMaterial({ 
+        color: grayShade // True gray
+      });
+      const rock = new THREE.Mesh(rockGeo, rockMat);
+      rock.position.set(x, rockSize * 0.4, z);
+      rock.scale.set(1, 0.5 + Math.random() * 0.3, 1); // Flatten
+      this.threeScene.add(rock);
+    }
+  }
+  
+  private createDirectionalFog() {
+    // No fog planes needed - using linear fog in setupThreeJS instead
+  }
+  
+  private createHammock(x1: number, z1: number, x2: number, z2: number) {
+    const hammockGroup = new THREE.Group();
+    
+    // Create hammock curve - stop short of trees to show rope attachment
+    const gapDistance = 0.5; // Stop 0.5 units before each tree (medium gap for rope)
+    const direction = { 
+      x: x2 - x1, 
+      z: z2 - z1 
+    };
+    const totalDist = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
+    const normDir = { x: direction.x / totalDist, z: direction.z / totalDist };
+    
+    // Hammock endpoints (with gap)
+    const hammockStart = {
+      x: x1 + normDir.x * gapDistance,
+      z: z1 + normDir.z * gapDistance
+    };
+    const hammockEnd = {
+      x: x2 - normDir.x * gapDistance,
+      z: z2 - normDir.z * gapDistance
+    };
+    const hammockMid = {
+      x: (hammockStart.x + hammockEnd.x) / 2,
+      z: (hammockStart.z + hammockEnd.z) / 2
+    };
+    
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(hammockStart.x, 1.7, hammockStart.z),
+      new THREE.Vector3(hammockMid.x, 0.9, hammockMid.z), // Sag in middle
+      new THREE.Vector3(hammockEnd.x, 1.7, hammockEnd.z)
+    ]);
+    
+    // Create tapered hammock with varying sphere sizes along curve
+    const numSpheres = 40;
+    for (let i = 0; i <= numSpheres; i++) {
+      const t = i / numSpheres;
+      const point = curve.getPoint(t);
+      
+      // Taper: very thin at ends, thick in middle
+      const taper = Math.sin(t * Math.PI);
+      const radius = 0.05 + taper * 0.18; // 0.05 at ends, 0.23 in middle
+      
+      const sphereGeo = new THREE.SphereGeometry(radius, 8, 8);
+      const sphereMat = new THREE.MeshStandardMaterial({ 
+        color: 0x5cb85c,
+        roughness: 0.7
+      });
+      const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+      sphere.position.copy(point);
+      hammockGroup.add(sphere);
+    }
+    
+    // Add red and yellow stripes with same tapering as hammock
+    const numStripeSegments = 40;
+    
+    // Red stripe (top edge)
+    for (let i = 0; i <= numStripeSegments; i++) {
+      const t = i / numStripeSegments;
+      const point = curve.getPoint(t);
+      
+      const taper = Math.sin(t * Math.PI);
+      const hammockRadius = 0.05 + taper * 0.18;
+      const stripeRadius = 0.03; // Small stripe
+      
+      const redSphereGeo = new THREE.SphereGeometry(stripeRadius, 6, 6);
+      const redSphereMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const redSphere = new THREE.Mesh(redSphereGeo, redSphereMat);
+      redSphere.position.set(point.x, point.y + hammockRadius + 0.02, point.z);
+      hammockGroup.add(redSphere);
+    }
+    
+    // Yellow stripe (bottom edge)
+    for (let i = 0; i <= numStripeSegments; i++) {
+      const t = i / numStripeSegments;
+      const point = curve.getPoint(t);
+      
+      const taper = Math.sin(t * Math.PI);
+      const hammockRadius = 0.05 + taper * 0.18;
+      const stripeRadius = 0.03;
+      
+      const yellowSphereGeo = new THREE.SphereGeometry(stripeRadius, 6, 6);
+      const yellowSphereMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+      const yellowSphere = new THREE.Mesh(yellowSphereGeo, yellowSphereMat);
+      yellowSphere.position.set(point.x, point.y - hammockRadius - 0.02, point.z);
+      hammockGroup.add(yellowSphere);
+    }
+    
+    // Beige rope (Tree 1 to hammock end) - curved
+    const rope1Curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(x1, 3, z1), // Tree attachment (high)
+      new THREE.Vector3(x1 + normDir.x * 0.3, 2.2, z1 + normDir.z * 0.3), // Slight arc
+      new THREE.Vector3(hammockStart.x, 1.7, hammockStart.z) // Hammock end
+    ]);
+    const rope1Geo = new THREE.TubeGeometry(rope1Curve, 8, 0.04, 4, false);
+    const ropeMat = new THREE.MeshBasicMaterial({ color: 0xd2b48c }); // Beige/tan
+    const rope1 = new THREE.Mesh(rope1Geo, ropeMat);
+    hammockGroup.add(rope1);
+    
+    // Beige rope (Tree 2 to hammock end) - curved
+    const rope2Curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(x2, 3, z2), // Tree attachment (high)
+      new THREE.Vector3(x2 - normDir.x * 0.3, 2.2, z2 - normDir.z * 0.3), // Slight arc
+      new THREE.Vector3(hammockEnd.x, 1.7, hammockEnd.z) // Hammock end
+    ]);
+    const rope2Geo = new THREE.TubeGeometry(rope2Curve, 8, 0.04, 4, false);
+    const rope2 = new THREE.Mesh(rope2Geo, ropeMat);
+    hammockGroup.add(rope2);
+    
+    this.threeScene.add(hammockGroup);
+    
+    console.log(`Hammock created between (${x1}, ${z1}) and (${x2}, ${z2})`);
+  }
+  
+  private createMountainBackdrop() {
+    // Create layered mountains on LEFT side and behind camp
+    // NO mountains on right side (city view must be clear!)
+    
+    // Darker green for distant mountains
+    // Use DoubleSide so mountains are visible from inside (when camera goes through)
+    const nearMountainMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x1a4d2e, // Dark green
+      roughness: 0.9,
+      side: THREE.DoubleSide
+    });
+    
+    const farMountainMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x0f3a1f, // Even darker green for depth
+      roughness: 0.9,
+      side: THREE.DoubleSide
+    });
+    
+    // Layer 1 - Nearest mountains (LEFT and BEHIND)
+    const mountain1 = new THREE.Mesh(
+      new THREE.ConeGeometry(30, 28, 32),
+      nearMountainMaterial
+    );
+    mountain1.position.set(-25, 0, -30);
+    this.threeScene.add(mountain1);
+    
+    const mountain2 = new THREE.Mesh(
+      new THREE.ConeGeometry(25, 22, 32),
+      nearMountainMaterial
+    );
+    mountain2.position.set(-15, 0, 30);
+    this.threeScene.add(mountain2);
+    
+    // Store mountain2 reference for easter egg climbing
+    // Cone is centered at Y=0 with height 22, so visible part goes from Y=0 to Y=11
+    // At Y=0 (ground level), the visible radius is 12.5 (half of base radius 25)
+    this.easterEggMountain = {
+      x: -15,
+      z: 30,
+      visibleRadius: 12.5, // Radius at ground level (where climbing starts)
+      peakY: 11 // Top of visible cone
+    };
+    
+    const mountain3 = new THREE.Mesh(
+      new THREE.ConeGeometry(35, 30, 32),
+      nearMountainMaterial
+    );
+    mountain3.position.set(0, 0, 40);
+    this.threeScene.add(mountain3);
+    
+    // Store mountain3 as climbable (no easter egg)
+    // Visible radius at ground level is 17.5 (half of base radius 35), peak at 15
+    this.climbableMountains.push({
+      x: 0,
+      z: 40,
+      visibleRadius: 17.5,
+      peakY: 15
+    });
+    
+    // Layer 2 - Middle distance (larger, further back)
+    const mountain4 = new THREE.Mesh(
+      new THREE.ConeGeometry(40, 35, 32),
+      farMountainMaterial
+    );
+    mountain4.position.set(-35, 0, -60);
+    this.threeScene.add(mountain4);
+    
+    const mountain5 = new THREE.Mesh(
+      new THREE.ConeGeometry(38, 32, 32),
+      farMountainMaterial
+    );
+    mountain5.position.set(-25, 0, 55);
+    this.threeScene.add(mountain5);
+    
+    // Store mountain5 as climbable (no easter egg)
+    // Visible radius at ground level is 19 (half of base radius 38), peak at 16
+    this.climbableMountains.push({
+      x: -25,
+      z: 55,
+      visibleRadius: 19,
+      peakY: 16
+    });
+    
+    const mountain6 = new THREE.Mesh(
+      new THREE.ConeGeometry(32, 28, 32),
+      farMountainMaterial
+    );
+    mountain6.position.set(-5, 0, 60);
+    this.threeScene.add(mountain6);
+    
+    // Store mountain6 as climbable (no easter egg)
+    // Visible radius at ground level is 16 (half of base radius 32), peak at 14
+    this.climbableMountains.push({
+      x: -5,
+      z: 60,
+      visibleRadius: 16,
+      peakY: 14
+    });
+    
+    // Layer 3 - Furthest (huge, very far)
+    const mountain7 = new THREE.Mesh(
+      new THREE.ConeGeometry(50, 40, 32),
+      farMountainMaterial
+    );
+    mountain7.position.set(-40, 0, -90);
+    this.threeScene.add(mountain7);
+    
+    const mountain8 = new THREE.Mesh(
+      new THREE.ConeGeometry(45, 38, 32),
+      farMountainMaterial
+    );
+    mountain8.position.set(0, 0, 80);
+    this.threeScene.add(mountain8);
+    
+    // Extra mountains on LEFT and LEFT-BACK for more coverage
+    const mountain9 = new THREE.Mesh(
+      new THREE.ConeGeometry(42, 36, 32),
+      farMountainMaterial
+    );
+    mountain9.position.set(-45, 0, 0); // Far LEFT
+    this.threeScene.add(mountain9);
+    this.climbableMountains.push({ x: -45, z: 0, visibleRadius: 21, peakY: 18 });
+    
+    const mountain10 = new THREE.Mesh(
+      new THREE.ConeGeometry(38, 33, 32),
+      farMountainMaterial
+    );
+    mountain10.position.set(-50, 0, 40); // Far LEFT-BACK
+    this.threeScene.add(mountain10);
+    this.climbableMountains.push({ x: -50, z: 40, visibleRadius: 19, peakY: 16.5 });
+    
+    const mountain11 = new THREE.Mesh(
+      new THREE.ConeGeometry(44, 37, 32),
+      farMountainMaterial
+    );
+    mountain11.position.set(-55, 0, -40); // Very far LEFT
+    this.threeScene.add(mountain11);
+    this.climbableMountains.push({ x: -55, z: -40, visibleRadius: 22, peakY: 18.5 });
+    
+    // Additional mountains even further LEFT (X=-60 to -90) - all climbable
+    const mountainL1 = new THREE.Mesh(
+      new THREE.ConeGeometry(48, 40, 32),
+      farMountainMaterial
+    );
+    mountainL1.position.set(-65, 0, 20); // Far left, near camp Z
+    this.threeScene.add(mountainL1);
+    this.climbableMountains.push({ x: -65, z: 20, visibleRadius: 24, peakY: 20 });
+    
+    const mountainL2 = new THREE.Mesh(
+      new THREE.ConeGeometry(52, 44, 32),
+      farMountainMaterial
+    );
+    mountainL2.position.set(-75, 0, -20); // Very far left
+    this.threeScene.add(mountainL2);
+    this.climbableMountains.push({ x: -75, z: -20, visibleRadius: 26, peakY: 22 });
+    
+    const mountainL3 = new THREE.Mesh(
+      new THREE.ConeGeometry(46, 38, 32),
+      farMountainMaterial
+    );
+    mountainL3.position.set(-70, 0, 50); // Far left, behind camp
+    this.threeScene.add(mountainL3);
+    this.climbableMountains.push({ x: -70, z: 50, visibleRadius: 23, peakY: 19 });
+    
+    const mountainL4 = new THREE.Mesh(
+      new THREE.ConeGeometry(55, 46, 32),
+      farMountainMaterial
+    );
+    mountainL4.position.set(-85, 0, 10); // Furthest left
+    this.threeScene.add(mountainL4);
+    this.climbableMountains.push({ x: -85, z: 10, visibleRadius: 27.5, peakY: 23 });
+    
+    const mountainL5 = new THREE.Mesh(
+      new THREE.ConeGeometry(50, 42, 32),
+      farMountainMaterial
+    );
+    mountainL5.position.set(-80, 0, -50); // Furthest left, front area
+    this.threeScene.add(mountainL5);
+    this.climbableMountains.push({ x: -80, z: -50, visibleRadius: 25, peakY: 21 });
+    
+    const mountain12 = new THREE.Mesh(
+      new THREE.ConeGeometry(36, 31, 32),
+      nearMountainMaterial
+    );
+    mountain12.position.set(-30, 0, -15); // Further LEFT (away from tent)
+    this.threeScene.add(mountain12);
+    this.climbableMountains.push({ x: -30, z: -15, visibleRadius: 18, peakY: 15.5 });
+  }
+  
+  private createCampChair(x: number, y: number, z: number) {
+    // Load camping chair 3D model
+    const loader = new GLTFLoader();
+    loader.load(
+      'camping_chair.glb',
+      (gltf) => {
+        const chairModel = gltf.scene;
+        
+        // Position and scale
+        chairModel.position.set(x, y, z);
+        chairModel.scale.set(1.5, 1.5, 1.5); // Adjust scale as needed
+        
+        // Calculate rotation to face opposite direction (away from fire)
+        const fireX = 0, fireZ = 2;
+        const angleToFire = Math.atan2(fireX - x, fireZ - z);
+        chairModel.rotation.y = angleToFire + Math.PI; // Add 180 degrees
+        
+        this.threeScene.add(chairModel);
+        console.log("Camping chair 3D model loaded!");
+      },
+      undefined,
+      (error) => {
+        console.error("Error loading camping chair model:", error);
+        // Fallback: use simple chair
+        this.createSimpleChair(x, y, z);
+      }
+    );
+  }
+  
+  private createSimpleChair(x: number, y: number, z: number) {
+    // Simple fallback chair
+    const chairGroup = new THREE.Group();
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x2c2c2c });
+    
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.8), frameMat);
+    seat.position.y = 0.4;
+    chairGroup.add(seat);
+    
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.1), frameMat);
+    back.position.set(0, 0.7, -0.35);
+    chairGroup.add(back);
+    
+    chairGroup.position.set(x, y, z);
+    
+    const fireX = 0, fireZ = 2;
+    const angleToFire = Math.atan2(fireX - x, fireZ - z);
+    chairGroup.rotation.y = angleToFire;
+    
+    this.threeScene.add(chairGroup);
+  }
+  
+  private createSpaceNeedle() {
+    // Load actual Space Needle 3D model
+    const loader = new GLTFLoader();
+    loader.load(
+      'space_needle.glb',
+      (gltf) => {
+        this.spaceNeedle = gltf.scene;
+        
+        // Lighten the Space Needle materials
+        this.spaceNeedle.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            if (mesh.material) {
+              const mat = mesh.material as THREE.MeshStandardMaterial;
+              // Lighten the color
+              if (mat.color) {
+                mat.color.multiplyScalar(1.8); // Brighten by 80%
+              }
+              // Add slight emissive glow
+              mat.emissive = new THREE.Color(0x9090a0);
+              mat.emissiveIntensity = 0.2;
+            }
+          }
+        });
+        
+        // Position and scale the model
+        this.spaceNeedle.position.set(12, 0, -35);
+        this.spaceNeedle.scale.set(0.08, 0.08, 0.08);
+        
+        // Rotate if needed
+        this.spaceNeedle.rotation.y = 0;
+        
+        this.threeScene.add(this.spaceNeedle);
+        console.log("Space Needle 3D model loaded!");
+      },
+      (progress) => {
+        // Loading progress
+        console.log(`Loading Space Needle: ${(progress.loaded / progress.total * 100).toFixed(0)}%`);
+      },
+      (error) => {
+        console.error("Error loading Space Needle model:", error);
+        // Fallback: create simple placeholder
+        this.createSimpleSpaceNeedle();
+      }
+    );
+    
+    // Add Seattle city skyline (simple buildings)
+    this.createSeattleSkyline();
+  }
+  
+  private createSimpleSpaceNeedle() {
+    // Fallback simple Space Needle if model fails to load
+    this.spaceNeedle = new THREE.Group();
+    
+    const baseMaterial = new THREE.MeshStandardMaterial({ color: 0xb0b0b0 });
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.4, 4), baseMaterial);
+    base.position.y = 2;
+    this.spaceNeedle.add(base);
+    
+    const deckMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xe0e0e0,
+      emissive: 0xff6b35,
+      emissiveIntensity: 0.2
+    });
+    const deck = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.8, 0.6), deckMaterial);
+    deck.position.y = 5;
+    this.spaceNeedle.add(deck);
+    
+    const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.15, 4), baseMaterial);
+    spire.position.y = 8;
+    this.spaceNeedle.add(spire);
+    
+    this.spaceNeedle.position.set(15, 0, -40);
+    this.spaceNeedle.scale.set(3, 3, 3);
+    this.threeScene.add(this.spaceNeedle);
+  }
+  
+  private createSeattleSkyline() {
+    // Create dense Seattle skyline with many buildings
+    // Varying colors for each building
+    
+    // Dense array of buildings (varying heights like Seattle)
+    const buildings = [
+      // ORIGINAL 7 buildings (keep original positions)
+      { x: 8, z: -35, width: 2, height: 8, depth: 2 },
+      { x: 11, z: -38, width: 1.5, height: 6, depth: 1.5 },
+      { x: 18, z: -42, width: 2.5, height: 10, depth: 2 },
+      { x: 20, z: -36, width: 1.8, height: 7, depth: 1.8 },
+      { x: 22, z: -40, width: 2, height: 9, depth: 2 },
+      { x: 25, z: -45, width: 1.5, height: 5, depth: 1.5 },
+      { x: 5, z: -40, width: 2, height: 7, depth: 2 },
+      
+      // NEW buildings (shifted left)
+      { x: -10, z: -36, width: 2.5, height: 12, depth: 2.5 },
+      { x: -7, z: -34, width: 1.8, height: 8, depth: 1.8 },
+      { x: -4, z: -38, width: 2.2, height: 11, depth: 2 },
+      { x: -1, z: -37, width: 2, height: 10, depth: 2 },
+      
+      { x: -12, z: -40, width: 2, height: 10, depth: 2 },
+      { x: -9, z: -41, width: 2.3, height: 13, depth: 2.3 },
+      { x: -6, z: -39, width: 1.6, height: 7, depth: 1.6 },
+      { x: -3, z: -42, width: 2.5, height: 15, depth: 2.5 },
+      { x: 0, z: -43, width: 1.9, height: 9, depth: 1.9 },
+      { x: 3, z: -41, width: 2.4, height: 12, depth: 2.2 },
+      
+      { x: -11, z: -45, width: 2.2, height: 16, depth: 2.2 },
+      { x: -8, z: -47, width: 2.6, height: 18, depth: 2.5 },
+      { x: -5, z: -46, width: 2, height: 14, depth: 2 },
+      { x: -2, z: -48, width: 2.8, height: 17, depth: 2.8 },
+      { x: 1, z: -46, width: 2.3, height: 15, depth: 2.3 },
+      { x: 4, z: -47, width: 2.5, height: 16, depth: 2.5 },
+      
+      // Extra tall (new)
+      { x: -7, z: -44, width: 3, height: 20, depth: 3 },
+      { x: -2, z: -45, width: 2.7, height: 19, depth: 2.7 }
+    ];
+    
+    buildings.forEach(b => {
+      const geometry = new THREE.BoxGeometry(b.width, b.height, b.depth);
+      
+      // Random building color with more variety
+      const colorVariations = [
+        0x1a1a1a, // Black
+        0x1a1a1a, // Black (appears twice for ~20% chance)
+        0x3a3a3a, // Very dark gray
+        0x505050, // Dark gray
+        0x707070, // Light gray
+        0x8a8a8a, // Very light gray
+        0x4a3a2a, // Dark brown
+        0x6a5a4a, // Tan
+        0x5a6a7a, // Blue-gray
+        0x7a6a5a  // Warm gray
+      ];
+      const randomColor = colorVariations[Math.floor(Math.random() * colorVariations.length)];
+      
+      const buildingMat = new THREE.MeshStandardMaterial({ 
+        color: randomColor,
+        emissive: randomColor, // Use same color for emissive
+        emissiveIntensity: 0.05, // Very subtle glow (won't wash out color)
+        roughness: 0.7
+      });
+      
+      const building = new THREE.Mesh(geometry, buildingMat);
+      building.position.set(b.x, b.height / 2, b.z);
+      this.threeScene.add(building);
+      
+      // Windows (glowing dots)
+      for (let i = 0; i < 3; i++) {
+        const windowGeometry = new THREE.SphereGeometry(0.1);
+        const windowMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const window = new THREE.Mesh(windowGeometry, windowMaterial);
+        window.position.set(
+          b.x + (Math.random() - 0.5) * b.width * 0.5,
+          b.height * 0.3 + Math.random() * b.height * 0.4,
+          b.z + b.depth / 2 + 0.1
+        );
+        this.threeScene.add(window);
+      }
+    });
+  }
+
+  update() {
+    // Skip all updates if WebGL failed (showing fallback screen)
+    if (this.webglFailed) {
+      return;
+    }
+    
+    // Handle menu input (ESC for pause, H for help, M for mute)
+    const openLeaderboard = () => {
+      if (this.scene.isActive(SCENES.LEADERBOARD)) {
+        this.scene.stop(SCENES.LEADERBOARD);
+      }
+      this.scene.launch(SCENES.LEADERBOARD, { returnScene: this.sys.settings.key });
+      this.scene.bringToTop(SCENES.LEADERBOARD);
+      this.scene.pause();
+    };
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, openLeaderboard, undefined, this.gameState)) {
+      return;
+    }
+    
+    const dt = this.game.loop.delta / 1000;
+    
+    // Check for any key press to end intro
+    if (this.introActive) {
+      // Check if any movement key is pressed
+      const keyboard = this.input.keyboard;
+      let anyKeyPressed = false;
+      
+      if (this.controls.up.isDown || this.controls.down.isDown || 
+          this.controls.left.isDown || this.controls.right.isDown) {
+        anyKeyPressed = true;
+      }
+      
+      if (keyboard) {
+        if (keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W).isDown ||
+            keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S).isDown ||
+            keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown ||
+            keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D).isDown) {
+          anyKeyPressed = true;
+        }
+      }
+      
+      if (anyKeyPressed) {
+        // End intro!
+        this.introActive = false;
+        if (this.introText && this.introText.parentNode) {
+          document.body.removeChild(this.introText);
+          this.introText = undefined;
+        }
+        console.log("Intro ended - movement started!");
+        // Don't return - let movement happen this frame
+      } else {
+        // Still in intro - update camera but skip player movement
+        this.updateCameraPosition();
+        
+        // Render Three.js
+        if (this.threeRenderer && this.threeScene && this.camera) {
+          this.threeRenderer.render(this.threeScene, this.camera);
+        }
+        return;
+      }
+    }
+    
+    // Player movement (WASD/Arrows) - camera-relative
+    if (this.player) {
+      // Check if player is in water (inside any lake circle)
+      this.isInWater = false;
+      for (const circle of this.lakeCircles) {
+        const distToCircle = Math.sqrt(
+          (this.player.position.x - circle.x) ** 2 + 
+          (this.player.position.z - circle.z) ** 2
+        );
+        if (distToCircle < circle.radius) {
+          this.isInWater = true;
+          break;
+        }
+      }
+      
+      // Slower movement in water
+      const moveSpeed = this.isInWater ? 2.5 : 5;
+      let forward = 0; // Forward/backward
+      let right = 0;   // Left/right
+      
+      // Arrow keys
+      if (this.controls.up.isDown) forward += 1;
+      if (this.controls.down.isDown) forward -= 1;
+      if (this.controls.right.isDown) right += 1;
+      if (this.controls.left.isDown) right -= 1;
+      
+      // WASD keys (need to add manually)
+      const keyboard = this.input.keyboard;
+      if (keyboard) {
+        if (keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W).isDown) forward += 1;
+        if (keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S).isDown) forward -= 1;
+        if (keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D).isDown) right += 1;
+        if (keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown) right -= 1;
+      }
+      
+      // Calculate camera's forward and right directions (on XZ plane)
+      const cameraForward = new THREE.Vector3();
+      const cameraRight = new THREE.Vector3();
+      
+      // Get camera's look direction
+      this.camera.getWorldDirection(cameraForward);
+      cameraForward.y = 0; // Project onto ground plane
+      cameraForward.normalize();
+      
+      // Right is perpendicular to forward
+      cameraRight.crossVectors(cameraForward, new THREE.Vector3(0, 1, 0));
+      cameraRight.normalize();
+      
+      // Combine forward and right movements
+      const moveVector = new THREE.Vector3();
+      moveVector.addScaledVector(cameraForward, forward);
+      moveVector.addScaledVector(cameraRight, right);
+      
+      // Normalize if moving diagonally
+      if (moveVector.length() > 0) {
+        moveVector.normalize();
+      }
+      
+      // Calculate new position
+      const newX = this.player.position.x + moveVector.x * moveSpeed * dt;
+      const newZ = this.player.position.z + moveVector.z * moveSpeed * dt;
+      
+      // Check collisions with objects
+      let canMove = true;
+      
+      // Tent collision (at -7, 0, 1)
+      const distToTent = Math.sqrt((newX + 7) ** 2 + (newZ - 1) ** 2);
+      if (distToTent < 2) canMove = false;
+      
+      // Chair collision (at -2, 0, 4) - smaller to allow passing near fire
+      const distToChair = Math.sqrt((newX + 2.5) ** 2 + (newZ - 4.5) ** 2);
+      if (distToChair < 0.8) canMove = false;
+      
+      // Hammock area collision (between trees at -4, 7 and -7, 4)
+      const hammockMidX = (-4 + -7) / 2; // -5.5
+      const hammockMidZ = (7 + 4) / 2; // 5.5
+      const distToHammock = Math.sqrt((newX - hammockMidX) ** 2 + (newZ - hammockMidZ) ** 2);
+      if (distToHammock < 1.2) canMove = false; // Smaller area just between trees
+      
+      // Apply movement only if no collision
+      if (canMove) {
+        this.player.position.x = newX;
+        this.player.position.z = newZ;
+        
+        // Splash particles when walking in water
+        if (this.isInWater && moveVector.length() > 0) {
+          const now = this.time.now;
+          if (now - this.lastSplashTime > 200) { // Splash every 200ms while moving
+            this.lastSplashTime = now;
+            this.createWaterSplash(this.player.position.x, this.player.position.z);
+          }
+        }
+      }
+      
+      // Rotate player to face movement direction
+      if (moveVector.length() > 0) {
+        const targetAngle = Math.atan2(moveVector.x, moveVector.z);
+        this.player.rotation.y = targetAngle;
+        
+        // Fun skipping animation
+        this.walkAnimTime += dt * 10;
+        const swing = Math.sin(this.walkAnimTime) * 0.5;
+        
+        // Legs and shoes swing together
+        this.leftLeg.rotation.x = swing;
+        this.rightLeg.rotation.x = -swing;
+        this.leftShoe.rotation.x = swing;
+        this.rightShoe.rotation.x = -swing;
+        
+        // Arms swing opposite
+        this.leftArm.rotation.x = -swing;
+        this.rightArm.rotation.x = swing;
+        this.leftArm.rotation.z = Math.sin(this.walkAnimTime) * 0.2;
+        this.rightArm.rotation.z = -Math.sin(this.walkAnimTime) * 0.2;
+      } else {
+        // Reset to idle pose
+        this.leftLeg.rotation.x = 0;
+        this.rightLeg.rotation.x = 0;
+        this.leftShoe.rotation.x = 0;
+        this.rightShoe.rotation.x = 0;
+        this.leftArm.rotation.x = 0;
+        this.rightArm.rotation.x = 0;
+        this.leftArm.rotation.z = 0;
+        this.rightArm.rotation.z = 0;
+      }
+      
+      // Jumping (SPACE key)
+      if (Phaser.Input.Keyboard.JustDown(this.controls.jump) && !this.isJumping) {
+        this.isJumping = true;
+        this.jumpVelocity = 8;
+      }
+      
+      // Apply gravity and jumping
+      if (this.isJumping) {
+        this.jumpVelocity -= 20 * dt;
+        this.player.position.y += this.jumpVelocity * dt;
+        
+        // Jump animation - arms up, legs tucked
+        const jumpProgress = (this.player.position.y) / 2; // 0 to 1 as jump progresses
+        
+        // Arms raise up during jump
+        this.leftArm.rotation.x = -Math.PI / 3 * jumpProgress; // Raise left arm
+        this.rightArm.rotation.x = -Math.PI / 3 * jumpProgress; // Raise right arm
+        this.leftArm.rotation.z = -0.3 * jumpProgress; // Spread arms out
+        this.rightArm.rotation.z = 0.3 * jumpProgress;
+        
+        // Legs tuck up during jump
+        this.leftLeg.rotation.x = Math.PI / 4 * jumpProgress; // Tuck legs
+        this.rightLeg.rotation.x = Math.PI / 4 * jumpProgress;
+        
+        if (this.player.position.y <= 0) {
+          this.player.position.y = 0; // Land on ground (not 1)
+          this.isJumping = false;
+          this.jumpVelocity = 0;
+          
+          // Reset jump pose
+          this.leftArm.rotation.z = 0;
+          this.rightArm.rotation.z = 0;
+        }
+      }
+      
+      // Keep player in camping area bounds
+      // Allow more positive z (toward mountains/behind camp)
+      // Limit positive x (water area)
+      // But allow extended bounds near climbable mountains
+      let minX = -15, maxX = 15, minZ = -3, maxZ = 20;
+      
+      // Check all climbable mountains (including easter egg)
+      const allMountains = this.easterEggMountain 
+        ? [this.easterEggMountain, ...this.climbableMountains]
+        : this.climbableMountains;
+      
+      let onAnyMountain = false;
+      let currentMountainY = 0;
+      let onEasterEggPeak = false;
+      
+      for (const mt of allMountains) {
+        const distToMountainCenter = Math.sqrt(
+          (this.player.position.x - mt.x) ** 2 + 
+          (this.player.position.z - mt.z) ** 2
+        );
+        
+        // Only extend bounds when CLOSE to a specific mountain (within radius + 10)
+        // This prevents infinite walking when on a distant mountain
+        if (distToMountainCenter < mt.visibleRadius + 10) {
+          maxZ = Math.max(maxZ, mt.z + mt.visibleRadius);
+          minZ = Math.min(minZ, mt.z - mt.visibleRadius);
+          minX = Math.min(minX, mt.x - mt.visibleRadius);
+          maxX = Math.max(maxX, mt.x + mt.visibleRadius);
+        }
+        
+        // Check if on this mountain cone
+        if (distToMountainCenter < mt.visibleRadius) {
+          onAnyMountain = true;
+          
+          // Calculate height on cone: linear from 0 at edge to peakY at center
+          const t = 1 - (distToMountainCenter / mt.visibleRadius);
+          const groundY = t * mt.peakY;
+          
+          // Use highest Y if overlapping mountains
+          currentMountainY = Math.max(currentMountainY, groundY);
+          
+          // Check if at easter egg peak (within 1.5 units of center)
+          if (mt === this.easterEggMountain && distToMountainCenter < 1.5) {
+            onEasterEggPeak = true;
+          }
+        }
+      }
+      
+      // Apply mountain climbing
+      if (onAnyMountain) {
+        this.isOnMountain = true;
+        if (!this.isJumping) {
+          this.player.position.y = currentMountainY;
+        }
+        
+        // Easter egg peak check
+        if (onEasterEggPeak) {
+          this.checkPeakView();
+        } else {
+          this.hidePeakImage();
+        }
+      } else {
+        // Walking off mountains
+        if (this.isOnMountain && !this.isJumping) {
+          this.player.position.y = 0;
+        }
+        this.isOnMountain = false;
+        this.hidePeakImage();
+      }
+      
+      // Apply absolute hard limits (can't go beyond these even on mountains)
+      const ABSOLUTE_MIN_X = -60;  // Furthest left
+      const ABSOLUTE_MAX_X = 20;   // Water side
+      const ABSOLUTE_MIN_Z = -60;  // Front (city side)
+      const ABSOLUTE_MAX_Z = 40;   // Back (behind mountains)
+      
+      // Clamp dynamic bounds to absolute limits
+      minX = Math.max(minX, ABSOLUTE_MIN_X);
+      maxX = Math.min(maxX, ABSOLUTE_MAX_X);
+      minZ = Math.max(minZ, ABSOLUTE_MIN_Z);
+      maxZ = Math.min(maxZ, ABSOLUTE_MAX_Z);
+      
+      this.player.position.x = Math.max(minX, Math.min(maxX, this.player.position.x));
+      this.player.position.z = Math.max(minZ, Math.min(maxZ, this.player.position.z));
+      
+      // Plant flowers behind Grayson
+      if (this.plantingFlowers && this.flowerModel) {
+        const currentPos = new THREE.Vector2(this.player.position.x, this.player.position.z);
+        const distSinceLastFlower = currentPos.distanceTo(this.lastFlowerPosition);
+        
+        // Plant a flower every flowerSpacing units traveled
+        if (distSinceLastFlower >= this.flowerSpacing) {
+          const flower = this.flowerModel.clone();
+          
+          // Keep StandardMaterial but reduce light influence
+          flower.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
+              if (mesh.material) {
+                const mat = mesh.material as THREE.MeshStandardMaterial;
+                // Don't use emissive - instead adjust material properties
+                mat.metalness = 0;
+                mat.roughness = 1;
+                // Make material less affected by lighting
+                mat.envMapIntensity = 0;
+              }
+            }
+          });
+          
+          flower.position.set(this.player.position.x, 0, this.player.position.z);
+          const scale = 0.05;
+          flower.scale.set(scale, scale, scale);
+          flower.rotation.y = Math.random() * Math.PI * 2;
+          this.threeScene.add(flower);
+          
+          this.totalFlowersPlanted++;
+          
+          // Add visible sparkle effect when flower is planted!
+          this.createFlowerSparkles(this.player.position.x, this.player.position.z);
+          
+          // Show credit only every 3rd flower
+          if (this.totalFlowersPlanted % 3 === 0) {
+            this.showFlowerCredit(this.player.position.x, this.player.position.z);
+          }
+          
+          // Update last flower position
+          this.lastFlowerPosition.set(this.player.position.x, this.player.position.z);
+        }
+      }
+      
+      // Check distance to Ceci for interaction
+      if (this.ceci) {
+        const distToCeci = Math.sqrt(
+          (this.player.position.x - this.ceci.position.x) ** 2 + 
+          (this.player.position.z - this.ceci.position.z) ** 2
+        );
+        
+        if (distToCeci < 2 && !this.hasTalkedToCeci) {
+          // Show "Press E" prompt via DOM (only if haven't talked yet)
+          if (!this.interactPromptDiv) {
+            this.interactPromptDiv = document.createElement('div');
+            this.interactPromptDiv.textContent = "Press E to talk to Ceci";
+            this.interactPromptDiv.style.position = 'fixed';
+            this.interactPromptDiv.style.bottom = '20%';
+            this.interactPromptDiv.style.left = '50%';
+            this.interactPromptDiv.style.transform = 'translateX(-50%)';
+            this.interactPromptDiv.style.fontSize = '18px';
+            this.interactPromptDiv.style.fontFamily = 'monospace';
+            this.interactPromptDiv.style.color = '#ffff00';
+            this.interactPromptDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            this.interactPromptDiv.style.padding = '10px 20px';
+            this.interactPromptDiv.style.borderRadius = '5px';
+            this.interactPromptDiv.style.zIndex = '9999';
+            this.interactPromptDiv.style.pointerEvents = 'none';
+            document.body.appendChild(this.interactPromptDiv);
+            console.log("Prompt shown!");
+          }
+          
+          // Handle E key press (only if dialogue not already active)
+          if (Phaser.Input.Keyboard.JustDown(this.controls.interact) && !this.dialogueActive) {
+            console.log("E key pressed - Talking to Ceci!");
+            this.hasTalkedToCeci = true;
+            this.dialogueActive = true; // Block further E presses
+            
+            // Show dialogue via DOM
+            const dialogueDiv = document.createElement('div');
+            dialogueDiv.innerHTML = "Ceci: You made it! No more games... but if you want to<br>plant some flowers with me, let's walk around :)";
+            dialogueDiv.style.position = 'fixed';
+            dialogueDiv.style.bottom = '10%';
+            dialogueDiv.style.left = '50%';
+            dialogueDiv.style.transform = 'translateX(-50%)';
+            dialogueDiv.style.fontSize = '20px';
+            dialogueDiv.style.fontFamily = 'monospace';
+            dialogueDiv.style.color = '#ffffff';
+            dialogueDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+            dialogueDiv.style.padding = '15px 25px';
+            dialogueDiv.style.borderRadius = '8px';
+            dialogueDiv.style.zIndex = '9999';
+            dialogueDiv.style.minWidth = '70%';
+            dialogueDiv.style.maxWidth = '80%';
+            dialogueDiv.style.textAlign = 'center';
+            document.body.appendChild(dialogueDiv);
+            
+            // Close with ENTER or movement keys
+            let dialogueClosed = false;
+            const removeDialogue = () => {
+              if (dialogueClosed) return; // Prevent double-removal
+              dialogueClosed = true;
+              
+              if (dialogueDiv.parentNode) {
+                document.body.removeChild(dialogueDiv);
+              }
+              
+              this.lastDialogueClose = this.time.now;
+              this.dialogueActive = false; // Re-enable E key
+              this.ceciFollowing = true;
+              this.plantingFlowers = true;
+              console.log("Dialogue closed! Ceci following, planting activated!");
+            };
+            
+            // Close with ENTER or WASD/Arrow keys
+            const keyListener = (e: KeyboardEvent) => {
+              if (e.key === 'Enter' || 
+                  e.key === 'w' || e.key === 'a' || e.key === 's' || e.key === 'd' ||
+                  e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                removeDialogue();
+                document.removeEventListener('keydown', keyListener);
+              }
+            };
+            document.addEventListener('keydown', keyListener);
+            
+            // Hide prompt
+            if (this.interactPromptDiv) {
+              document.body.removeChild(this.interactPromptDiv);
+              this.interactPromptDiv = undefined;
+            }
+          }
+        } else {
+          // Remove prompt when too far
+          if (this.interactPromptDiv) {
+            document.body.removeChild(this.interactPromptDiv);
+            this.interactPromptDiv = undefined;
+          }
+        }
+      }
+      
+      // Check if player walks through fire (fire is at 0, 0, 2)
+      const fireX = 0, fireZ = 2;
+      const distToFire = Math.sqrt(
+        (this.player.position.x - fireX) ** 2 + 
+        (this.player.position.z - fireZ) ** 2
+      );
+      
+      if (distToFire < 1.5 && !this.isJumping) {
+        // Too close to fire! Auto-jump and say "Ouch!"
+        console.log("Fire collision! Distance:", distToFire);
+        this.isJumping = true;
+        this.jumpVelocity = 8;
+        
+        // Show "Ouch!" text via DOM (floats up and fades)
+        const ouchDiv = document.createElement('div');
+        ouchDiv.textContent = "Ouch!";
+        ouchDiv.style.position = 'fixed';
+        ouchDiv.style.top = '50%';
+        ouchDiv.style.left = '50%';
+        ouchDiv.style.transform = 'translate(-50%, -50%)';
+        ouchDiv.style.fontSize = '35px';
+        ouchDiv.style.fontFamily = 'monospace';
+        ouchDiv.style.fontWeight = 'bold';
+        ouchDiv.style.color = '#ff0000';
+        // ouchDiv.style.textShadow = '2px 2px 4px'; // Shadow for visibility
+        ouchDiv.style.zIndex = '9999';
+        ouchDiv.style.pointerEvents = 'none';
+        ouchDiv.style.transition = 'all 1.5s ease-out';
+        document.body.appendChild(ouchDiv);
+        
+        console.log("Ouch text created!");
+        
+        // Animate: float up and fade out
+        setTimeout(() => {
+          ouchDiv.style.top = '20%'; // Float up
+          ouchDiv.style.opacity = '0'; // Fade out
+        }, 50);
+        
+        // Remove after animation
+        setTimeout(() => {
+          if (ouchDiv.parentNode) {
+            document.body.removeChild(ouchDiv);
+          }
+        }, 1600);
+      }
+    }
+    
+    // Update Ceci following behavior
+    if (this.ceciFollowing && this.ceci && this.player) {
+      // Follow Grayson with some distance
+      const dirX = this.player.position.x - this.ceci.position.x;
+      const dirZ = this.player.position.z - this.ceci.position.z;
+      const distToGrayson = Math.sqrt(dirX * dirX + dirZ * dirZ);
+      
+      // Only move if too far away (maintain ~2 unit distance)
+      if (distToGrayson > 2.5) {
+        const followSpeed = 3; // Slower than Grayson
+        const normX = dirX / distToGrayson;
+        const normZ = dirZ / distToGrayson;
+        
+        this.ceci.position.x += normX * followSpeed * dt;
+        this.ceci.position.z += normZ * followSpeed * dt;
+        
+        // Rotate Ceci to face Grayson
+        const angle = Math.atan2(dirX, dirZ);
+        this.ceci.rotation.y = angle;
+        
+        // Walking animation for Ceci (no bounce)
+        this.ceciWalkTime += dt * 10;
+        const swing = Math.sin(this.ceciWalkTime) * 0.5;
+        
+        // Legs and shoes swing
+        this.ceciLeftLeg.rotation.x = swing;
+        this.ceciRightLeg.rotation.x = -swing;
+        this.ceciLeftShoe.rotation.x = swing;
+        this.ceciRightShoe.rotation.x = -swing;
+        
+        // Arms swing opposite
+        this.ceciLeftArm.rotation.x = -swing;
+        this.ceciRightArm.rotation.x = swing;
+        this.ceciLeftArm.rotation.z = Math.sin(this.ceciWalkTime) * 0.2;
+        this.ceciRightArm.rotation.z = -Math.sin(this.ceciWalkTime) * 0.2;
+      } else {
+        // Reset when standing still
+        this.ceciLeftLeg.rotation.x = 0;
+        this.ceciRightLeg.rotation.x = 0;
+        this.ceciLeftShoe.rotation.x = 0;
+        this.ceciRightShoe.rotation.x = 0;
+        this.ceciLeftArm.rotation.x = 0;
+        this.ceciRightArm.rotation.x = 0;
+        this.ceciLeftArm.rotation.z = 0;
+        this.ceciRightArm.rotation.z = 0;
+      }
+      
+      // Ceci also climbs all climbable mountains
+      const allMountainsForCeci = this.easterEggMountain 
+        ? [this.easterEggMountain, ...this.climbableMountains]
+        : this.climbableMountains;
+      
+      let ceciOnMountain = false;
+      let ceciMountainY = 0;
+      
+      for (const mt of allMountainsForCeci) {
+        const ceciDistToMountain = Math.sqrt(
+          (this.ceci.position.x - mt.x) ** 2 + 
+          (this.ceci.position.z - mt.z) ** 2
+        );
+        
+        if (ceciDistToMountain < mt.visibleRadius) {
+          ceciOnMountain = true;
+          const t = 1 - (ceciDistToMountain / mt.visibleRadius);
+          ceciMountainY = Math.max(ceciMountainY, t * mt.peakY);
+        }
+      }
+      
+      this.ceci.position.y = ceciOnMountain ? ceciMountainY : 0;
+    }
+    
+    // Update camera to follow player
+    this.updateCameraPosition();
+    
+    // Animate airplane flying across
+    if (this.airplane) {
+      this.airplane.position.x += dt * 15; // Fly left to right
+      
+      // Loop: reset when too far right
+      if (this.airplane.position.x > 100) {
+        this.airplane.position.x = -100;
+      }
+    }
+    
+    // Animate fire (flicker effect)
+    const fireObjects = this.threeScene.children.filter(obj => 
+      obj instanceof THREE.Mesh && 
+      (obj.material as any).emissive
+    );
+    fireObjects.forEach(obj => {
+      const mesh = obj as THREE.Mesh;
+      const material = mesh.material as THREE.MeshBasicMaterial;
+      if (material.opacity !== undefined) {
+        material.opacity = 0.7 + Math.sin(this.time.now / 100) * 0.2;
+      }
+    });
+    
+    // Update water animation for all circles
+    if (this.water && (this.water as any).allCircles) {
+      const waterCircles = (this.water as any).allCircles as THREE.Mesh[];
+      const time = this.time.now / 1000;
+      
+      waterCircles.forEach(waterMesh => {
+        if (waterMesh.geometry) {
+          const positions = waterMesh.geometry.attributes.position;
+          const originalPositions = waterMesh.userData.originalPositions;
+          
+          for (let i = 0; i < positions.count; i++) {
+            const x = originalPositions[i * 3];
+            const y = originalPositions[i * 3 + 1];
+            
+            // Create wave pattern
+            const wave1 = Math.sin(x * 0.5 + time) * 0.05;
+            const wave2 = Math.sin(y * 0.3 + time * 1.3) * 0.03;
+            const wave3 = Math.sin((x + y) * 0.4 + time * 0.8) * 0.04;
+            
+            positions.setZ(i, wave1 + wave2 + wave3);
+          }
+          
+          positions.needsUpdate = true;
+          waterMesh.geometry.computeVertexNormals();
+        }
+      });
+    }
+    
+    // Update active credit positions (project 3D to screen each frame)
+    this.updateActiveCredits();
+    
+    // Render Three.js scene
+    if (this.threeRenderer && this.threeScene && this.camera) {
+      this.threeRenderer.render(this.threeScene, this.camera);
+    }
+    
+    // Press ENTER to finish (but not right after closing dialogue)
+    const timeSinceDialogue = this.time.now - this.lastDialogueClose;
+    if (Phaser.Input.Keyboard.JustDown(this.controls.advance) && timeSinceDialogue > 500) {
+      // Fade back to title (game complete!)
+      fadeToScene(this, SCENES.TITLE, 2000);
+    }
+  }
+  
+  private updateActiveCredits() {
+    const now = Date.now();
+    const gameCanvas = this.game.canvas;
+    const rect = gameCanvas.getBoundingClientRect();
+    
+    // Update each active credit
+    for (let i = this.activeCredits.length - 1; i >= 0; i--) {
+      const credit = this.activeCredits[i];
+      const elapsed = now - credit.startTime;
+      const progress = elapsed / credit.duration;
+      
+      if (progress >= 1) {
+        // Credit expired - remove it
+        if (credit.div.parentNode) {
+          document.body.removeChild(credit.div);
+        }
+        this.activeCredits.splice(i, 1);
+        continue;
+      }
+      
+      // Update Y position in 3D world (float up)
+      credit.worldPos.y = credit.startY + (credit.targetY - credit.startY) * progress;
+      
+      // Project 3D position to screen
+      const projected = credit.worldPos.clone().project(this.camera);
+      const screenX = (projected.x + 1) / 2 * rect.width + rect.left;
+      const screenY = (1 - projected.y) / 2 * rect.height + rect.top;
+      
+      // Update DOM position
+      credit.div.style.left = screenX + 'px';
+      credit.div.style.top = screenY + 'px';
+      
+      // Update opacity (fade in/out)
+      let opacity = 1;
+      if (progress < 0.2) {
+        opacity = progress / 0.2;
+      } else if (progress > 0.7) {
+        opacity = (1 - progress) / 0.3;
+      }
+      credit.div.style.opacity = opacity.toString();
+    }
+  }
+
+  private updateCameraPosition() {
+    if (!this.player) return;
+    
+    // Third-person camera behind and above player
+    const camX = this.player.position.x + Math.sin(this.cameraAngleH) * this.cameraDistance;
+    const camZ = this.player.position.z + Math.cos(this.cameraAngleH) * this.cameraDistance;
+    const camY = this.player.position.y + this.cameraHeightOffset + Math.sin(this.cameraAngleV) * 3;
+    
+    // Set camera position
+    this.camera.position.set(camX, camY, camZ);
+    
+    // Look at player center (matches Void3D for smooth transition)
+    const lookAtY = this.player.position.y + 1.5; // Look at upper body/head height
+    this.camera.lookAt(this.player.position.x, lookAtY, this.player.position.z);
+  }
+  
+  // Easter egg: Check what direction camera/player is looking at the peak
+  private checkPeakView() {
+    // cameraAngleH is where the camera is positioned around the player
+    // The VIEW direction (where player is looking) is opposite: cameraAngleH + PI
+    const viewDirection = this.cameraAngleH + Math.PI;
+    
+    // Normalize to 0-2PI
+    const normalized = ((viewDirection % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    
+    // Scene layout:
+    // - Positive X (right) = city/water/Mt. Rainier direction
+    // - Negative X (left) = mountains
+    // - Positive Z (behind camp) = mountains  
+    // - Negative Z (front) = horizon with no mountains
+    
+    // Looking toward lake/Mt. Rainier (positive X, toward city/water)
+    // 60° to 120° range
+    const facingRainier = normalized > (Math.PI / 3) && normalized < (2 * Math.PI / 3);
+    
+    // Looking toward horizon with no mountains
+    // 130° to 190° range
+    const facingHorizon = normalized > (13 * Math.PI / 18) && normalized < (19 * Math.PI / 18);
+    
+    if (facingRainier && this.peakImageShowing !== 'eboshi') {
+      this.showPeakImage('eboshi');
+    } else if (facingHorizon && this.peakImageShowing !== 'grayson') {
+      this.showPeakImage('grayson');
+    } else if (!facingRainier && !facingHorizon) {
+      this.hidePeakImage();
+    }
+  }
+  
+  private showPeakImage(which: 'grayson' | 'eboshi') {
+    // Remove existing image if any
+    this.hidePeakImage();
+    
+    this.peakImageShowing = which;
+    
+    // Create image overlay - use viewport percentages for responsiveness
+    const div = document.createElement('div');
+    div.style.position = 'fixed';
+    div.style.left = '0';
+    div.style.top = '0';
+    div.style.width = '100vw';
+    div.style.height = '100vh';
+    div.style.display = 'flex';
+    div.style.justifyContent = 'center';
+    div.style.alignItems = 'center';
+    div.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    div.style.zIndex = '1000';
+    div.style.opacity = '0';
+    div.style.transition = 'opacity 0.5s ease-in-out';
+    div.style.pointerEvents = 'none';
+    
+    const img = document.createElement('img');
+    img.src = which === 'grayson' ? 'grayson_peak.JPG' : 'eboshi_peak.JPG';
+    img.style.maxWidth = '80%';
+    img.style.maxHeight = '80%';
+    img.style.objectFit = 'contain';
+    img.style.borderRadius = '8px';
+    img.style.boxShadow = '0 0 30px rgba(255, 255, 255, 0.3)';
+    
+    div.appendChild(img);
+    document.body.appendChild(div);
+    this.peakImageDiv = div;
+    
+    // Fade in
+    requestAnimationFrame(() => {
+      div.style.opacity = '1';
+    });
+  }
+  
+  private hidePeakImage() {
+    if (this.peakImageDiv) {
+      const div = this.peakImageDiv;
+      div.style.opacity = '0';
+      setTimeout(() => {
+        if (div.parentNode) {
+          document.body.removeChild(div);
+        }
+      }, 500);
+      this.peakImageDiv = undefined;
+    }
+    this.peakImageShowing = null;
+  }
+  
+  shutdown() {
+    // Clean up easter egg image
+    this.hidePeakImage();
+    
+    // Clean up Three.js resources
+    if (this.threeRenderer) {
+      if (this.threeRenderer.domElement.parentElement) {
+        this.threeRenderer.domElement.parentElement.removeChild(this.threeRenderer.domElement);
+      }
+      this.threeRenderer.dispose();
+    }
+  }
+}

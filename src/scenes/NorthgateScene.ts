@@ -1,16 +1,30 @@
 import Phaser from "phaser";
 import { createGraysonSprite, updateGraysonWalk, createCeciSprite, createRandomGuySprite, createSecurityGuardSprite, createFurrySprite } from "../utils/sprites";
-import { setupControls, getHorizontalAxis, shouldCloseDialogue, HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
+import { getHorizontalAxis, shouldCloseDialogue, HELP_HINT_X, HELP_HINT_Y } from "../utils/controls";
 import type { GameControls } from "../utils/controls";
 import { HelpMenu } from "../utils/helpMenu";
 import { PauseMenu } from "../utils/pauseMenu";
+import { DialogueManager } from "../utils/dialogueManager";
+import { handleMenuInput } from "../utils/menuHandler";
+import { initializeGameScene } from "../utils/sceneSetup";
+import { fadeIn } from "../utils/sceneTransitions";
+import { PROMPT_TEXT_STYLE, HELP_HINT_TEXT_STYLE, STATION_SIGN_STYLE, SMALL_LABEL_STYLE, THOUGHT_BUBBLE_STYLE } from "../config/textStyles";
+import { createDizzyStars } from "../utils/visualEffects";
+import { checkProximity } from "../utils/collectionHelpers";
+import { GameStateManager } from "../managers/GameStateManager";
+import { SCENES, VOID_LEVELS } from "../config/sceneConstants";
+import { buildMiniGameResult, recordMiniGameDeath, resetMiniGameTimer, startMiniGameSession, submitMiniGameResult } from "../services/leaderboard";
 
 export default class NorthgateScene extends Phaser.Scene {
+  private gameState!: GameStateManager;
   private player!: Phaser.Physics.Arcade.Sprite;
   private playerSprite!: Phaser.GameObjects.Container;
   private controls!: GameControls;
   private helpMenu!: HelpMenu;
   private pauseMenu!: PauseMenu;
+  private dialogueManager!: DialogueManager;
+  // @ts-ignore - CheatConsole used for side effects
+  private _cheatConsole: any;
   
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
   private escalators: Phaser.GameObjects.Rectangle[] = [];
@@ -38,9 +52,10 @@ export default class NorthgateScene extends Phaser.Scene {
   private furryDialogueShown: boolean[] = [false, false];
   
   // Dialogue
-  private dialogBox!: Phaser.GameObjects.Rectangle;
-  private dialogText!: Phaser.GameObjects.Text;
   private dialogVisible = false;
+  private dialogBlocksMovement = true;
+  private dialogAutoHideAtMs = 0;
+  private furrySpeechText?: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
 
   constructor() {
@@ -48,7 +63,17 @@ export default class NorthgateScene extends Phaser.Scene {
   }
 
   create() {
-    this.cameras.main.setRoundPixels(true);
+    // Initialize common scene elements (camera, controls, menus, dialogue, cheat console)
+    const setup = initializeGameScene(this);
+    this.controls = setup.controls;
+    this.helpMenu = setup.helpMenu;
+    this.pauseMenu = setup.pauseMenu;
+    this.dialogueManager = setup.dialogueManager;
+    this.gameState = setup.gameState;
+    // @ts-ignore - CheatConsole used for side effects (global keyboard listener)
+    this._cheatConsole = setup.cheatConsole;
+
+    startMiniGameSession("northgate");
     
     // Background - metro station aesthetic
     this.createStationBackground();
@@ -78,17 +103,61 @@ export default class NorthgateScene extends Phaser.Scene {
     // Create furries (NPCs)
     this.createFurries();
     
-    // Setup standard controls (WASD + arrows, space, E, Enter, ESC, H)
-    this.controls = setupControls(this);
-    
-    // Create help menu
-    this.helpMenu = new HelpMenu(this);
-    
-    // Create pause menu
-    this.pauseMenu = new PauseMenu(this);
-    
     // UI
     this.createUI();
+    
+    // Show intro overlay
+    this.showIntroOverlay();
+  }
+  
+  private introActive = true;
+  
+  private showIntroOverlay() {
+    // Background overlay with border
+    const overlay = this.add.rectangle(160, 90, 240, 100, 0x1a1a2e, 0.95)
+      .setStrokeStyle(2, 0xf472b6)
+      .setDepth(300);
+    
+    const title = this.add.text(160, 55, "★ NORTHGATE STATION ★", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#f472b6"
+    }).setOrigin(0.5).setDepth(301);
+    
+    const instructions = this.add.text(160, 80, "Find Ceci in the station", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffffff",
+      align: "center"
+    }).setOrigin(0.5).setDepth(301);
+    
+    const pressEnter = this.add.text(160, 110, "[ PRESS ENTER ]", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ffff00"
+    }).setOrigin(0.5).setDepth(301);
+    
+    // Pulse animation for Press ENTER
+    this.tweens.add({
+      targets: pressEnter,
+      alpha: 0.5,
+      duration: 600,
+      yoyo: true,
+      repeat: -1
+    });
+    
+    // Wait for ENTER to start
+    const waitForStart = () => {
+      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
+        this.events.off('update', waitForStart);
+        overlay.destroy();
+        title.destroy();
+        instructions.destroy();
+        pressEnter.destroy();
+        this.introActive = false;
+      }
+    };
+    this.events.on('update', waitForStart);
   }
   
   private createStationBackground() {
@@ -111,23 +180,10 @@ export default class NorthgateScene extends Phaser.Scene {
     }
     
     // Station sign
-    this.add.text(160, 10, "NORTHGATE STATION", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#00d4ff",
-      fontStyle: "bold",
-      resolution: 1,
-    }).setOrigin(0.5);
+    this.add.text(160, 10, "NORTHGATE STATION", STATION_SIGN_STYLE).setOrigin(0.5);
     
     // Exit sign on top left
-    this.add.text(15, 10, "← EXIT", {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#00ff00",
-      backgroundColor: "rgba(0,0,0,0.6)",
-      padding: { left: 3, right: 3, top: 2, bottom: 2 },
-      resolution: 1,
-    }).setOrigin(0, 0.5);
+    this.add.text(15, 10, "← EXIT", SMALL_LABEL_STYLE).setOrigin(0, 0.5);
   }
   
   private createPlatforms() {
@@ -135,18 +191,19 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Bottom platform (ground)
     const ground = this.add.rectangle(160, 170, 320, 10, 0x555555);
-    this.platforms.add(ground);
+    this.platforms.add(ground, true);
     
-    // Platform 1 (mid-low)
+    // Platform 1 (mid-low)  
     const platform1 = this.add.rectangle(120, 125, 110, 6, 0x666666);
-    this.platforms.add(platform1);
+    this.platforms.add(platform1, true);
   
     
     // Platform 2 (train level) - split with gap for escalator
     const platform3Left = this.add.rectangle(70, 85, 140, 6, 0x777777);
-    this.platforms.add(platform3Left);
+    this.platforms.add(platform3Left, true);
+    
     const platform3Right = this.add.rectangle(250, 85, 160, 6, 0x777777);
-    this.platforms.add(platform3Right);
+    this.platforms.add(platform3Right, true);
 
     // Visual rails for train platform (with gap)
     this.add.rectangle(120, 85, 240, 2, 0xffeb3b, 0.8);
@@ -154,7 +211,7 @@ export default class NorthgateScene extends Phaser.Scene {
 
     // Platform 3 (mid-high)
     const platform2 = this.add.rectangle(120, 45, 240, 8, 0x666666);
-    this.platforms.add(platform2);
+    this.platforms.add(platform2, true);
     
     // Create all escalators
     this.createEscalators();
@@ -254,8 +311,8 @@ export default class NorthgateScene extends Phaser.Scene {
   private createPlayer() {
     // Create physics sprite for player (invisible) - start off-screen right
     this.player = this.physics.add.sprite(350, 155, '');
-    this.player.setSize(14, 4); // Very small hitbox just at feet level
-    this.player.setOffset(2, 22); // Large offset to move collision to bottom
+    this.player.setSize(12, 4); // Very small hitbox just at feet level
+    this.player.setOffset(0, 22); // Only vertical offset to move collision to bottom (centered horizontally)
     this.player.setCollideWorldBounds(true);
     
     // Make physics body invisible
@@ -263,6 +320,9 @@ export default class NorthgateScene extends Phaser.Scene {
     
     // Create visual sprite
     this.playerSprite = createGraysonSprite(this, this.player.x, this.player.y);
+    
+    // Ensure container origin is centered for proper flipping
+    // This prevents visual misalignment when sprite flips direction
     
     // Physics setup
     this.physics.add.collider(this.player, this.platforms);
@@ -416,39 +476,11 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private createUI() {
     // Prompt text
-    this.promptText = this.add.text(0, 0, "E to interact", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#cfe8ff",
-      backgroundColor: "rgba(0,0,0,0.35)",
-      padding: { left: 4, right: 4, top: 2, bottom: 2 },
-      resolution: 2,
-    }).setOrigin(0.5).setVisible(false);
-    
-    // Dialogue box
-    this.dialogBox = this.add.rectangle(160, 160, 300, 40, 0x000000, 0.6)
-      .setStrokeStyle(1, 0x99bbff, 0.9)
-      .setOrigin(0.5)
-      .setVisible(false);
-    
-    this.dialogText = this.add.text(20, 146, "", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#dff1ff",
-      wordWrap: { width: 280 },
-      resolution: 2,
-    }).setOrigin(0, 0).setVisible(false);
+    this.promptText = this.add.text(0, 0, "E to interact", PROMPT_TEXT_STYLE)
+      .setOrigin(0.5).setVisible(false);
     
     // Help hint (bottom-right corner) - always visible in later levels
-    this.add
-      .text(HELP_HINT_X, HELP_HINT_Y, "H for Help", {
-        fontFamily: "monospace",
-        fontSize: "8px",
-        color: "#cfe8ff",
-        backgroundColor: "rgba(0,0,0,0.4)",
-        padding: { left: 3, right: 3, top: 2, bottom: 2 },
-        resolution: 1,
-      })
+    this.add.text(HELP_HINT_X, HELP_HINT_Y, "H for Help", HELP_HINT_TEXT_STYLE)
       .setOrigin(1, 1)
       .setDepth(10);
     
@@ -459,41 +491,37 @@ export default class NorthgateScene extends Phaser.Scene {
   update() {
     if (!this.player || !this.playerSprite) return;
     
+    // Wait for intro to finish
+    if (this.introActive) return;
+    
     const dt = this.game.loop.delta / 1000;
     
-    // Handle pause menu toggle (ESC key)
-    if (Phaser.Input.Keyboard.JustDown(this.controls.escape)) {
-      this.pauseMenu.toggle();
-    }
-    
-    // If pause menu is open, handle exit to title
-    if (this.pauseMenu.isVisible()) {
-      if (Phaser.Input.Keyboard.JustDown(this.controls.advance)) {
-        // Exit to title screen
-        this.pauseMenu.hide();
-        this.scene.start("Title");
+    // Handle menu input (ESC for pause, H for help, M for mute)
+    const openLeaderboard = () => {
+      if (this.scene.isActive(SCENES.LEADERBOARD)) {
+        this.scene.stop(SCENES.LEADERBOARD);
       }
-      return;
-    }
-    
-    // Handle help menu toggle (H key)
-    if (Phaser.Input.Keyboard.JustDown(this.controls.help)) {
-      this.helpMenu.toggle();
-    }
-    
-    // If help menu is open, don't process other input
-    if (this.helpMenu.isVisible()) {
-      return;
+      this.scene.launch(SCENES.LEADERBOARD, { returnScene: this.sys.settings.key });
+      this.scene.bringToTop(SCENES.LEADERBOARD);
+      this.scene.pause();
+    };
+    if (handleMenuInput(this, this.controls, this.helpMenu, this.pauseMenu, undefined, openLeaderboard, this._cheatConsole, this.gameState)) {
+      return; // Menus are active, don't process game input
     }
     
     // Handle dialogue
     if (this.dialogVisible) {
-      if (shouldCloseDialogue(this.controls)) {
+      if (this.dialogAutoHideAtMs > 0 && this.time.now >= this.dialogAutoHideAtMs) {
+        this.hideDialog();
+        this.guardDialogueCooldown = 1.5;
+      } else if (this.dialogBlocksMovement && shouldCloseDialogue(this.controls)) {
         this.hideDialog();
         // Set cooldown when dialogue is closed to prevent instant re-trigger
         this.guardDialogueCooldown = 1.5; // 1.5 second cooldown
       }
-      return;
+      if (this.dialogBlocksMovement) {
+        return;
+      }
     }
     
     // Decrease guard dialogue cooldown
@@ -508,7 +536,9 @@ export default class NorthgateScene extends Phaser.Scene {
     }
     
     // Sync sprite position with physics body even when not moving
-    this.playerSprite.x = Math.round(this.player.x);
+    // When facing right (scaleX -1), shift sprite left to align with physics box
+    const xOffset = this.playerSprite.scaleX === -1 ? -12 : 0;
+    this.playerSprite.x = Math.round(this.player.x + xOffset);
     this.playerSprite.y = Math.round(this.player.y + 4);
     
     // Can't control movement when drugged or before entering
@@ -580,7 +610,8 @@ export default class NorthgateScene extends Phaser.Scene {
     const dy = this.player.y - this.ceci.y;
     const distance = Math.hypot(dx, dy);
     
-    if (distance > followDistance) {
+    // Use proximity check for follow distance
+    if (!checkProximity(this.player, this.ceci, followDistance)) {
       const vx = (dx / distance) * followSpeed * dt;
       const vy = (dy / distance) * followSpeed * dt;
       
@@ -602,16 +633,16 @@ export default class NorthgateScene extends Phaser.Scene {
         // Level complete! Transition back to void
         this.isDrugged = true; // Freeze player
         this.player.setVelocity(0, 0); // Stop movement
-        
-        // Fade out and go back to GameScene
-        this.cameras.main.fadeOut(1000, 0, 0, 0);
-        
-        this.time.delayedCall(1000, () => {
-          // Increment completed levels
-          const currentLevels = this.registry.get('completedLevels') || 0;
-          this.registry.set('completedLevels', Math.max(currentLevels, 1));
-          this.scene.start("Game");
-        });
+
+        const result = buildMiniGameResult("northgate");
+        void (async () => {
+          await submitMiniGameResult("northgate", result);
+          this.scene.start(SCENES.LEADERBOARD, { miniGame: "northgate", nextScene: SCENES.GAME });
+        })();
+
+        // Complete Northgate level and transition back to void
+        this.gameState.completeLevel(VOID_LEVELS.AFTER_NORTHGATE);
+        // scene transition handled after submit
       }
     }
   }
@@ -657,22 +688,39 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private checkFurryProximity() {
     this.furries.forEach((furry, index) => {
-      const distance = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        furry.x,
-        furry.y
-      );
-      
-      // Show dialogue when player passes nearby (smaller range - must be close)
-      if (distance < 18 && !this.furryDialogueShown[index] && !this.dialogVisible) {
+      // Show dialogue when player passes nearby using proximity utility
+      if (checkProximity(this.player, furry, 18) && 
+          !this.furryDialogueShown[index] && !this.dialogVisible) {
         this.furryDialogueShown[index] = true;
-        
-        // Stop player movement when dialogue appears
-        this.player.setVelocity(0, 0);
-        
+
         const dialogue = furry.getData('dialogue');
-        this.showDialog(dialogue);
+        this.showFurrySpeech(furry, String(dialogue ?? ""));
+      }
+    });
+  }
+
+  private showFurrySpeech(furry: Phaser.GameObjects.Container, message: string) {
+    if (this.furrySpeechText) {
+      this.tweens.killTweensOf(this.furrySpeechText);
+      this.furrySpeechText.destroy();
+      this.furrySpeechText = undefined;
+    }
+
+    const speech = this.add.text(furry.x, furry.y - 18, message, THOUGHT_BUBBLE_STYLE)
+      .setOrigin(0.5, 1)
+      .setDepth(120);
+    this.furrySpeechText = speech;
+
+    this.tweens.add({
+      targets: speech,
+      alpha: 0,
+      delay: 3000,
+      duration: 250,
+      onComplete: () => {
+        if (this.furrySpeechText === speech) {
+          this.furrySpeechText = undefined;
+        }
+        speech.destroy();
       }
     });
   }
@@ -747,15 +795,8 @@ export default class NorthgateScene extends Phaser.Scene {
                 onComplete: () => {
                   this.ceciHasArrived = true;
                   // Show thought bubble (positioned to the left to avoid station sign)
-                  const thoughtText = this.add.text(80, 30, "Meeting internet strangers\nat unknown train stations...\nPeak dating.", {
-                    fontFamily: "monospace",
-                    fontSize: "9px",
-                    color: "#cfe8ff",
-                    align: "center",
-                    backgroundColor: "rgba(0,0,0,0.7)",
-                    padding: { left: 4, right: 4, top: 3, bottom: 3 },
-                    resolution: 1,
-                  }).setOrigin(0.5);
+                  const thoughtText = this.add.text(80, 30, "Meeting internet strangers\nat unknown train stations...\nPeak dating.", THOUGHT_BUBBLE_STYLE)
+                    .setOrigin(0.5);
                   
                   // Fade out after a while, then Grayson enters
                   this.tweens.add({
@@ -822,16 +863,9 @@ export default class NorthgateScene extends Phaser.Scene {
     // Ticket gate blocks passage until ticket obtained
     // The invisible barrier physically prevents passage
     
-    // Check if player is near security guard on platform 1
-    const distance = Phaser.Math.Distance.Between(
-      this.player.x,
-      this.player.y,
-      this.securityGuard.x,
-      this.securityGuard.y
-    );
-    
     // If player tries to pass without ticket - show message (with cooldown to prevent spam)
-    if (distance < 20 && !this.hasTicket && !this.dialogVisible && this.guardDialogueCooldown === 0) {
+    if (checkProximity(this.player, this.securityGuard, 20) && 
+        !this.hasTicket && !this.dialogVisible && this.guardDialogueCooldown === 0) {
       // Stop player movement when guard speaks
       this.player.setVelocity(0, 0);
       
@@ -841,13 +875,9 @@ export default class NorthgateScene extends Phaser.Scene {
   
   private checkTicketMachine() {
     // Check if player is near ticket machine (bottom right)
-    const distance = Phaser.Math.Distance.Between(
-      this.player.x,
-      this.player.y,
-      298, 147
-    );
+    const ticketMachinePos = { x: 298, y: 147 };
     
-    if (distance < 20 && !this.hasTicket) {
+    if (checkProximity(this.player, ticketMachinePos, 20) && !this.hasTicket) {
       // Player can interact with machine after being asked for ticket
       // No prompt shown - player should know to press E from previous interactions
       
@@ -873,11 +903,9 @@ export default class NorthgateScene extends Phaser.Scene {
           onComplete: () => flashGraphics.destroy()
         });
       }
-    } else if (distance >= 20 && !this.hasTicket) {
+    } else if (!checkProximity(this.player, ticketMachinePos, 20) && !this.hasTicket) {
       // Don't show prompt when not near machine (unless near Ceci)
-      const nearCeci = this.ceciHasArrived && Phaser.Math.Distance.Between(
-        this.player.x, this.player.y, this.ceci.x, this.ceci.y
-      ) < 25;
+      const nearCeci = this.ceciHasArrived && checkProximity(this.player, this.ceci, 25);
       
       if (!nearCeci) {
         this.promptText.setVisible(false);
@@ -886,18 +914,11 @@ export default class NorthgateScene extends Phaser.Scene {
   }
   
   private checkCeciProximity() {
-    const distance = Phaser.Math.Distance.Between(
-      this.player.x,
-      this.player.y,
-      this.ceci.x,
-      this.ceci.y
-    );
-    
-    const near = distance < 20;
+    const near = checkProximity(this.player, this.ceci, 20);
     
     // Auto-collect when reaching Ceci (no E prompt needed)
     if (near && !this.cardFragmentCollected && this.hasTicket) {
-      console.log('Meeting Ceci! Distance:', distance); // Debug
+      console.log('Meeting Ceci!'); // Debug
       this.collectCardFragment();
     }
   }
@@ -905,6 +926,7 @@ export default class NorthgateScene extends Phaser.Scene {
   private hitByTrain() {
     // Player hit by train - dramatic knockout
     this.isDrugged = true; // Prevent movement during animation
+    recordMiniGameDeath("northgate");
     
     // Disable collisions so Grayson can fly off screen cleanly
     this.player.setCollideWorldBounds(false);
@@ -941,9 +963,10 @@ export default class NorthgateScene extends Phaser.Scene {
         this.player.setVelocity(0, 0);
         this.playerSprite.setAngle(0);
         this.isDrugged = false;
+        resetMiniGameTimer("northgate");
         
         // Fade back in
-        this.cameras.main.fadeIn(600, 0, 0, 0);
+        fadeIn(this, 600);
       });
     });
   }
@@ -964,35 +987,17 @@ export default class NorthgateScene extends Phaser.Scene {
     this.time.delayedCall(500, () => {
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.time.delayedCall(500, () => {
-        this.cameras.main.fadeIn(500, 0, 0, 0);
+        fadeIn(this, 500);
       });
     });
     
-    // Dizzy stars above Grayson's head
-    const stars = ["✦", "✧", "★"];
-    for (let i = 0; i < 3; i++) {
-      const star = this.add.text(
-        this.player.x + (i - 1) * 12,
-        this.player.y - 20,
-        stars[i],
-        {
-          fontSize: "16px",
-          color: "#ffeb3b",
-          resolution: 1,
-        }
-      ).setOrigin(0.5);
-      
-      // Animate stars spinning and fading (longer duration)
-      this.tweens.add({
-        targets: star,
-        angle: 360,
-        y: this.player.y - 35,
-        alpha: 0,
-        duration: 4000,
-        ease: "Power2",
-        onComplete: () => star.destroy()
-      });
-    }
+    // Dizzy stars above Grayson's head using shared utility
+    createDizzyStars(this, this.player.x, this.player.y - 20, {
+      starCount: 3,
+      spacing: 12,
+      duration: 4000,
+      distance: 15,
+    });
     
     // Warning message
     this.showDialog("Ouch! That wasn't candy!\nI just stepped on a needle...");
@@ -1021,16 +1026,24 @@ export default class NorthgateScene extends Phaser.Scene {
     });
   }
   
-  private showDialog(message: string) {
+  private showDialog(message: string, options?: { blocksMovement?: boolean; autoHideMs?: number }) {
     this.dialogVisible = true;
-    this.dialogBox.setVisible(true);
-    this.dialogText.setText(message).setVisible(true);
+    this.dialogBlocksMovement = options?.blocksMovement ?? true;
+    this.dialogAutoHideAtMs = options?.autoHideMs ? this.time.now + options.autoHideMs : 0;
+    this.dialogueManager.show(message);
   }
   
   private hideDialog() {
     this.dialogVisible = false;
-    this.dialogBox.setVisible(false);
-    this.dialogText.setVisible(false);
+    this.dialogBlocksMovement = true;
+    this.dialogAutoHideAtMs = 0;
+    this.dialogueManager.hide();
+  }
+
+  shutdown() {
+    if (this.furrySpeechText) {
+      this.furrySpeechText.destroy();
+      this.furrySpeechText = undefined;
+    }
   }
 }
-
